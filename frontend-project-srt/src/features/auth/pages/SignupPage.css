@@ -1,0 +1,78 @@
+/* SignupPage Styles — Compact, no scroll */
+
+.signup-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+/* ---- Top Bar ---- */
+.signup-top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.signup-logo {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.signup-logo-text {
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+}
+
+.signup-top-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+.signup-top-link:hover {
+  color: var(--color-text-primary);
+}
+
+/* ---- Form Rows ---- */
+.signup-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+}
+
+.signup-row--triple {
+  grid-template-columns: 1fr 0.6fr 0.6fr;
+}
+
+/* ---- Checkbox Field ---- */
+.signup-checkbox-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.signup-checkbox-label {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-primary);
+}
+
+.signup-checkbox-field .checkbox-wrapper {
+  padding: var(--space-2) 0;
+}
+
+@media (max-width: 480px) {
+  .signup-row {
+    grid-template-columns: 1fr;
+  }
+  .signup-row--triple {
+    grid-template-columns: 1fr;
+  }
+}
