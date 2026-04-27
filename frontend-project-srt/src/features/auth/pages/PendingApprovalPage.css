@@ -1,0 +1,134 @@
+.pending-approval {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 1.25rem;
+  padding: 0.5rem 0.25rem;
+}
+
+.pending-approval__icon {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  color: #b45309;
+  box-shadow:
+    0 8px 24px rgba(180, 83, 9, 0.18),
+    inset 0 -2px 0 rgba(255, 255, 255, 0.4);
+  animation: pending-pulse 2.4s ease-in-out infinite;
+}
+
+@keyframes pending-pulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow:
+      0 8px 24px rgba(180, 83, 9, 0.18),
+      inset 0 -2px 0 rgba(255, 255, 255, 0.4);
+  }
+  50% {
+    transform: scale(1.04);
+    box-shadow:
+      0 12px 32px rgba(180, 83, 9, 0.28),
+      inset 0 -2px 0 rgba(255, 255, 255, 0.4);
+  }
+}
+
+.pending-approval__title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  margin: 0;
+  line-height: 1.2;
+}
+
+.pending-approval__lead {
+  color: #4b5563;
+  font-size: 1rem;
+  line-height: 1.6;
+  margin: 0;
+  max-width: 28rem;
+}
+
+.pending-approval__lead strong {
+  color: #111827;
+  font-weight: 600;
+}
+
+.pending-approval__email-box {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  padding: 0.625rem 1rem;
+  font-size: 0.9rem;
+}
+
+.pending-approval__email-label {
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.pending-approval__email-value {
+  color: #111827;
+  font-weight: 600;
+  word-break: break-all;
+}
+
+.pending-approval__steps {
+  width: 100%;
+  text-align: left;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.75rem;
+  padding: 1.25rem 1.5rem;
+}
+
+.pending-approval__steps-title {
+  margin: 0 0 0.75rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #111827;
+}
+
+.pending-approval__steps-list {
+  margin: 0;
+  padding-left: 1.25rem;
+  color: #4b5563;
+  font-size: 0.9rem;
+  line-height: 1.65;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.pending-approval__steps-list li::marker {
+  color: #b45309;
+  font-weight: 700;
+}
+
+.pending-approval__actions {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  margin-top: 0.25rem;
+}
+
+.pending-approval__actions .auth-submit-btn {
+  width: 100%;
+  text-align: center;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pending-approval__help {
+  color: #9ca3af;
+  font-size: 0.8rem;
+  margin: 0;
+}

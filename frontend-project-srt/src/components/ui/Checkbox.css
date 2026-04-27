@@ -1,11 +1,10 @@
-/* Checkbox Styles */
-
 .checkbox-wrapper {
   display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
+  align-items: flex-start;
+  gap: 12px;
   cursor: pointer;
   user-select: none;
+  position: relative;
 }
 
 .checkbox-input {
@@ -17,28 +16,35 @@
 }
 
 .checkbox-custom {
+  width: 20px;
+  height: 20px;
+  margin-top: 1px;
+  border: 1.5px solid var(--color-dark-300);
+  border-radius: 6px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(241, 245, 249, 0.9));
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 18px;
-  height: 18px;
-  border: 1.5px solid var(--color-dark-300);
-  border-radius: var(--radius-sm);
-  background-color: var(--color-surface);
-  transition: all var(--transition-fast);
   flex-shrink: 0;
+  transition:
+    border-color var(--transition-fast),
+    background var(--transition-fast),
+    transform var(--transition-fast),
+    box-shadow var(--transition-fast);
 }
 
 .checkbox-custom svg {
   opacity: 0;
-  transform: scale(0.5);
-  transition: all var(--transition-fast);
+  transform: scale(0.45);
+  transition: opacity var(--transition-fast), transform var(--transition-fast);
   color: var(--color-text-inverse);
 }
 
 .checkbox-input:checked + .checkbox-custom {
-  background-color: var(--color-primary-600);
   border-color: var(--color-primary-600);
+  background: linear-gradient(135deg, var(--color-primary-600), var(--color-primary-500));
+  box-shadow: 0 10px 18px rgba(37, 99, 235, 0.18);
 }
 
 .checkbox-input:checked + .checkbox-custom svg {
@@ -47,16 +53,17 @@
 }
 
 .checkbox-input:focus-visible + .checkbox-custom {
-  box-shadow: var(--shadow-focus);
   border-color: var(--color-primary-500);
+  box-shadow: var(--shadow-focus);
 }
 
 .checkbox-wrapper:hover .checkbox-custom {
   border-color: var(--color-primary-400);
+  transform: translateY(-1px);
 }
 
 .checkbox-label {
   font-size: var(--font-size-base);
   color: var(--color-text-secondary);
-  line-height: var(--line-height-normal);
+  line-height: 1.6;
 }

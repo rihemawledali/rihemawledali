@@ -53,10 +53,28 @@
 
   /* Surfaces */
   --color-surface: #ffffff;
+  --color-surface-primary: #ffffff;
   --color-surface-secondary: #f8fafc;
+  --color-surface-tertiary: #f1f5f9;
   --color-surface-hover: #f1f5f9;
   --color-border: #e2e8f0;
+  --color-border-light: #eef2f7;
   --color-border-focus: var(--color-primary-500);
+
+  /* Extended success/error/info shades */
+  --color-success-200: #bbf7d0;
+  --color-success-300: #86efac;
+  --color-success-400: #4ade80;
+  --color-error-200: #fecaca;
+  --color-error-300: #fca5a5;
+  --color-error-400: #f87171;
+  --color-error-900: #7f1d1d;
+  --color-warning-200: #fde68a;
+  --color-warning-300: #fcd34d;
+  --color-warning-400: #fbbf24;
+  --color-warning-700: #b45309;
+  --color-info-200: #bfdbfe;
+  --color-info-700: #1d4ed8;
 
   /* Text */
   --color-text-primary: #0f172a;

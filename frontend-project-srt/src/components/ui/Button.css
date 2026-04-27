@@ -79,6 +79,26 @@
   background-color: var(--color-primary-100);
 }
 
+/* ---- Danger ---- */
+.btn--danger {
+  color: var(--color-text-inverse);
+  background: linear-gradient(135deg, var(--color-error-600), var(--color-error-500));
+  border-color: var(--color-error-600);
+  box-shadow: var(--shadow-sm), inset 0 1px 0 rgba(255,255,255,0.1);
+}
+.btn--danger:hover:not(:disabled) {
+  background: linear-gradient(135deg, var(--color-error-700), var(--color-error-600));
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+}
+.btn--danger:active:not(:disabled) { transform: translateY(0); }
+
+/* ---- Size ---- */
+.btn--sm {
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--font-size-sm);
+}
+
 /* ---- Full Width ---- */
 .btn--full {
   width: 100%;

@@ -1,137 +1,95 @@
 /* ============================================
-   Mock Authentication Service
+   Real Authentication Service
    ============================================
-   Replace the internals of this file with real
-   API calls (Axios/Fetch + JWT) when ready.
-   All consumers use AuthContext, not this file
-   directly, so changes are isolated here.
+   Connects to Spring Boot backend at port 8081
    ============================================ */
 
-import type { User, UserRole, SignupPayload } from '../types/auth.types';
+import { post } from '../../../lib/apiClient';
+import type { User, SignupPayload } from '../types/auth.types';
 
-const STORAGE_KEY = 'srt_auth_user';
-const SIMULATED_DELAY = 1200; // ms
+const USER_STORAGE_KEY = 'srt_auth_user';
+const TOKEN_STORAGE_KEY = 'srt_token';
 
-/** Simulates network latency */
-function delay(ms: number = SIMULATED_DELAY): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+interface AuthApiResponse {
+  id: string;
+  token: string;
+  role: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  phone: string;
 }
 
-/** Mock user database keyed by email */
-const MOCK_USERS: Record<string, { password: string; user: User }> = {
-  'admin@srt.com': {
-    password: 'Password1!',
-    user: {
-      id: '1',
-      firstName: 'Admin',
-      lastName: 'User',
-      email: 'admin@srt.com',
-      phone: '+212 600 000 001',
-      role: 'admin',
-    },
-  },
-  'treasurer@srt.com': {
-    password: 'Password1!',
-    user: {
-      id: '2',
-      firstName: 'Treasurer',
-      lastName: 'User',
-      email: 'treasurer@srt.com',
-      phone: '+212 600 000 002',
-      role: 'treasurer',
-    },
-  },
-  'manager@srt.com': {
-    password: 'Password1!',
-    user: {
-      id: '3',
-      firstName: 'Manager',
-      lastName: 'User',
-      email: 'manager@srt.com',
-      phone: '+212 600 000 003',
-      role: 'manager',
-    },
-  },
-  'adherent@srt.com': {
-    password: 'Password1!',
-    user: {
-      id: '4',
-      firstName: 'Adherent',
-      lastName: 'User',
-      email: 'adherent@srt.com',
-      phone: '+212 600 000 004',
-      role: 'adherent',
-    },
-  },
-};
+function getStorage(rememberMe: boolean): Storage {
+  return rememberMe ? localStorage : sessionStorage;
+}
+
+function mapApiUserToUser(apiUser: AuthApiResponse): User {
+  return {
+    id: apiUser.id,
+    firstName: apiUser.firstName,
+    lastName: apiUser.lastName,
+    email: apiUser.email,
+    phone: apiUser.phone,
+    role: apiUser.role as User['role'],
+  };
+}
 
 export async function loginService(
   email: string,
   password: string,
   rememberMe: boolean
 ): Promise<User> {
-  await delay();
+  const { data } = await post<AuthApiResponse>('/api/auth/login', {
+    email,
+    password,
+  });
 
-  const entry = MOCK_USERS[email.toLowerCase()];
-  if (!entry || entry.password !== password) {
-    throw new Error('Invalid email or password. Please try again.');
-  }
+  const user = mapApiUserToUser(data);
+  const storage = getStorage(rememberMe);
 
-  const storage = rememberMe ? localStorage : sessionStorage;
-  storage.setItem(STORAGE_KEY, JSON.stringify(entry.user));
+  storage.setItem(TOKEN_STORAGE_KEY, data.token);
+  storage.setItem(USER_STORAGE_KEY, JSON.stringify(user));
 
-  return entry.user;
+  return user;
 }
 
 export async function signupService(data: SignupPayload): Promise<User> {
-  await delay();
-
-  // Check if email already exists
-  if (MOCK_USERS[data.email.toLowerCase()]) {
-    throw new Error('An account with this email already exists.');
-  }
-
-  const newUser: User = {
-    id: String(Date.now()),
+  // Backend expects 'admin', 'adherent', 'treasurer', or 'manager'
+  // Default role for self-registration is 'adherent'
+  const { data: apiUser } = await post<AuthApiResponse>('/api/auth/register', {
     firstName: data.firstName,
     lastName: data.lastName,
     email: data.email,
-    phone: data.phone,
-    role: 'adherent' as UserRole, // Default role for self-registration
-  };
-
-  // Add to mock database
-  MOCK_USERS[data.email.toLowerCase()] = {
     password: data.password,
-    user: newUser,
-  };
+    role: 'adherent', // Default role
+    phone: data.phone,
+  });
 
-  sessionStorage.setItem(STORAGE_KEY, JSON.stringify(newUser));
-  return newUser;
+  // IMPORTANT: do NOT log the user in.
+  // The new account is created with statut=INACTIF and must be approved
+  // by an administrator before login is allowed.
+  return mapApiUserToUser(apiUser);
 }
 
 export async function forgotPasswordService(email: string): Promise<void> {
-  await delay();
-
-  const entry = MOCK_USERS[email.toLowerCase()];
-  if (!entry) {
-    // In production, you'd still return success to avoid email enumeration
-    // For demo purposes, we silently succeed
-  }
-  // Simulates sending a reset email
+  // Not implemented in backend yet - just succeed silently
+  void email;
 }
 
 export async function resetPasswordService(
-  _token: string,
-  _newPassword: string
+  token: string,
+  newPassword: string
 ): Promise<void> {
-  await delay();
-  // Simulates resetting the password
+  // Not implemented in backend yet
+  void token;
+  void newPassword;
 }
 
 export function getCurrentUser(): User | null {
   const stored =
-    localStorage.getItem(STORAGE_KEY) || sessionStorage.getItem(STORAGE_KEY);
+    localStorage.getItem(USER_STORAGE_KEY) ||
+    sessionStorage.getItem(USER_STORAGE_KEY);
   if (!stored) return null;
 
   try {
@@ -141,7 +99,16 @@ export function getCurrentUser(): User | null {
   }
 }
 
+export function getToken(): string | null {
+  return (
+    localStorage.getItem(TOKEN_STORAGE_KEY) ||
+    sessionStorage.getItem(TOKEN_STORAGE_KEY)
+  );
+}
+
 export function logoutService(): void {
-  localStorage.removeItem(STORAGE_KEY);
-  sessionStorage.removeItem(STORAGE_KEY);
+  localStorage.removeItem(USER_STORAGE_KEY);
+  localStorage.removeItem(TOKEN_STORAGE_KEY);
+  sessionStorage.removeItem(USER_STORAGE_KEY);
+  sessionStorage.removeItem(TOKEN_STORAGE_KEY);
 }

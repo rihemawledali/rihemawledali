@@ -6,7 +6,8 @@ import type { ButtonHTMLAttributes, ReactNode } from 'react';
 import './Button.css';
 
 interface ButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'className'> {
-  variant?: 'primary' | 'secondary' | 'ghost';
+  variant?: 'primary' | 'secondary' | 'ghost' | 'danger';
+  size?: 'sm' | 'md';
   isLoading?: boolean;
   fullWidth?: boolean;
   children: ReactNode;
@@ -14,6 +15,7 @@ interface ButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'cla
 
 export function Button({
   variant = 'primary',
+  size = 'md',
   isLoading = false,
   fullWidth = false,
   children,
@@ -25,6 +27,7 @@ export function Button({
       className={[
         'btn',
         `btn--${variant}`,
+        size === 'sm' ? 'btn--sm' : '',
         fullWidth ? 'btn--full' : '',
         isLoading ? 'btn--loading' : '',
       ]

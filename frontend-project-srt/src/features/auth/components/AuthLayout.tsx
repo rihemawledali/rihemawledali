@@ -1,11 +1,5 @@
-/* ============================================
-   AuthLayout — Shared wrapper for auth pages
-   Split layout: hero image panel | form panel
-   Inspired by Payoneer-style login design
-   ============================================ */
-
 import type { ReactNode } from 'react';
-import authHero from '../../../assets/auth-hero.png';
+import logoImg from '../../../assets/amicalite-srt-logo-v1.png';
 import './AuthLayout.css';
 
 interface AuthLayoutProps {
@@ -14,33 +8,25 @@ interface AuthLayoutProps {
 
 export function AuthLayout({ children }: AuthLayoutProps) {
   return (
-    <div className="auth-layout">
-      {/* ---- Hero / Branding Panel (left) ---- */}
-      <aside className="auth-branding" aria-hidden="true">
-        <img
-          src={authHero}
-          alt=""
-          className="auth-branding-hero-img"
-        />
-        {/* Overlay content */}
-        <div className="auth-branding-overlay">
-          <p className="auth-branding-tagline">
-            Gestion simplifiée — plateforme en ligne pour votre organisation.
-          </p>
-          <h1 className="auth-branding-headline">
-            Gérez votre<br />organisation
-          </h1>
-        </div>
-      </aside>
+    <div className="auth-wrapper">
+      <div className="auth-bg-blob blob-1"></div>
+      <div className="auth-bg-blob blob-2"></div>
+      <main className="auth-container-wrapper" data-purpose="auth-container-wrapper">
+        <section className="auth-card" id="auth-section">
+          <div className="auth-left-side">
+            <img
+              src={logoImg}
+              alt="Amicalite SRT Logo"
+              className="auth-left-logo"
+            />
+            <div className="auth-left-overlay"></div>
+          </div>
 
-      {/* ---- Form Panel (right) ---- */}
-      <main className="auth-form-panel">
-        <div className="auth-form-container">
-          {children}
-        </div>
-        <footer className="auth-footer">
-          <p>&copy; {new Date().getFullYear()} SRT Management. Tous droits réservés.</p>
-        </footer>
+          {/* Right Side: Form Content */}
+          <div className="auth-right-side">
+            {children}
+          </div>
+        </section>
       </main>
     </div>
   );

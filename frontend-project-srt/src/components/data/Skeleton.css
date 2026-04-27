@@ -1,0 +1,29 @@
+.skeleton {
+  display: inline-block;
+  background: linear-gradient(90deg,
+    var(--color-dark-100) 0%,
+    var(--color-dark-200) 50%,
+    var(--color-dark-100) 100%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes skeleton-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.skeleton-rows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+}
+
+.skeleton-row {
+  display: grid;
+  grid-template-columns: repeat(var(--cols, 4), 1fr);
+  gap: var(--space-4);
+}
+
+.skeleton-row > .skeleton:nth-child(1) { grid-column: span 2; }

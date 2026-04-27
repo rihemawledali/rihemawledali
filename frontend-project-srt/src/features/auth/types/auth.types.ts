@@ -60,7 +60,7 @@ export const ROLE_DASHBOARD_MAP: Record<UserRole, string> = {
   admin: '/admin/dashboard',
   treasurer: '/treasurer/dashboard',
   manager: '/manager/dashboard',
-  adherent: '/dashboard',
+  adherent: '/adherent/dashboard',
 };
 
 export interface ValidationErrors {

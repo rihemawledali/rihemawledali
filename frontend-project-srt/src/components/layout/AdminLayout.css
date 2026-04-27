@@ -1,0 +1,30 @@
+.admin-layout {
+  min-height: 100vh;
+  background: var(--color-surface-secondary);
+}
+
+.admin-layout-main {
+  margin-left: 248px;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  transition: margin-left var(--transition-base);
+}
+
+.admin-layout.is-collapsed .admin-layout-main {
+  margin-left: 72px;
+}
+
+.admin-layout-content {
+  flex: 1;
+  padding: var(--space-6) var(--space-8);
+  max-width: 1600px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+@media (max-width: 1024px) {
+  .admin-layout-main,
+  .admin-layout.is-collapsed .admin-layout-main { margin-left: 0; }
+  .admin-layout-content { padding: var(--space-4); }
+}

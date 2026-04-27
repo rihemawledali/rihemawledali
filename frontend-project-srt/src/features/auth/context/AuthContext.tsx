@@ -1,9 +1,10 @@
-/* ============================================
-   Auth Context — Global Authentication State
-   ============================================ */
-
-import { createContext, useState, useEffect, useCallback, type ReactNode } from 'react';
-import type { User, AuthContextType, LoginPayload, SignupPayload } from '../types/auth.types';
+import { useCallback, useState, type ReactNode } from 'react';
+import type {
+  User,
+  AuthContextType,
+  LoginPayload,
+  SignupPayload,
+} from '../types/auth.types';
 import {
   loginService,
   signupService,
@@ -12,25 +13,15 @@ import {
   getCurrentUser,
   logoutService,
 } from '../services/authService';
-
-export const AuthContext = createContext<AuthContextType | undefined>(undefined);
+import { AuthContext } from './authContextInstance';
 
 interface AuthProviderProps {
   children: ReactNode;
 }
 
 export function AuthProvider({ children }: AuthProviderProps) {
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true); // true on mount while checking storage
-
-  // Check for existing session on mount
-  useEffect(() => {
-    const existingUser = getCurrentUser();
-    if (existingUser) {
-      setUser(existingUser);
-    }
-    setIsLoading(false);
-  }, []);
+  const [user, setUser] = useState<User | null>(() => getCurrentUser());
+  const isLoading = false;
 
   const login = useCallback(async (payload: LoginPayload) => {
     const loggedInUser = await loginService(
@@ -42,8 +33,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
   }, []);
 
   const signup = useCallback(async (payload: SignupPayload) => {
-    const newUser = await signupService(payload);
-    setUser(newUser);
+    // Account is created with statut=INACTIF and must be approved by an admin.
+    // We deliberately do NOT call setUser here so the SignupPage can redirect
+    // to the "pending approval" page instead of logging the user in.
+    await signupService(payload);
   }, []);
 
   const logout = useCallback(() => {

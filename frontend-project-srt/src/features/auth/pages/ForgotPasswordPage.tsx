@@ -1,16 +1,10 @@
-/* ============================================
-   ForgotPasswordPage — Request password reset
-   ============================================ */
-
 import { useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { AuthLayout } from '../components/AuthLayout';
 import { FormInput } from '../../../components/ui/FormInput';
-import { Button } from '../../../components/ui/Button';
 import { Alert } from '../../../components/ui/Alert';
 import { validateEmail } from '../utils/validation';
-import './ForgotPasswordPage.css';
 
 export function ForgotPasswordPage() {
   const { forgotPassword } = useAuth();
@@ -42,76 +36,61 @@ export function ForgotPasswordPage() {
 
   return (
     <AuthLayout>
-      <div className="forgot-password-page">
-        {isSuccess ? (
-          /* ---- Success State ---- */
-          <div className="forgot-password-success">
-            <div className="forgot-password-success-icon">
-              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
-                <polyline points="22,6 12,13 2,6" />
-              </svg>
-            </div>
-            <h2 className="auth-page-title">Check your email</h2>
-            <p className="auth-page-subtitle">
-              We&apos;ve sent a password reset link to <strong>{email}</strong>.
-              Please check your inbox and follow the instructions.
-            </p>
-            <Link to="/login" className="auth-link auth-link--bold">
-              &larr; Back to sign in
-            </Link>
+      {isSuccess ? (
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ display: 'inline-flex', padding: '1rem', borderRadius: '9999px', background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', marginBottom: '1.5rem' }}>
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+              <polyline points="22,6 12,13 2,6" />
+            </svg>
           </div>
-        ) : (
-          /* ---- Form State ---- */
-          <>
-            <div className="auth-page-header">
-              <div className="forgot-password-icon">
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-                  <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                </svg>
-              </div>
-              <h2 className="auth-page-title">Forgot your password?</h2>
-              <p className="auth-page-subtitle">
-                No worries. Enter your email and we&apos;ll send you a reset link.
-              </p>
-            </div>
+          <h2 className="auth-title">Vérifiez vos e-mails</h2>
+          <p style={{ color: 'var(--auth-text-dim)', marginBottom: '2rem' }}>
+            Nous avons envoyé un lien de réinitialisation de mot de passe à <strong>{email}</strong>.
+            Veuillez consulter votre boîte de réception et suivre les instructions.
+          </p>
+          <Link to="/login" className="text-gradient-link">
+            &larr; Retour à la connexion
+          </Link>
+        </div>
+      ) : (
+        <>
+          <h1 className="auth-title">Mot de passe oublié ?</h1>
+          <p style={{ color: 'var(--auth-text-dim)', marginBottom: '2rem', marginTop: '-1rem' }}>
+            Pas de soucis. Entrez votre adresse e-mail et nous vous enverrons un lien de réinitialisation.
+          </p>
 
-            {error && (
+          {error && (
+            <div className="auth-error-alert">
               <Alert variant="error" dismissible onDismiss={() => setError('')}>
                 {error}
               </Alert>
-            )}
+            </div>
+          )}
 
-            <form className="auth-form" onSubmit={handleSubmit} noValidate>
-              <FormInput
-                label="Email address"
-                type="email"
-                placeholder="you@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                error=""
-                autoComplete="email"
-                icon={
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
-                    <polyline points="22,6 12,13 2,6" />
-                  </svg>
-                }
-              />
-              <Button type="submit" fullWidth isLoading={isLoading}>
-                Send reset link
-              </Button>
-            </form>
+          <form className="auth-form-fields" onSubmit={handleSubmit} noValidate>
+            <FormInput
+              id="forgot-email"
+              label="Email address"
+              type="email"
+              placeholder=""
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              error=""
+              autoComplete="email"
+            />
+            <button type="submit" className="auth-submit-btn gradient-primary" disabled={isLoading}>
+              Envoyer le lien
+            </button>
+          </form>
 
-            <p className="auth-page-footer-text">
-              <Link to="/login" className="auth-link">
-                &larr; Back to sign in
-              </Link>
-            </p>
-          </>
-        )}
-      </div>
+          <p className="auth-switch-text" style={{ textAlign: 'center' }}>
+            <Link to="/login" className="text-gradient-link">
+              &larr; Retour à la connexion
+            </Link>
+          </p>
+        </>
+      )}
     </AuthLayout>
   );
 }
