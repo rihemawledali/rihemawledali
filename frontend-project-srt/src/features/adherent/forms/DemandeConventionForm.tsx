@@ -12,6 +12,8 @@ import { CONV_TYPE_LABEL } from '../conventions/conventionHelpers';
 export interface DemandeConventionPayload {
   commentaire?: string;
   documentNom?: string;
+  /** Actual File selected by the user (used by the page for multipart upload). */
+  file?: File;
 }
 
 interface DemandeConventionFormProps {
@@ -27,7 +29,8 @@ export function DemandeConventionForm({
   adherent, convention, onSubmit, onCancel, submitting, errorMessage,
 }: DemandeConventionFormProps) {
   const [commentaire, setCommentaire] = useState('');
-  const [documentNom, setDocumentNom] = useState<string | undefined>(undefined);
+  const [file, setFile] = useState<File | null>(null);
+  const documentNom = file?.name;
   const [confirmed, setConfirmed] = useState(false);
   const [confirmError, setConfirmError] = useState<string | null>(null);
 
@@ -35,8 +38,8 @@ export function DemandeConventionForm({
   const requiresDoc = (convention.documentsRequis?.length ?? 0) > 0;
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    setDocumentNom(file ? file.name : undefined);
+    const f = e.target.files?.[0];
+    setFile(f ?? null);
   };
 
   const handleSubmit = async (ev: React.FormEvent) => {
@@ -49,6 +52,7 @@ export function DemandeConventionForm({
     await onSubmit({
       commentaire: commentaire.trim() || undefined,
       documentNom,
+      file: file ?? undefined,
     });
   };
 

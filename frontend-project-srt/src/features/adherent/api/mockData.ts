@@ -3,7 +3,7 @@
    ============================================ */
 
 import type {
-  Adherent, Adhesion, PretSocial, Indemnite, BonCommande, TicketRestaurant,
+  Adherent, Adhesion, PretSocial, Indemnite, TicketRestaurant,
   HistoriqueFinanciere, Convention, ConventionDemande,
 } from '../../../types/domain';
 
@@ -22,11 +22,16 @@ export const mockAdherent: Adherent = {
   marie: true,
 };
 
+// Adhésion is renewed monthly: current month period.
+const _now = new Date();
+const _monthStart = new Date(_now.getFullYear(), _now.getMonth(), 1).toISOString().split('T')[0];
+const _monthEnd = new Date(_now.getFullYear(), _now.getMonth() + 1, 0).toISOString().split('T')[0];
+
 export const mockAdhesion: Adhesion = {
   id: 'adh-001',
   adherentId: 'adh-001',
-  dateDebut: '2024-01-15',
-  dateFin: '2025-01-15',
+  dateDebut: _monthStart,
+  dateFin: _monthEnd,
   montantCotisation: 50,
   statut: 'active',
 };
@@ -54,6 +59,9 @@ export const mockPrets: PretSocial[] = [
     statut: 'en_cours',
     dateDemande: '2024-06-01',
     dateAccord: '2024-06-05',
+    motif: 'Travaux d\u2019aménagement du domicile familial.',
+    documentNom: 'devis-amenagement.pdf',
+    documentSize: 184_320,
   },
   {
     id: 'pret-002',
@@ -65,6 +73,9 @@ export const mockPrets: PretSocial[] = [
     statut: 'rembourse',
     dateDemande: '2023-03-10',
     dateAccord: '2023-03-15',
+    motif: 'Achat de matériel informatique pour la famille.',
+    documentNom: 'facture-pro-forma.pdf',
+    documentSize: 96_512,
   },
   {
     id: 'pret-003',
@@ -75,6 +86,9 @@ export const mockPrets: PretSocial[] = [
     taux: 1.5,
     statut: 'en_attente',
     dateDemande: '2024-12-20',
+    motif: 'Frais médicaux imprévus.',
+    documentNom: 'ordonnance-clinique.pdf',
+    documentSize: 73_216,
   },
 ];
 
@@ -87,6 +101,9 @@ export const mockIndemnites: Indemnite[] = [
     montant: 200,
     statut: 'approuvee',
     dateDemande: '2024-11-10',
+    motif: 'Hospitalisation de 3 jours suite à une intervention chirurgicale.',
+    documentNom: 'certificat-medical.pdf',
+    documentSize: 142_080,
   },
   {
     id: 'ind-002',
@@ -96,33 +113,9 @@ export const mockIndemnites: Indemnite[] = [
     montant: 150,
     statut: 'en_attente',
     dateDemande: '2024-12-25',
-  },
-];
-
-export const mockBonsCommande: BonCommande[] = [
-  {
-    id: 'bon-001',
-    numero: 'BC-2024-001',
-    adherentId: 'adh-001',
-    adherentNom: 'Ahmed Ben Salah',
-    fournisseurId: 'f-001',
-    fournisseurNom: 'Pharmacie Centrale',
-    montant: 100,
-    statut: 'attribue',
-    dateEmission: '2024-12-01',
-    dateExpiration: '2025-06-01',
-  },
-  {
-    id: 'bon-002',
-    numero: 'BC-2024-002',
-    adherentId: 'adh-001',
-    adherentNom: 'Ahmed Ben Salah',
-    fournisseurId: 'f-002',
-    fournisseurNom: 'Restaurant Le Bon Goût',
-    montant: 50,
-    statut: 'utilise',
-    dateEmission: '2024-10-15',
-    dateExpiration: '2025-04-15',
+    motif: 'Naissance de mon deuxième enfant.',
+    documentNom: 'acte-naissance.pdf',
+    documentSize: 88_064,
   },
 ];
 
@@ -130,7 +123,8 @@ export const mockConventions: Convention[] = [
   {
     id: 'conv-001',
     fournisseurId: 'four-001',
-    fournisseurNom: 'Pharmacie Centrale El Manar',
+    fournisseurNom: 'Pharmacie Centrale Béja',
+    imageUrl: 'https://images.unsplash.com/photo-1576091160550-2173dba999ef?w=800&q=80&auto=format&fit=crop',
     type: 'sante',
     dateDebut: '2025-01-01',
     dateFin: '2026-12-31',
@@ -148,9 +142,9 @@ export const mockConventions: Convention[] = [
       'Hors médicaments remboursés par la CNAM',
     ],
     documentsRequis: ['Carte d\u2019adhérent'],
-    fournisseurAdresse: '15 Avenue de la Liberté, El Manar 2, Tunis',
-    fournisseurTelephone: '+216 71 234 567',
-    fournisseurEmail: 'contact@pharmacie-elmanar.tn',
+    fournisseurAdresse: '15 Avenue Habib Bourguiba, Béja',
+    fournisseurTelephone: '+216 78 234 567',
+    fournisseurEmail: 'contact@pharmacie-beja.tn',
     fournisseurContact: 'Mme Leila Khelifi',
     joined: true,
   },
@@ -158,6 +152,7 @@ export const mockConventions: Convention[] = [
     id: 'conv-002',
     fournisseurId: 'four-002',
     fournisseurNom: 'Restaurant Le Médina',
+    imageUrl: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800&q=80&auto=format&fit=crop',
     type: 'restauration',
     dateDebut: '2025-03-15',
     dateFin: '2026-03-14',
@@ -174,38 +169,15 @@ export const mockConventions: Convention[] = [
       'Réservation conseillée pour les heures de pointe',
       'Présentation de la carte d\u2019adhérent à l\u2019arrivée',
     ],
-    fournisseurAdresse: 'Rue de la Médina, La Marsa, Tunis',
-    fournisseurTelephone: '+216 71 765 432',
-    fournisseurEmail: 'reservation@lemedina.tn',
-  },
-  {
-    id: 'conv-003',
-    fournisseurId: 'four-003',
-    fournisseurNom: 'TransNet Tunisie',
-    type: 'transport',
-    dateDebut: '2025-02-01',
-    dateFin: '2026-01-31',
-    remise: 10,
-    statut: 'active',
-    descriptionCourte: 'Tarif préférentiel sur les abonnements',
-    description:
-      'Tarif préférentiel de 10% sur l\u2019ensemble des abonnements mensuels et trimestriels de transport urbain. Couvre les lignes de bus, métro et TGM.',
-    avantage: '10% de remise sur les abonnements',
-    conditions: 'Abonnement nominatif. La remise s\u2019applique au moment du renouvellement.',
-    conditionsList: [
-      'Abonnement strictement nominatif',
-      'Remise appliquée au renouvellement uniquement',
-      'Justificatif d\u2019adhésion requis',
-    ],
-    documentsRequis: ['Carte d\u2019adhérent', 'Pièce d\u2019identité'],
-    fournisseurAdresse: 'Avenue Habib Bourguiba, Tunis',
-    fournisseurTelephone: '+216 71 333 444',
-    fournisseurEmail: 'service.client@transnet.tn',
+    fournisseurAdresse: 'Rue de la Kasbah, Béja',
+    fournisseurTelephone: '+216 78 765 432',
+    fournisseurEmail: 'reservation@lemedina-beja.tn',
   },
   {
     id: 'conv-004',
     fournisseurId: 'four-004',
-    fournisseurNom: 'Carrefour Lac 2',
+    fournisseurNom: 'Monoprix Béja',
+    imageUrl: 'https://images.unsplash.com/photo-1580554530778-ca36943938b2?w=800&q=80&auto=format&fit=crop',
     type: 'commerce',
     dateDebut: '2025-04-01',
     dateFin: '2025-12-31',
@@ -222,13 +194,14 @@ export const mockConventions: Convention[] = [
       'Hors produits soldés ou en promotion',
       'Hors carburant et produits réglementés',
     ],
-    fournisseurAdresse: 'Centre commercial Lac 2, Les Berges du Lac, Tunis',
-    fournisseurTelephone: '+216 71 862 000',
+    fournisseurAdresse: 'Avenue de la République, Béja',
+    fournisseurTelephone: '+216 78 862 000',
   },
   {
     id: 'conv-005',
     fournisseurId: 'four-005',
     fournisseurNom: 'École de langues Linguafrance',
+    imageUrl: 'https://images.unsplash.com/photo-1503676260728-1c00da094a0b?w=800&q=80&auto=format&fit=crop',
     type: 'education',
     dateDebut: '2025-09-01',
     dateFin: '2026-06-30',
@@ -246,15 +219,18 @@ export const mockConventions: Convention[] = [
       'Remise applicable sur les frais d\u2019inscription et de scolarité',
     ],
     documentsRequis: ['Carte d\u2019adhérent', 'Justificatif de scolarité (pour les enfants)'],
-    fournisseurAdresse: '12 Rue de Rome, Tunis',
-    fournisseurTelephone: '+216 71 552 200',
-    fournisseurEmail: 'inscriptions@linguafrance.tn',
+    fournisseurAdresse: '12 Rue Farhat Hached, Béja',
+    fournisseurTelephone: '+216 78 552 200',
+    fournisseurEmail: 'inscriptions@linguafrance-beja.tn',
     fournisseurContact: 'M. Karim Trabelsi',
+    montantOffre: 480,
+    nbTranches: 6,
   },
   {
     id: 'conv-006',
     fournisseurId: 'four-006',
-    fournisseurNom: 'Cinéma Pathé Tunis City',
+    fournisseurNom: 'Cinéma Le Royal Béja',
+    imageUrl: 'https://images.unsplash.com/photo-1489599433464-7e57cd86bdf1?w=800&q=80&auto=format&fit=crop',
     type: 'loisir',
     dateDebut: '2024-06-01',
     dateFin: '2025-05-31',
@@ -270,12 +246,13 @@ export const mockConventions: Convention[] = [
       'Hors séances 3D et IMAX',
       'Hors avant-premières et événements spéciaux',
     ],
-    fournisseurAdresse: 'Centre commercial Tunis City, La Soukra',
+    fournisseurAdresse: 'Avenue Habib Bourguiba, Béja',
   },
   {
     id: 'conv-007',
     fournisseurId: 'four-007',
     fournisseurNom: 'Salle de sport FitZone',
+    imageUrl: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&q=80&auto=format&fit=crop',
     type: 'loisir',
     dateDebut: '2025-06-01',
     dateFin: '2026-05-31',
@@ -293,14 +270,17 @@ export const mockConventions: Convention[] = [
       'Certificat médical de moins de 3 mois requis',
     ],
     documentsRequis: ['Carte d\u2019adhérent', 'Certificat médical d\u2019aptitude sportive'],
-    fournisseurAdresse: 'Centre Urbain Nord, Tunis',
-    fournisseurTelephone: '+216 71 700 100',
-    fournisseurEmail: 'contact@fitzone.tn',
+    fournisseurAdresse: 'Route de Tunis, Béja',
+    fournisseurTelephone: '+216 78 700 100',
+    fournisseurEmail: 'contact@fitzone-beja.tn',
+    montantOffre: 600,
+    nbTranches: 6,
   },
   {
     id: 'conv-008',
     fournisseurId: 'four-008',
     fournisseurNom: 'Clinique Dentaire Sourire+',
+    imageUrl: 'https://images.unsplash.com/photo-1606811971618-4486d14f3f99?w=800&q=80&auto=format&fit=crop',
     type: 'sante',
     dateDebut: '2025-05-01',
     dateFin: '2027-04-30',
@@ -317,9 +297,9 @@ export const mockConventions: Convention[] = [
       'Tiers payant CNAM accepté',
     ],
     documentsRequis: ['Carte d\u2019adhérent', 'Carte CNAM (si applicable)'],
-    fournisseurAdresse: 'Avenue Mohamed V, Tunis',
-    fournisseurTelephone: '+216 71 880 880',
-    fournisseurEmail: 'rdv@souriereplus.tn',
+    fournisseurAdresse: 'Avenue de l\u2019Indépendance, Béja',
+    fournisseurTelephone: '+216 78 880 880',
+    fournisseurEmail: 'rdv@souriereplus-beja.tn',
     fournisseurContact: 'Dr Nadia Mansouri',
   },
 ];
@@ -367,6 +347,34 @@ export const mockConventionDemandes: ConventionDemande[] = [
     statut: 'annulee',
     dateDecision: '2025-03-13',
     commentaire: 'Demande initiale pour Carrefour.',
+  },
+  // Convention conv-007 (FitZone) — abonnement financé en 6 tranches, 2 déjà payées
+  {
+    id: 'demc-005',
+    conventionId: 'conv-007',
+    adherentId: 'adh-001',
+    adherentNom: 'Ahmed Ben Salah',
+    dateDemande: '2025-02-01',
+    statut: 'validee',
+    dateDecision: '2025-02-05',
+    commentaire: 'Abonnement annuel salle de sport FitZone.',
+    tranchesPayees: 2,
+    montantOffreSnapshot: 600,
+    nbTranchesSnapshot: 6,
+  },
+  // Convention conv-005 (Linguafrance) — cours de langue, aucune tranche encore prélevée
+  {
+    id: 'demc-006',
+    conventionId: 'conv-005',
+    adherentId: 'adh-001',
+    adherentNom: 'Ahmed Ben Salah',
+    dateDemande: '2025-04-12',
+    statut: 'validee',
+    dateDecision: '2025-04-15',
+    commentaire: 'Cours d\u2019anglais sur 6 mois.',
+    tranchesPayees: 0,
+    montantOffreSnapshot: 480,
+    nbTranchesSnapshot: 6,
   },
 ];
 
@@ -460,8 +468,7 @@ export const mockDashboardData: DashboardData = {
   adhesion: mockAdhesion,
   activeLoan: mockPrets.find(p => p.statut === 'en_cours') || null,
   pendingIndemnities: mockIndemnites.filter(i => i.statut === 'en_attente').length,
-  availableOffers: mockBonsCommande.filter(b => b.statut === 'attribue').length + 
-                   mockTicketsRestaurant.filter(t => t.statut === 'attribue').length,
+  availableOffers: mockTicketsRestaurant.filter(t => t.statut === 'attribue').length,
   recentHistory: mockHistorique.slice(0, 5),
   financialChart: [
     { month: 'Juil', solde: 4500 },

@@ -12,6 +12,7 @@ import { DataTable } from '../../../components/data/DataTable';
 import { StatusBadge } from '../../../components/data/StatusBadge';
 import { useToast } from '../../../components/feedback/useToast';
 import { pretsApi } from '../api/pretsApi';
+import { uploadFile } from '../../../lib/apiClient';
 import { PretRequestForm } from '../forms/PretRequestForm';
 import type { PretRequestFormValues } from '../validators';
 import type { PretSocial } from '../../../types/domain';
@@ -70,24 +71,33 @@ export function AdherentPretsPage() {
   });
 
   const createMutation = useMutation({
-    mutationFn: (values: PretRequestFormValues) => pretsApi.createPret({
-      montant: values.montant,
-      duree: values.duree,
-      taux: values.taux,
-      motif: values.motif,
-    }),
+    mutationFn: async ({ values, file }: { values: PretRequestFormValues; file?: File }) => {
+      let attachmentId: string | undefined;
+      if (file) {
+        const att = await uploadFile(file);
+        attachmentId = att.id;
+      }
+      return pretsApi.createPret({
+        montant: values.montant,
+        duree: values.duree,
+        taux: values.taux,
+        motif: values.motif,
+        attachmentId,
+      });
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['adherent-prets'] });
       setCreating(false);
       toast.push({ title: 'Demande de prêt soumise', variant: 'success' });
     },
-    onError: () => {
-      toast.push({ title: 'Échec de la demande', variant: 'error' });
+    onError: (err: unknown) => {
+      const msg = err instanceof Error ? err.message : 'Échec de la demande';
+      toast.push({ title: msg, variant: 'error' });
     },
   });
 
-  const handleCreate = async (values: PretRequestFormValues) => {
-    await createMutation.mutateAsync(values);
+  const handleCreate = async (values: PretRequestFormValues, file?: File) => {
+    await createMutation.mutateAsync({ values, file });
   };
 
   const activeLoan = prets?.find(p => p.statut === 'en_cours');

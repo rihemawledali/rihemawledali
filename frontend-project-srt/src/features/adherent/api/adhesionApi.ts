@@ -6,7 +6,7 @@ import { get, post } from '../../../lib/apiClient';
 import type { Adhesion } from '../../../types/domain';
 import { mockAdhesion, mockAdhesionHistory, delay } from './mockData';
 
-const USE_MOCKS = true;
+const USE_MOCKS = false;
 
 export interface AdhesionRequest {
   montantCotisation: number;
@@ -44,6 +44,15 @@ export const adhesionApi = {
       return delay(newAdhesion, 600);
     }
     const { data } = await post<Adhesion>('/api/adherent/adhesion', req);
+    return data;
+  },
+
+  async cancelAdhesion(): Promise<Adhesion> {
+    if (USE_MOCKS) {
+      const cancelled: Adhesion = { ...mockAdhesion, statut: 'expiree' };
+      return delay(cancelled, 600);
+    }
+    const { data } = await post<Adhesion>('/api/adherent/adhesion/cancel', {});
     return data;
   },
 

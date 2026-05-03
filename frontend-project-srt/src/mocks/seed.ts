@@ -159,11 +159,12 @@ export const seedComptes: CompteBancaire[] = [
 function makeHistorique(): HistoriqueFinanciere[] {
   const ops: HistoriqueFinanciere[] = [];
   for (let i = 0; i < 60; i++) {
-    const types: HistoriqueFinanciere['type'][] = ['credit','debit','pret','remboursement','cotisation','indemnite','facture'];
+    type LegacyOp = 'credit' | 'debit' | 'pret' | 'remboursement' | 'cotisation' | 'indemnite' | 'facture';
+    const types: LegacyOp[] = ['credit','debit','pret','remboursement','cotisation','indemnite','facture'];
     const t = types[i % types.length];
     const sign = ['debit', 'pret', 'indemnite', 'facture'].includes(t) ? -1 : 1;
     const amount = sign * Math.round((300 + Math.random() * 4500));
-    const descriptions: Record<typeof t, string> = {
+    const descriptions: Record<LegacyOp, string> = {
       credit: 'Versement bancaire',
       debit: 'Prélèvement bancaire',
       pret: 'Décaissement prêt social',
@@ -171,7 +172,7 @@ function makeHistorique(): HistoriqueFinanciere[] {
       cotisation: 'Encaissement cotisation adhérent',
       indemnite: 'Versement indemnité',
       facture: 'Règlement facture fournisseur',
-    } as const;
+    };
     ops.push({
       id: `h_${1000 + i}`,
       type: t,

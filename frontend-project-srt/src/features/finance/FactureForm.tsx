@@ -20,8 +20,18 @@ export function FactureForm({ initial, onSubmit, onCancel, submitting }: Props) 
   const { register, handleSubmit, formState: { errors } } = useForm<FactureFormValues>({
     resolver: zodResolver(factureSchema),
     defaultValues: initial
-      ? { numero: initial.numero, fournisseurId: initial.fournisseurId, montant: initial.montant, statut: initial.statut, dateEmission: initial.dateEmission.slice(0, 10), dateEcheance: initial.dateEcheance.slice(0, 10) }
-      : { numero: `FAC-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 9999)).padStart(4, '0')}`, fournisseurId: '', montant: 0, statut: 'impayee', dateEmission: new Date().toISOString().slice(0, 10), dateEcheance: new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10) },
+      ? {
+          numero: initial.numero, fournisseurId: initial.fournisseurId, montant: initial.montant, statut: initial.statut,
+          dateEmission: initial.dateEmission.slice(0, 10), dateEcheance: initial.dateEcheance.slice(0, 10),
+          description: initial.description ?? '',
+        }
+      : {
+          numero: `FAC-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 9999)).padStart(4, '0')}`,
+          fournisseurId: '', montant: 0, statut: 'non_payee',
+          dateEmission: new Date().toISOString().slice(0, 10),
+          dateEcheance: new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10),
+          description: '',
+        },
   });
 
   return (
@@ -36,11 +46,18 @@ export function FactureForm({ initial, onSubmit, onCancel, submitting }: Props) 
       />
       <FormInput label="Montant (TND)" type="number" step="0.01" {...register('montant', { valueAsNumber: true })} error={errors.montant?.message} />
       <FormSelect label="Statut" {...register('statut')} options={[
-        { value: 'payee', label: 'Payée' }, { value: 'impayee', label: 'Impayée' },
-        { value: 'partielle', label: 'Partielle' }, { value: 'en_retard', label: 'En retard' },
+        { value: 'brouillon', label: 'Brouillon' },
+        { value: 'non_payee', label: 'Non payée' },
+        { value: 'partielle', label: 'Partielle' },
+        { value: 'en_retard', label: 'En retard' },
+        { value: 'payee', label: 'Payée' },
+        { value: 'annulee', label: 'Annulée' },
       ]} error={errors.statut?.message} />
       <FormInput label="Date d'émission" type="date" {...register('dateEmission')} error={errors.dateEmission?.message} />
       <FormInput label="Date d'échéance" type="date" {...register('dateEcheance')} error={errors.dateEcheance?.message} />
+      <div className="form-grid-full">
+        <FormInput label="Description (optionnel)" {...register('description')} error={errors.description?.message} />
+      </div>
       <div className="form-grid-full" style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-3)' }}>
         <Button type="button" variant="secondary" onClick={onCancel} disabled={submitting}>Annuler</Button>
         <Button type="submit" isLoading={submitting}>{initial ? 'Mettre à jour' : 'Créer'}</Button>

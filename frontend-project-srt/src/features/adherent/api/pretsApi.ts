@@ -6,13 +6,18 @@ import { get, post } from '../../../lib/apiClient';
 import type { PretSocial } from '../../../types/domain';
 import { mockPrets, delay } from './mockData';
 
-const USE_MOCKS = true;
+const USE_MOCKS = false;
 
 export interface PretRequest {
   montant: number;
   duree: number;
   taux?: number;
   motif?: string;
+  /** Attachment id obtained from POST /api/files (multipart upload). */
+  attachmentId?: number | string;
+  /** Kept for mock compatibility — ignored by backend. */
+  documentNom?: string;
+  documentSize?: number;
 }
 
 export const pretsApi = {
@@ -35,7 +40,11 @@ export const pretsApi = {
         taux: req.taux ?? 2.5,
         statut: 'en_attente',
         dateDemande: new Date().toISOString().split('T')[0],
+        motif: req.motif,
+        documentNom: req.documentNom,
+        documentSize: req.documentSize,
       };
+      mockPrets.unshift(newPret);
       return delay(newPret, 600);
     }
     const { data } = await post<PretSocial>('/api/adherent/prets', req);

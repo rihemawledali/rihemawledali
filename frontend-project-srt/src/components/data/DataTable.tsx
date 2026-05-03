@@ -24,12 +24,13 @@ interface DataTableProps<T> {
   emptyTitle?: string;
   emptyDescription?: string;
   rowActions?: (row: T) => ReactNode;
+  actionsWidth?: string;
 }
 
 export function DataTable<T>({
   columns, rows, loading, rowKey,
   sortBy, sortDir, onSortChange,
-  emptyTitle, emptyDescription, rowActions,
+  emptyTitle, emptyDescription, rowActions, actionsWidth = '64px',
 }: DataTableProps<T>) {
   if (loading) return <div className="data-table-card"><SkeletonRows cols={Math.min(columns.length, 6)} rows={6} /></div>;
   if (!rows.length) return <div className="data-table-card"><EmptyState title={emptyTitle} description={emptyDescription} /></div>;
@@ -54,7 +55,7 @@ export function DataTable<T>({
                   </th>
                 );
               })}
-              {rowActions && <th style={{ width: 64, textAlign: 'right' }}>Actions</th>}
+              {rowActions && <th style={{ width: actionsWidth, textAlign: 'right' }}>Actions</th>}
             </tr>
           </thead>
           <tbody>

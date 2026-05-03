@@ -227,88 +227,94 @@ function ConventionCard({ convention: c, adherentStatus, onView }: ConventionCar
   const canRequest = adherentStatus === 'disponible';
 
   return (
-    <div className="adh-offer-card">
-      <div className="adh-offer-card-head">
-        <span className="adh-offer-tag">
-          <Icon size={12} />
-          {CONV_TYPE_LABEL[c.type]}
-        </span>
-        <StatusBadge
-          status={adherentStatus}
-          tone={ADHERENT_STATUS_VARIANT[adherentStatus]}
-          label={ADHERENT_STATUS_LABEL[adherentStatus]}
-        />
-      </div>
-
-      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
-        <div className={`adh-tile-icon tone-${tone}`}><Icon size={20} /></div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div className="adh-offer-supplier">{c.fournisseurNom}</div>
-          <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-tertiary)' }}>
-            Fournisseur partenaire
-          </div>
-        </div>
-      </div>
-
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
-        <div className="adh-offer-amount" style={{ color: 'var(--color-success-600)' }}>
-          −{c.remise}%
-        </div>
-        <span style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--font-size-sm)' }}>
-          {c.avantage ? '· ' + c.avantage : 'de remise'}
-        </span>
-      </div>
-
-      {c.descriptionCourte && (
-        <p className="adh-offer-desc">{c.descriptionCourte}</p>
-      )}
-
-      {c.conditions && (
-        <div className="adh-offer-conditions">
-          <span className="adh-offer-conditions-label">Conditions :</span> {c.conditions}
-        </div>
-      )}
-
-      <div className="adh-offer-meta">
-        <Calendar size={14} />
-        <span>
-          Du {new Date(c.dateDebut).toLocaleDateString('fr-FR')} au{' '}
-          {new Date(c.dateFin).toLocaleDateString('fr-FR')}
-          {expiringSoon && (
-            <span style={{ color: 'var(--color-warning-600)', fontWeight: 600 }}>
-              {' '}· {daysLeft} j restants
-            </span>
-          )}
-        </span>
-      </div>
-
-      {expiringSoon && adherentStatus !== 'expiree' && (
-        <div className="adh-alert warning" style={{ margin: 0, padding: '8px 10px' }}>
-          <AlertTriangle size={14} className="adh-alert-icon" />
-          <div style={{ fontSize: 'var(--font-size-xs)' }}>Cette convention expire bientôt.</div>
-        </div>
-      )}
-
-      <div style={{ display: 'flex', gap: 8, marginTop: 'auto', flexWrap: 'wrap' }}>
-        <Button variant="secondary" size="sm" onClick={onView}>
-          <FileText size={14} style={{ marginRight: 6 }} />
-          Voir détails
-        </Button>
-        {canRequest ? (
-          <Button size="sm" onClick={onView} style={{ flex: 1, minWidth: 'fit-content' }}>
-            Demander l'adhésion
-            <ArrowRight size={14} style={{ marginLeft: 6 }} />
-          </Button>
+    <article className="adh-offer-card adh-offer-card--with-cover">
+      {/* ---- Cover image ---- */}
+      <div className={`adh-offer-cover tone-${tone}`}>
+        {c.imageUrl ? (
+          <img
+            src={c.imageUrl}
+            alt={c.fournisseurNom}
+            loading="lazy"
+            onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+          />
         ) : (
-          <Button size="sm" disabled style={{ flex: 1, minWidth: 'fit-content' }}>
-            {adherentStatus === 'deja_demandee' && 'Demande en cours'}
-            {adherentStatus === 'active' && 'Convention active'}
-            {adherentStatus === 'expiree' && 'Convention expirée'}
-            {adherentStatus === 'non_disponible' && 'Non disponible'}
-          </Button>
+          <div className="adh-offer-cover-placeholder">
+            <Icon size={36} />
+          </div>
         )}
+
+        <div className="adh-offer-cover-overlay">
+          <span className="adh-offer-cover-tag">
+            <Icon size={12} />
+            {CONV_TYPE_LABEL[c.type]}
+          </span>
+          <StatusBadge
+            status={adherentStatus}
+            tone={ADHERENT_STATUS_VARIANT[adherentStatus]}
+            label={ADHERENT_STATUS_LABEL[adherentStatus]}
+          />
+        </div>
+
+        <div className="adh-offer-cover-discount">−{c.remise}%</div>
       </div>
-    </div>
+
+      {/* ---- Body ---- */}
+      <div className="adh-offer-card-body">
+        <div className="adh-offer-supplier">{c.fournisseurNom}</div>
+        {c.avantage && (
+          <div className="adh-offer-avantage">{c.avantage}</div>
+        )}
+
+        {c.descriptionCourte && (
+          <p className="adh-offer-desc">{c.descriptionCourte}</p>
+        )}
+
+        {c.conditions && (
+          <div className="adh-offer-conditions">
+            <span className="adh-offer-conditions-label">Conditions :</span> {c.conditions}
+          </div>
+        )}
+
+        <div className="adh-offer-meta">
+          <Calendar size={13} />
+          <span>
+            Valide jusqu'au {new Date(c.dateFin).toLocaleDateString('fr-FR')}
+            {expiringSoon && (
+              <span style={{ color: '#b45309', fontWeight: 600 }}>
+                {' '}· {daysLeft} j restants
+              </span>
+            )}
+          </span>
+        </div>
+
+        {expiringSoon && adherentStatus !== 'expiree' && (
+          <div className="adh-alert warning" style={{ margin: 0, padding: '8px 10px' }}>
+            <AlertTriangle size={14} className="adh-alert-icon" />
+            <div style={{ fontSize: '0.75rem' }}>Cette convention expire bientôt.</div>
+          </div>
+        )}
+
+        <div className="adh-offer-actions">
+          <Button variant="secondary" size="sm" onClick={onView}>
+            <FileText size={14} style={{ marginRight: 6 }} />
+            Détails
+          </Button>
+          {canRequest ? (
+            <Button size="sm" onClick={onView} style={{ flex: 1, minWidth: 'fit-content' }}>
+              Demander l'adhésion
+              <ArrowRight size={14} style={{ marginLeft: 6 }} />
+            </Button>
+          ) : (
+            <Button size="sm" disabled style={{ flex: 1, minWidth: 'fit-content' }}>
+              {adherentStatus === 'deja_demandee' && 'Demande en cours'}
+              {adherentStatus === 'active' && 'Convention active'}
+              {adherentStatus === 'expiree' && 'Convention expirée'}
+              {adherentStatus === 'non_disponible' && 'Non disponible'}
+            </Button>
+          )}
+        </div>
+      </div>
+    </article>
   );
 }
 
@@ -409,6 +415,115 @@ const INLINE_STYLES = `
 }
 .adh-quicklink svg { color: var(--adh-text-3); }
 .adh-quicklink:hover svg { color: var(--adh-accent); }
+
+/* ---- Card with cover image ---- */
+.adh-offer-card--with-cover {
+  padding: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.adh-offer-cover {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: var(--adh-surface-2);
+  overflow: hidden;
+  border-bottom: 1px solid var(--adh-border);
+}
+.adh-offer-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform 400ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+.adh-offer-card--with-cover:hover .adh-offer-cover img {
+  transform: scale(1.04);
+}
+.adh-offer-cover-placeholder {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #eef2f7, #ffffff);
+  color: var(--adh-text-3);
+}
+.adh-offer-cover.tone-success .adh-offer-cover-placeholder { background: linear-gradient(135deg, #f0fdf4, #ffffff); color: #15803d; }
+.adh-offer-cover.tone-primary .adh-offer-cover-placeholder { background: linear-gradient(135deg, #eff6ff, #ffffff); color: #1d4ed8; }
+.adh-offer-cover.tone-warning .adh-offer-cover-placeholder { background: linear-gradient(135deg, #fffbeb, #ffffff); color: #b45309; }
+.adh-offer-cover.tone-error   .adh-offer-cover-placeholder { background: linear-gradient(135deg, #fef2f2, #ffffff); color: #b91c1c; }
+.adh-offer-cover.tone-info    .adh-offer-cover-placeholder { background: linear-gradient(135deg, #ecfeff, #ffffff); color: #0e7490; }
+.adh-offer-cover.tone-violet  .adh-offer-cover-placeholder { background: linear-gradient(135deg, #f5f3ff, #ffffff); color: #6d28d9; }
+
+.adh-offer-cover-overlay {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  right: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  pointer-events: none;
+}
+.adh-offer-cover-overlay > * { pointer-events: auto; }
+
+.adh-offer-cover-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 9px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  color: var(--adh-text-1);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  border-radius: 999px;
+  border: 1px solid rgba(0, 0, 0, 0.04);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.adh-offer-cover-discount {
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+  background: #16a34a;
+  color: white;
+  font-size: 1.0625rem;
+  font-weight: 700;
+  padding: 5px 12px;
+  border-radius: 8px;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  box-shadow: 0 4px 12px -2px rgba(22, 163, 74, 0.45),
+              0 0 0 1px rgba(22, 163, 74, 0.20);
+}
+
+.adh-offer-card-body {
+  padding: 16px 18px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex: 1;
+}
+.adh-offer-avantage {
+  font-size: 0.8125rem;
+  color: #15803d;
+  font-weight: 600;
+  margin-top: -4px;
+}
+.adh-offer-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: auto;
+  padding-top: 4px;
+  flex-wrap: wrap;
+}
 
 .adh-offer-supplier {
   font-size: 0.9375rem;

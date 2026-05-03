@@ -6,7 +6,7 @@ import { get } from '../../../lib/apiClient';
 import type { HistoriqueFinanciere, OperationType } from '../../../types/domain';
 import { mockHistorique, delay } from './mockData';
 
-const USE_MOCKS = true;
+const USE_MOCKS = false;
 
 export interface HistoriqueFilters {
   type?: OperationType | '';

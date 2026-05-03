@@ -1,0 +1,85 @@
+package com.project_pfe_srt.project_srt.controller;
+
+import com.project_pfe_srt.project_srt.dto.FactureRequest;
+import com.project_pfe_srt.project_srt.dto.PaiementRequest;
+import com.project_pfe_srt.project_srt.service.FactureService;
+import com.project_pfe_srt.project_srt.service.PaiementService;
+import com.project_pfe_srt.project_srt.util.AuthUtils;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.Map;
+
+@RestController
+@RequestMapping("/api/treasurer/factures")
+@RequiredArgsConstructor
+@PreAuthorize("hasAnyRole('TRESORIER','ADMIN')")
+public class TreasurerFactureController {
+
+    private final FactureService factureService;
+    private final PaiementService paiementService;
+    private final AuthUtils authUtils;
+
+    @GetMapping
+    public ResponseEntity<?> list() {
+        return ResponseEntity.ok(factureService.list());
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<?> get(@PathVariable Long id) {
+        try {
+            return ResponseEntity.ok(factureService.getById(id));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(404).body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @PostMapping
+    public ResponseEntity<?> create(@RequestBody FactureRequest req) {
+        try {
+            return ResponseEntity.ok(factureService.create(req));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<?> update(@PathVariable Long id, @RequestBody FactureRequest req) {
+        try {
+            return ResponseEntity.ok(factureService.update(id, req));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @PutMapping("/{id}/annuler")
+    public ResponseEntity<?> annuler(@PathVariable Long id) {
+        try {
+            return ResponseEntity.ok(factureService.annuler(id));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    /** Pay a facture: creates a Paiement + drives the workflow. */
+    @PostMapping("/{id}/payer")
+    public ResponseEntity<?> payer(@PathVariable Long id, @RequestBody PaiementRequest req) {
+        try {
+            return ResponseEntity.ok(paiementService.payFacture(id, req, authUtils.currentDisplayName()));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<?> delete(@PathVariable Long id) {
+        try {
+            factureService.delete(id);
+            return ResponseEntity.ok(Map.of("message", "Facture supprimée."));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(404).body(Map.of("error", e.getMessage()));
+        }
+    }
+}

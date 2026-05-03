@@ -5,8 +5,9 @@
 import { NavLink, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, User, BadgeCheck, Banknote, HeartHandshake, Tag, History, LogOut, ChevronsLeft,
-  Handshake, FileClock, Star, Archive,
+  Handshake, FileClock, Star,
 } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import logoUrl from '../../../assets/amicalite-srt-logo-v1.png';
 import './AdherentSidebar.css';
 
@@ -20,18 +21,18 @@ interface AdherentSidebarProps {
 
 interface NavGroup {
   title?: string;
-  items: { to: string; label: string; icon: typeof LayoutDashboard }[];
+  items: { to: string; label: string; icon: LucideIcon }[];
 }
 
 const NAV_GROUPS: NavGroup[] = [
   {
     items: [
-      { to: '/adherent/dashboard',   label: 'Dashboard',          icon: LayoutDashboard },
+      { to: '/adherent/dashboard',   label: 'Tableau de bord',    icon: LayoutDashboard },
       { to: '/adherent/profil',      label: 'Mon profil',         icon: User },
       { to: '/adherent/adhesion',    label: 'Mon adhésion',       icon: BadgeCheck },
       { to: '/adherent/prets',       label: 'Mes prêts',          icon: Banknote },
       { to: '/adherent/indemnites',  label: 'Mes indemnités',     icon: HeartHandshake },
-      { to: '/adherent/offres',      label: 'Bons & tickets',     icon: Tag },
+      { to: '/adherent/offres',      label: 'Tickets restaurant', icon: Tag },
     ],
   },
   {
@@ -40,7 +41,6 @@ const NAV_GROUPS: NavGroup[] = [
       { to: '/adherent/conventions',                label: 'Offres et conventions',     icon: Handshake },
       { to: '/adherent/conventions/mes-demandes',   label: 'Mes demandes',              icon: FileClock },
       { to: '/adherent/conventions/actives',        label: 'Mes conventions actives',   icon: Star },
-      { to: '/adherent/conventions/historique',     label: 'Historique conventions',    icon: Archive },
     ],
   },
   {

@@ -20,6 +20,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
+    private final AdhesionService adhesionService;
 
     /**
      * Maps internal Role enum to frontend-friendly role string
@@ -35,17 +36,15 @@ public class AuthService {
         };
     }
 
+    @org.springframework.transaction.annotation.Transactional
     public AuthResponse register(RegisterRequest request) {
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new IllegalArgumentException("Email already in use");
         }
 
-        Role role;
-        try {
-            role = Role.valueOf(request.getRole().toUpperCase());
-        } catch (Exception e) {
-            throw new IllegalArgumentException("Invalid role. Allowed: admin, adherent, treasurer, manager");
-        }
+        // Self-registration is always an adhérent demande. Other roles
+        // (admin, treasurer, manager) are provisioned server-side only.
+        Role role = Role.ADHERENT;
 
         User user = User.builder()
                 .nom(request.getLastName())
@@ -54,12 +53,18 @@ public class AuthService {
                 .password(passwordEncoder.encode(request.getPassword()))
                 .role(role)
                 .telephone(request.getPhone())
-                .statut("INACTIF") // Pending admin approval
+                .statut("INACTIF") // Pending trésorier validation of the adhésion demande
                 .build();
 
-        userRepository.save(user);
+        user = userRepository.save(user);
 
-        // No JWT issued: account is INACTIF and must be approved by an admin
+        // Signup IS the adhésion demande: create a pending adhesion so it
+        // lands in the trésorier's "Demandes d'adhésion" queue immediately.
+        // When the trésorier validates it, AdhesionService.valider() will
+        // activate both the adhesion and the user account.
+        adhesionService.create(user, null);
+
+        // No JWT issued: account is INACTIF and must be approved by the trésorier
         return AuthResponse.builder()
                 .id(user.getId().toString())
                 .token(null)

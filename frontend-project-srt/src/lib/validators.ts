@@ -49,11 +49,17 @@ export type ConventionFormValues = z.infer<typeof conventionSchema>;
 
 export const paiementSchema = z.object({
   reference: z.string().min(2, 'Référence requise'),
+  typePaiement: z.enum(['PAIEMENT_FACTURE_FOURNISSEUR', 'PAIEMENT_INDEMNITE', 'AUTRE_SORTIE']),
+  beneficiaireType: z.enum(['FOURNISSEUR', 'ADHERENT', 'AUTRE']),
+  beneficiaireId: z.string().optional(),
   beneficiaire: z.string().min(2, 'Bénéficiaire requis'),
   montant: z.number({ error: 'Montant requis' }).positive('Montant > 0'),
   mode: z.enum(['virement', 'cheque', 'especes', 'carte']),
   statut: z.enum(['reussi', 'en_attente', 'echoue', 'rembourse']),
+  factureId: z.string().optional(),
   factureNumero: z.string().optional(),
+  indemniteId: z.string().optional(),
+  description: z.string().optional(),
 });
 export type PaiementFormValues = z.infer<typeof paiementSchema>;
 
@@ -61,9 +67,10 @@ export const factureSchema = z.object({
   numero: z.string().min(2, 'Numéro requis'),
   fournisseurId: z.string().min(1, 'Fournisseur requis'),
   montant: z.number({ error: 'Montant requis' }).positive('Montant > 0'),
-  statut: z.enum(['payee', 'impayee', 'en_retard', 'partielle']),
+  statut: z.enum(['brouillon', 'non_payee', 'impayee', 'en_retard', 'partielle', 'payee', 'annulee']),
   dateEmission: z.string().min(1),
   dateEcheance: z.string().min(1),
+  description: z.string().optional(),
 });
 export type FactureFormValues = z.infer<typeof factureSchema>;
 

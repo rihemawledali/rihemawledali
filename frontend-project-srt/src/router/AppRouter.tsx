@@ -10,8 +10,17 @@ import { SignupPage } from '../features/auth/pages/SignupPage';
 import { ForgotPasswordPage } from '../features/auth/pages/ForgotPasswordPage';
 import { ResetPasswordPage } from '../features/auth/pages/ResetPasswordPage';
 import { PendingApprovalPage } from '../features/auth/pages/PendingApprovalPage';
-import { TreasurerDashboard } from '../pages/dashboards/TreasurerDashboard';
 import { ManagerDashboard } from '../pages/dashboards/ManagerDashboard';
+import { TreasurerLayout } from '../features/treasurer/layout/TreasurerLayout';
+import { TreasurerDashboardPage } from '../features/treasurer/pages/TreasurerDashboardPage';
+import { TreasurerDemandesAdhesionPage } from '../features/treasurer/pages/TreasurerDemandesAdhesionPage';
+import { TreasurerPretsPage } from '../features/treasurer/pages/TreasurerPretsPage';
+import { TreasurerIndemnitesPage } from '../features/treasurer/pages/TreasurerIndemnitesPage';
+import { TreasurerRetenuesPage } from '../features/treasurer/pages/TreasurerRetenuesPage';
+import { TreasurerRetenueDetailPage } from '../features/treasurer/pages/TreasurerRetenueDetailPage';
+import { TreasurerTresoreriePage } from '../features/treasurer/pages/TreasurerTresoreriePage';
+import { TreasurerProfilPage } from '../features/treasurer/pages/TreasurerProfilPage';
+import { TreasurerConventionsPage } from '../features/treasurer/pages/TreasurerConventionsPage';
 import { AdminLayout } from '../components/layout/AdminLayout';
 import { AdherentLayout } from '../features/adherent/layout/AdherentLayout';
 import { AdherentDashboardPage } from '../features/adherent/pages/AdherentDashboardPage';
@@ -25,7 +34,6 @@ import { AdherentConventionsListPage } from '../features/adherent/pages/Adherent
 import { AdherentConventionDetailsPage } from '../features/adherent/pages/AdherentConventionDetailsPage';
 import { AdherentMesDemandesConventionsPage } from '../features/adherent/pages/AdherentMesDemandesConventionsPage';
 import { AdherentMesConventionsActivesPage } from '../features/adherent/pages/AdherentMesConventionsActivesPage';
-import { AdherentHistoriqueConventionsPage } from '../features/adherent/pages/AdherentHistoriqueConventionsPage';
 import { OverviewPage } from '../features/dashboard/pages/OverviewPage';
 import { UsersPage } from '../features/users/UsersPage';
 import { SuppliersPage } from '../features/suppliers/SuppliersPage';
@@ -64,9 +72,25 @@ export function AppRouter() {
         </Route>
       </Route>
 
-      {/* ---- Protected Routes: Treasurer ---- */}
+      {/* ---- Protected Routes: Treasurer (full dashboard) ---- */}
       <Route element={<ProtectedRoute allowedRoles={['treasurer']} />}>
-        <Route path="/treasurer/dashboard" element={<TreasurerDashboard />} />
+        <Route path="/treasurer" element={<TreasurerLayout />}>
+          <Route index element={<Navigate to="/treasurer/dashboard" replace />} />
+          <Route path="dashboard"          element={<TreasurerDashboardPage />} />
+          <Route path="demandes-adhesion"  element={<TreasurerDemandesAdhesionPage />} />
+          <Route path="prets"              element={<TreasurerPretsPage />} />
+          <Route path="indemnites"         element={<TreasurerIndemnitesPage />} />
+          <Route path="conventions"        element={<TreasurerConventionsPage />} />
+          <Route path="retenues"           element={<TreasurerRetenuesPage />} />
+          <Route path="retenues/:id"       element={<TreasurerRetenueDetailPage />} />
+          <Route path="paiements"          element={<PaiementsPage />} />
+          <Route path="factures"           element={<FacturesPage />} />
+          <Route path="tickets"            element={<TicketsPage />} />
+          <Route path="bons-commande"      element={<BonsCommandePage />} />
+          <Route path="tresorerie"         element={<TreasurerTresoreriePage />} />
+          <Route path="historique"         element={<HistoriquePage />} />
+          <Route path="profil"             element={<TreasurerProfilPage />} />
+        </Route>
       </Route>
 
       {/* ---- Protected Routes: Manager ---- */}
@@ -87,7 +111,7 @@ export function AppRouter() {
           <Route path="conventions" element={<AdherentConventionsListPage />} />
           <Route path="conventions/mes-demandes" element={<AdherentMesDemandesConventionsPage />} />
           <Route path="conventions/actives" element={<AdherentMesConventionsActivesPage />} />
-          <Route path="conventions/historique" element={<AdherentHistoriqueConventionsPage />} />
+          <Route path="conventions/historique" element={<Navigate to="/adherent/conventions/mes-demandes" replace />} />
           <Route path="conventions/:id" element={<AdherentConventionDetailsPage />} />
           <Route path="historique" element={<AdherentHistoriquePage />} />
         </Route>

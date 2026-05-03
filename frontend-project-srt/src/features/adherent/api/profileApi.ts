@@ -6,7 +6,7 @@ import { get, put, post } from '../../../lib/apiClient';
 import type { Adherent } from '../../../types/domain';
 import { mockAdherent, delay } from './mockData';
 
-const USE_MOCKS = true;
+const USE_MOCKS = false;
 
 export interface ProfileUpdateRequest {
   nom?: string;

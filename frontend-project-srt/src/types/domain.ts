@@ -21,6 +21,8 @@ export interface Adherent extends Utilisateur {
   salaire: number;
   enfants: number;
   marie: boolean;
+  /** ISO yyyy-MM-dd, populated by the backend AdherentProfileDto. */
+  dateNaissance?: string;
 }
 
 export type PretStatus = 'en_cours' | 'rembourse' | 'en_retard' | 'en_attente' | 'rejete';
@@ -34,9 +36,15 @@ export interface PretSocial {
   statut: PretStatus;
   dateDemande: string;
   dateAccord?: string;
+  /** Free-text reason given by the adherent. */
+  motif?: string;
+  /** Name of the supporting document uploaded by the adherent. */
+  documentNom?: string;
+  /** Size in bytes of the supporting document. */
+  documentSize?: number;
 }
 
-export type AdhesionStatus = 'active' | 'expiree' | 'suspendue';
+export type AdhesionStatus = 'en_attente' | 'active' | 'rejetee' | 'expiree' | 'suspendue';
 export interface Adhesion {
   id: string;
   adherentId: string;
@@ -47,7 +55,15 @@ export interface Adhesion {
 }
 
 export type IndemniteType = 'maladie' | 'naissance' | 'mariage' | 'deces' | 'scolarite';
-export type IndemniteStatus = 'en_attente' | 'approuvee' | 'rejetee' | 'payee';
+/**
+ * Indemnité workflow:
+ *   en_attente → approuvee (alias: validee) → payee
+ *   en_attente → rejetee
+ *   en_attente | approuvee → annulee
+ * `validee` is the spec wording; `approuvee` is the legacy literal — both
+ * mean the same state and are accepted by all helpers.
+ */
+export type IndemniteStatus = 'en_attente' | 'approuvee' | 'validee' | 'rejetee' | 'payee' | 'annulee';
 export interface Indemnite {
   id: string;
   adherentId: string;
@@ -56,6 +72,12 @@ export interface Indemnite {
   montant: number;
   statut: IndemniteStatus;
   dateDemande: string;
+  /** Free-text justification given by the adherent. */
+  motif?: string;
+  /** Name of the supporting document uploaded by the adherent. */
+  documentNom?: string;
+  /** Size in bytes of the supporting document. */
+  documentSize?: number;
 }
 
 export type BonStatus = 'en_attente' | 'attribue' | 'utilise' | 'expire';
@@ -105,8 +127,23 @@ export interface Convention {
   fournisseurTelephone?: string;
   fournisseurEmail?: string;
   fournisseurContact?: string;
+  /** Optional cover image / logo URL for the convention */
+  imageUrl?: string;
+  /** Optional supplier logo URL (small, square) */
+  logoUrl?: string;
   /** True when the current adherent has joined the convention (UI only) */
   joined?: boolean;
+
+  /**
+   * Total price of the financed offer (in TND).
+   * If both `montantOffre` and `nbTranches` are set, every validated
+   * `ConventionDemande` generates monthly retenue lines of
+   * `montantOffre / nbTranches` until `tranchesPayees === nbTranches`.
+   * Conventions with only a `remise` (% discount) leave these unset.
+   */
+  montantOffre?: number;
+  /** Fixed number of monthly tranches the offer is split into. */
+  nbTranches?: number;
 }
 
 /**
@@ -142,6 +179,17 @@ export interface ConventionDemande {
     Convention,
     'fournisseurNom' | 'type' | 'remise' | 'dateDebut' | 'dateFin' | 'avantage'
   >;
+
+  /**
+   * Number of monthly tranches already deducted via retenue mensuelle.
+   * Incremented by `treasurerRetenuesApi.generate(...)` each month a line is emitted.
+   * Only meaningful when the related Convention has `montantOffre` + `nbTranches`.
+   */
+  tranchesPayees?: number;
+  /** Snapshot of `Convention.montantOffre` taken at validation time. */
+  montantOffreSnapshot?: number;
+  /** Snapshot of `Convention.nbTranches` taken at validation time. */
+  nbTranchesSnapshot?: number;
 }
 
 export interface Fournisseur {
@@ -155,7 +203,23 @@ export interface Fournisseur {
   createdAt: string;
 }
 
-export type FactureStatus = 'payee' | 'impayee' | 'en_retard' | 'partielle';
+/**
+ * Facture statuses:
+ * - `brouillon` — created but not yet emitted
+ * - `non_payee` — emitted, awaiting payment (replaces legacy `impayee`,
+ *   which is kept as an accepted alias)
+ * - `partielle`, `en_retard` — legacy intermediates
+ * - `payee` — fully paid
+ * - `annulee` — cancelled
+ */
+export type FactureStatus =
+  | 'brouillon'
+  | 'non_payee'
+  | 'impayee'
+  | 'partielle'
+  | 'en_retard'
+  | 'payee'
+  | 'annulee';
 export interface Facture {
   id: string;
   numero: string;
@@ -163,17 +227,45 @@ export interface Facture {
   fournisseurNom: string;
   montant: number;
   statut: FactureStatus;
+  /** Date of issuance (legacy field kept). */
   dateEmission: string;
   dateEcheance: string;
+  /** Spec field — alias of `dateEmission` when omitted. */
+  dateFacture?: string;
+  description?: string;
 }
 
 export type PaiementMode = 'virement' | 'cheque' | 'especes' | 'carte';
 export type PaiementStatus = 'reussi' | 'en_attente' | 'echoue' | 'rembourse';
+
+/** Type of payment — drives which beneficiary slot is used. */
+export type TypePaiement =
+  | 'PAIEMENT_FACTURE_FOURNISSEUR'
+  | 'PAIEMENT_INDEMNITE'
+  | 'AUTRE_SORTIE';
+
+export type BeneficiaireType = 'FOURNISSEUR' | 'ADHERENT' | 'AUTRE';
+
 export interface Paiement {
   id: string;
   reference: string;
+
+  /** Spec — type of payment. Defaults to `PAIEMENT_FACTURE_FOURNISSEUR` for legacy rows linked to a facture. */
+  typePaiement?: TypePaiement;
+  /** Spec — beneficiary kind. */
+  beneficiaireType?: BeneficiaireType;
+  /** Optional ID of the beneficiary (fournisseurId or adherentId). */
+  beneficiaireId?: string;
+
+  /** Linked facture (only for fournisseur payments). */
   factureId?: string;
   factureNumero?: string;
+  /** Linked indemnité (only for indemnité payments). */
+  indemniteId?: string;
+  /** Free-text description (e.g. "Avance de frais", "Régul. caisse"). */
+  description?: string;
+
+  /** Display name of the beneficiary (resolved at creation time). */
   beneficiaire: string;
   montant: number;
   mode: PaiementMode;
@@ -189,15 +281,38 @@ export interface CompteBancaire {
   devise: 'TND' | 'EUR' | 'USD';
 }
 
-export type OperationType = 'credit' | 'debit' | 'pret' | 'remboursement' | 'cotisation' | 'indemnite' | 'facture';
+/**
+ * Legacy operation types are kept for backward compatibility.
+ * New entries should use `entree` / `sortie` together with `sourceType`.
+ */
+export type OperationType =
+  | 'credit'
+  | 'debit'
+  | 'pret'
+  | 'remboursement'
+  | 'cotisation'
+  | 'indemnite'
+  | 'facture'
+  | 'entree'
+  | 'sortie';
+
+/** Source entity that triggered a historical row. */
+export type HistoriqueSourceType = 'FACTURE' | 'INDEMNITE' | 'RETENUE' | 'AUTRE';
+
 export interface HistoriqueFinanciere {
   id: string;
   type: OperationType;
+  /** Spec — source entity that produced this row. Optional for legacy rows. */
+  sourceType?: HistoriqueSourceType;
+  /** Spec — source entity ID (factureId, indemniteId, retenueId…). */
+  sourceRefId?: string;
   description: string;
   montant: number;
   date: string;
   reference?: string;
   utilisateur?: string;
+  modePaiement?: PaiementMode;
+  statut?: PaiementStatus;
 }
 
 export interface PageQuery {

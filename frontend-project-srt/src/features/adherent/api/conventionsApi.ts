@@ -15,11 +15,14 @@ import {
   delay,
 } from './mockData';
 
-const USE_MOCKS = true;
+const USE_MOCKS = false;
 
 export interface CreateDemandeRequest {
   conventionId: string;
   commentaire?: string;
+  /** Attachment id obtained from POST /api/files. */
+  attachmentId?: number | string;
+  /** Kept for mock compatibility — ignored by backend. */
   documentNom?: string;
 }
 

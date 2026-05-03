@@ -42,8 +42,11 @@ export function PendingApprovalPage() {
 
         <p className="pending-approval__lead">
           {firstName ? `Bonjour ${firstName}, votre` : 'Votre'} compte a bien été
-          créé. Cependant, il doit encore être <strong>approuvé par un
-          administrateur</strong> avant que vous puissiez vous connecter.
+          créé et une <strong>demande d'adhésion</strong> a été transmise au
+          trésorier. Une fois la demande <strong>validée par le trésorier</strong>,
+          votre compte sera activé et vous pourrez vous connecter. Une cotisation
+          mensuelle de <strong>30 TND</strong> sera alors automatiquement
+          prélevée sur votre salaire.
         </p>
 
         {email && (
@@ -57,8 +60,8 @@ export function PendingApprovalPage() {
           <h3 className="pending-approval__steps-title">Et maintenant&nbsp;?</h3>
           <ol className="pending-approval__steps-list">
             <li>
-              Un administrateur va examiner votre demande dans les plus brefs
-              délais.
+              Le trésorier de l'Amicale SRT va examiner votre demande d'adhésion
+              dans les plus brefs délais.
             </li>
             <li>
               Vous recevrez une confirmation lorsque votre compte sera activé.
@@ -77,7 +80,7 @@ export function PendingApprovalPage() {
         </div>
 
         <p className="pending-approval__help">
-          Une question&nbsp;? Contactez l'administration de l'amicale.
+          Une question&nbsp;? Contactez le trésorier de l'Amicale SRT.
         </p>
       </div>
     </AuthLayout>

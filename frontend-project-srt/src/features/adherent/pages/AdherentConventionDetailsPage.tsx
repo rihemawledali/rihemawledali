@@ -8,14 +8,17 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   ArrowLeft, Building2, Mail, Phone, MapPin, User as UserIcon,
   Calendar, Percent, FileText, Info, AlertTriangle, Handshake,
-  CheckCircle2, ListChecks, Paperclip,
+  CheckCircle2, ListChecks, Paperclip, CreditCard, Layers,
 } from 'lucide-react';
+import { formatCurrency } from '../../../lib/formatters';
 import { PageHeader } from '../../../components/layout/PageHeader';
 import { Button } from '../../../components/ui/Button';
 import { Modal } from '../../../components/data/Modal';
 import { StatusBadge } from '../../../components/data/StatusBadge';
 import { conventionsApi, getAdherentConventionStatus } from '../api/conventionsApi';
 import { profileApi } from '../api/profileApi';
+import { uploadFile } from '../../../lib/apiClient';
+import type { DemandeConventionPayload } from '../forms/DemandeConventionForm';
 import {
   CONV_TYPE_LABEL, CONV_TYPE_ICON, CONV_TYPE_TONE,
   ADHERENT_STATUS_LABEL, ADHERENT_STATUS_VARIANT,
@@ -54,8 +57,18 @@ export function AdherentConventionDetailsPage() {
   });
 
   const createDemandeMutation = useMutation({
-    mutationFn: (req: { commentaire?: string; documentNom?: string }) =>
-      conventionsApi.createDemande({ conventionId: id, ...req }),
+    mutationFn: async (payload: DemandeConventionPayload) => {
+      let attachmentId: string | undefined;
+      if (payload.file) {
+        const att = await uploadFile(payload.file);
+        attachmentId = att.id;
+      }
+      return conventionsApi.createDemande({
+        conventionId: id,
+        commentaire: payload.commentaire,
+        attachmentId,
+      });
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['adherent-conventions-demandes'] });
       qc.invalidateQueries({ queryKey: ['adherent-conventions'] });
@@ -122,6 +135,18 @@ export function AdherentConventionDetailsPage() {
 
       <PageHeader title={convention.fournisseurNom} description={CONV_TYPE_LABEL[convention.type]} />
 
+      {/* Cover banner */}
+      {convention.imageUrl && (
+        <div className="adh-conv-banner">
+          <img
+            src={convention.imageUrl}
+            alt={convention.fournisseurNom}
+            onError={(e) => { (e.currentTarget.parentElement as HTMLElement).style.display = 'none'; }}
+          />
+          <div className="adh-conv-banner-discount">−{convention.remise}%</div>
+        </div>
+      )}
+
       {/* Hero card */}
       <div className="adh-conv-hero">
         <div className={`adh-tile-icon tone-${tone}`} style={{ width: 56, height: 56 }}>
@@ -174,6 +199,54 @@ export function AdherentConventionDetailsPage() {
               <span>Remise effective : {convention.remise}%</span>
             </div>
           </section>
+
+          {/* Financement (offre payable en tranches mensuelles) */}
+          {convention.montantOffre != null && convention.nbTranches != null && convention.nbTranches > 0 && (
+            <section className="adh-conv-section">
+              <h3 className="adh-conv-section-title">
+                <CreditCard size={16} /> Financement par retenue mensuelle
+              </h3>
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
+                  gap: 'var(--space-3)',
+                  marginBottom: 'var(--space-3)',
+                }}
+              >
+                <FinancementCard
+                  label="Montant total de l'offre"
+                  value={formatCurrency(convention.montantOffre)}
+                  icon={<CreditCard size={16} />}
+                />
+                <FinancementCard
+                  label="Nombre de tranches"
+                  value={`${convention.nbTranches} mois`}
+                  icon={<Layers size={16} />}
+                />
+                <FinancementCard
+                  label="Mensualité"
+                  value={formatCurrency(convention.montantOffre / convention.nbTranches)}
+                  icon={<Calendar size={16} />}
+                  highlight
+                />
+              </div>
+              <p
+                style={{
+                  margin: 0,
+                  fontSize: 'var(--font-size-sm)',
+                  color: 'var(--color-text-secondary)',
+                  lineHeight: 1.5,
+                }}
+              >
+                <Info size={14} style={{ verticalAlign: 'middle', marginRight: 6 }} />
+                Cette offre est financée via une retenue mensuelle de{' '}
+                <strong>{formatCurrency(convention.montantOffre / convention.nbTranches)}</strong>{' '}
+                pendant <strong>{convention.nbTranches} mois</strong>. La première tranche sera prélevée
+                sur la paie suivant la validation de votre demande.
+              </p>
+            </section>
+          )}
 
           {/* Conditions */}
           <section className="adh-conv-section">
@@ -391,7 +464,91 @@ export function AdherentConventionDetailsPage() {
   );
 }
 
+function FinancementCard({
+  label, value, icon, highlight,
+}: { label: string; value: string; icon: React.ReactNode; highlight?: boolean }) {
+  return (
+    <div
+      style={{
+        padding: 'var(--space-3)',
+        borderRadius: 'var(--radius-md)',
+        border: `1px solid ${highlight ? 'var(--color-primary-200)' : 'var(--color-border-light)'}`,
+        background: highlight ? 'var(--color-primary-50)' : 'var(--color-surface-secondary)',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 4,
+      }}
+    >
+      <span
+        style={{
+          fontSize: 'var(--font-size-xs)',
+          textTransform: 'uppercase',
+          letterSpacing: '0.04em',
+          color: 'var(--color-text-tertiary)',
+          fontWeight: 600,
+          display: 'inline-flex', alignItems: 'center', gap: 6,
+        }}
+      >
+        <span style={{ color: highlight ? 'var(--color-primary-700)' : 'var(--color-text-secondary)' }}>
+          {icon}
+        </span>
+        {label}
+      </span>
+      <strong
+        style={{
+          fontSize: highlight ? 18 : 16,
+          color: highlight ? 'var(--color-primary-800)' : 'var(--color-text-primary)',
+          fontVariantNumeric: 'tabular-nums',
+        }}
+      >
+        {value}
+      </strong>
+    </div>
+  );
+}
+
 const INLINE_STYLES = `
+.adh-conv-banner {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 21 / 8;
+  max-height: 280px;
+  border-radius: 14px;
+  overflow: hidden;
+  margin-bottom: 16px;
+  border: 1px solid var(--adh-border);
+  box-shadow: var(--adh-shadow-xs);
+  background: var(--adh-surface-2);
+}
+.adh-conv-banner img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.adh-conv-banner::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, transparent 60%, rgba(0,0,0,0.25) 100%);
+  pointer-events: none;
+}
+.adh-conv-banner-discount {
+  position: absolute;
+  bottom: 14px;
+  right: 14px;
+  background: #16a34a;
+  color: white;
+  font-size: 1.25rem;
+  font-weight: 700;
+  padding: 8px 16px;
+  border-radius: 10px;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  box-shadow: 0 6px 18px -4px rgba(22, 163, 74, 0.5),
+              0 0 0 1px rgba(22, 163, 74, 0.20);
+  z-index: 1;
+}
 .adh-conv-hero {
   display: flex; align-items: center; gap: var(--space-4);
   padding: var(--space-5);

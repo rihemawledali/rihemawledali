@@ -37,7 +37,7 @@ public class AuthController {
             return ResponseEntity.ok(response);
         } catch (DisabledException e) {
             return ResponseEntity.status(403).body(Map.of(
-                    "error", "Votre compte est en attente de validation par l'administrateur.",
+                    "error", "Votre compte est en attente de validation par le trésorier.",
                     "code", "ACCOUNT_PENDING"
             ));
         } catch (BadCredentialsException e) {

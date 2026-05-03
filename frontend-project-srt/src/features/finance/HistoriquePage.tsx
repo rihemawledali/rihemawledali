@@ -16,6 +16,7 @@ const TYPE_LABEL: Record<string, string> = {
   credit: 'Crédit', debit: 'Débit', pret: 'Prêt',
   remboursement: 'Remboursement', cotisation: 'Cotisation',
   indemnite: 'Indemnité', facture: 'Facture',
+  entree: 'Entrée', sortie: 'Sortie',
 };
 
 export function HistoriquePage() {

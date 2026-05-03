@@ -6,7 +6,7 @@ import { get } from '../../../lib/apiClient';
 import type { DashboardData } from './mockData';
 import { mockDashboardData, delay } from './mockData';
 
-const USE_MOCKS = true; // Toggle to false when backend is ready
+const USE_MOCKS = false;
 
 export const dashboardApi = {
   async getDashboard(): Promise<DashboardData> {

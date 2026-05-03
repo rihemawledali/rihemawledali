@@ -12,6 +12,7 @@ import { DataTable } from '../../../components/data/DataTable';
 import { StatusBadge } from '../../../components/data/StatusBadge';
 import { useToast } from '../../../components/feedback/useToast';
 import { indemnitesApi } from '../api/indemnitesApi';
+import { uploadFile } from '../../../lib/apiClient';
 import { IndemniteRequestForm } from '../forms/IndemniteRequestForm';
 import type { IndemniteRequestFormValues } from '../validators';
 import type { Indemnite } from '../../../types/domain';
@@ -35,23 +36,32 @@ export function AdherentIndemnitesPage() {
   });
 
   const createMutation = useMutation({
-    mutationFn: (values: IndemniteRequestFormValues) => indemnitesApi.createIndemnite({
-      type: values.type,
-      montant: values.montant,
-      motif: values.motif,
-    }),
+    mutationFn: async ({ values, file }: { values: IndemniteRequestFormValues; file?: File }) => {
+      let attachmentId: string | undefined;
+      if (file) {
+        const att = await uploadFile(file);
+        attachmentId = att.id;
+      }
+      return indemnitesApi.createIndemnite({
+        type: values.type,
+        montant: values.montant,
+        motif: values.motif,
+        attachmentId,
+      });
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['adherent-indemnites'] });
       setCreating(false);
       toast.push({ title: 'Demande d\'indemnité soumise', variant: 'success' });
     },
-    onError: () => {
-      toast.push({ title: 'Échec de la demande', variant: 'error' });
+    onError: (err: unknown) => {
+      const msg = err instanceof Error ? err.message : 'Échec de la demande';
+      toast.push({ title: msg, variant: 'error' });
     },
   });
 
-  const handleCreate = async (values: IndemniteRequestFormValues) => {
-    await createMutation.mutateAsync(values);
+  const handleCreate = async (values: IndemniteRequestFormValues, file?: File) => {
+    await createMutation.mutateAsync({ values, file });
   };
 
   const totalApprouve = indemnites?.filter(i => i.statut === 'approuvee' || i.statut === 'payee').reduce((s, i) => s + i.montant, 0) || 0;

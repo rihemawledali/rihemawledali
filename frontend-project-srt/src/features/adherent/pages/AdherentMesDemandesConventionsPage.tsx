@@ -1,5 +1,7 @@
 /* ============================================
-   Mes demandes de conventions — Adherent Portal
+   Mes demandes de conventions & historique — Adherent Portal
+   Unified view: en_attente / validée / refusée / annulée
+   plus computed final states terminée / expirée (history).
    ============================================ */
 
 import { useMemo, useState } from 'react';
@@ -7,7 +9,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import {
   Eye, FileClock, AlertCircle, CheckCircle2, XCircle, Ban, Clock,
-  ArrowRight, RotateCcw, FileText,
+  ArrowRight, RotateCcw, FileText, Archive, CalendarX,
 } from 'lucide-react';
 import { PageHeader } from '../../../components/layout/PageHeader';
 import { Button } from '../../../components/ui/Button';
@@ -22,7 +24,30 @@ import type {
   Convention, ConventionDemande, ConventionDemandeStatut,
 } from '../../../types/domain';
 
-type StatusFilter = 'all' | ConventionDemandeStatut;
+// Extended status used only for display: includes history states.
+type DisplayStatus = ConventionDemandeStatut | 'terminee' | 'expiree';
+type StatusFilter = 'all' | DisplayStatus;
+
+const DISPLAY_STATUS_LABEL: Record<DisplayStatus, string> = {
+  ...DEMANDE_STATUS_LABEL,
+  terminee: 'Terminée',
+  expiree: 'Expirée',
+};
+const DISPLAY_STATUS_VARIANT: Record<
+  DisplayStatus,
+  'success' | 'warning' | 'info' | 'neutral' | 'error'
+> = {
+  ...DEMANDE_STATUS_VARIANT,
+  terminee: 'success',
+  expiree: 'warning',
+};
+
+function computeDisplayStatus(d: ConventionDemande, conv?: Convention): DisplayStatus {
+  const finExpiree = conv ? new Date(conv.dateFin) < new Date() : false;
+  if (d.statut === 'validee' && finExpiree) return 'terminee';
+  if (d.statut === 'en_attente' && finExpiree) return 'expiree';
+  return d.statut;
+}
 
 export function AdherentMesDemandesConventionsPage() {
   const navigate = useNavigate();
@@ -65,25 +90,43 @@ export function AdherentMesDemandesConventionsPage() {
     return map;
   }, [conventions]);
 
+  // Annotate every demande with its display status.
+  const annotated = useMemo(() => {
+    return (demandes || []).map((d) => ({
+      d,
+      displayStatus: computeDisplayStatus(d, conventionMap.get(d.conventionId)),
+    }));
+  }, [demandes, conventionMap]);
+
   const counts = useMemo(() => {
-    const c: Record<ConventionDemandeStatut | 'all', number> = {
-      all: 0, en_attente: 0, validee: 0, refusee: 0, annulee: 0,
+    const c: Record<StatusFilter, number> = {
+      all: 0, en_attente: 0, validee: 0, refusee: 0, annulee: 0, terminee: 0, expiree: 0,
     };
-    (demandes || []).forEach((d) => { c.all += 1; c[d.statut] += 1; });
+    annotated.forEach(({ displayStatus }) => { c.all += 1; c[displayStatus] += 1; });
     return c;
-  }, [demandes]);
+  }, [annotated]);
 
   const filtered = useMemo(() => {
-    if (!demandes) return [];
-    return filter === 'all' ? demandes : demandes.filter((d) => d.statut === filter);
-  }, [demandes, filter]);
+    const rows = filter === 'all' ? annotated : annotated.filter((r) => r.displayStatus === filter);
+    return rows;
+  }, [annotated, filter]);
 
   return (
     <div>
       <PageHeader
-        title="Mes demandes de conventions"
-        description="Suivez l'état de vos demandes d'adhésion aux conventions partenaires."
+        title="Mes demandes"
+        description="Suivez l'état de vos demandes d'adhésion et l'historique de vos conventions."
       />
+
+      {/* Summary strip */}
+      {!isLoading && annotated.length > 0 && (
+        <div className="adh-demandes-summary">
+          <SummaryTile tone="primary" icon={<FileText size={18} />} label="Total" value={counts.all} />
+          <SummaryTile tone="warning" icon={<Clock size={18} />} label="En attente" value={counts.en_attente} />
+          <SummaryTile tone="success" icon={<CheckCircle2 size={18} />} label="Validées" value={counts.validee} />
+          <SummaryTile tone="neutral" icon={<Archive size={18} />} label="Terminées" value={counts.terminee} />
+        </div>
+      )}
 
       {/* Status tabs */}
       <div className="adh-demandes-tabs">
@@ -93,6 +136,8 @@ export function AdherentMesDemandesConventionsPage() {
           { k: 'validee',     label: 'Validées',   icon: CheckCircle2 },
           { k: 'refusee',     label: 'Refusées',   icon: XCircle },
           { k: 'annulee',     label: 'Annulées',   icon: Ban },
+          { k: 'terminee',    label: 'Terminées',  icon: Archive },
+          { k: 'expiree',     label: 'Expirées',   icon: CalendarX },
         ] as const).map(({ k, label, icon: Icon }) => {
           const active = filter === k;
           return (
@@ -119,7 +164,7 @@ export function AdherentMesDemandesConventionsPage() {
         <div className="adh-empty-card">
           <div className="adh-empty-icon"><FileClock size={28} /></div>
           <h3>{filter === 'all'
-            ? 'Vous n\u2019avez encore envoyé aucune demande de convention.'
+            ? 'Vous n\u2019avez encore aucune demande ni historique de convention.'
             : 'Aucune demande dans cette catégorie.'}
           </h3>
           <p>
@@ -134,10 +179,11 @@ export function AdherentMesDemandesConventionsPage() {
         </div>
       ) : (
         <div className="adh-demandes-list">
-          {filtered.map((d) => (
+          {filtered.map(({ d, displayStatus }) => (
             <DemandeRow
               key={d.id}
               demande={d}
+              displayStatus={displayStatus}
               convention={conventionMap.get(d.conventionId)}
               onView={() => setSelected(d)}
               onCancel={() => setConfirmCancel(d)}
@@ -158,6 +204,7 @@ export function AdherentMesDemandesConventionsPage() {
         {selected && (
           <DemandeDetails
             demande={selected}
+            displayStatus={computeDisplayStatus(selected, conventionMap.get(selected.conventionId))}
             convention={conventionMap.get(selected.conventionId)}
             onClose={() => setSelected(null)}
             onOpenConvention={() => { setSelected(null); navigate(`/adherent/conventions/${selected.conventionId}`); }}
@@ -211,36 +258,58 @@ export function AdherentMesDemandesConventionsPage() {
 // Sub-components
 // ----------------------------------------------------------------------------
 
+function SummaryTile({
+  tone, icon, label, value,
+}: { tone: 'primary' | 'warning' | 'success' | 'neutral'; icon: React.ReactNode; label: string; value: number }) {
+  return (
+    <div className={`adh-summary-tile tone-${tone}`}>
+      <div className="adh-summary-tile-icon">{icon}</div>
+      <div className="adh-summary-tile-body">
+        <span className="adh-summary-tile-label">{label}</span>
+        <span className="adh-summary-tile-value">{value}</span>
+      </div>
+    </div>
+  );
+}
+
+
 interface DemandeRowProps {
   demande: ConventionDemande;
+  displayStatus: DisplayStatus;
   convention?: Convention;
   onView: () => void;
   onCancel: () => void;
   onOpenConvention: () => void;
 }
-function DemandeRow({ demande: d, convention, onView, onCancel, onOpenConvention }: DemandeRowProps) {
+function DemandeRow({ demande: d, displayStatus, convention, onView, onCancel, onOpenConvention }: DemandeRowProps) {
   const fournisseurNom = convention?.fournisseurNom || d.conventionSnapshot?.fournisseurNom || '—';
   const type = convention?.type || d.conventionSnapshot?.type;
-  const canCancel = d.statut === 'en_attente';
+  const canCancel = displayStatus === 'en_attente';
+
+  const initials = fournisseurNom
+    .split(/\s+/).map((s) => s[0]).filter(Boolean).slice(0, 2).join('').toUpperCase() || '?';
 
   return (
-    <article className="adh-demande-card">
+    <article className={`adh-demande-card status-${displayStatus}`}>
       <div className="adh-demande-head">
-        <div className="adh-demande-title">
-          <h3>{fournisseurNom}</h3>
-          <span className="adh-demande-meta">
-            {type && CONV_TYPE_LABEL[type]}
-            {' · '}Demande envoyée le {new Date(d.dateDemande).toLocaleDateString('fr-FR')}
-          </span>
+        <div className="adh-demande-identity">
+          <div className="adh-demande-avatar" aria-hidden="true">{initials}</div>
+          <div className="adh-demande-title">
+            <h3>{fournisseurNom}</h3>
+            <span className="adh-demande-meta">
+              {type && <span className="adh-demande-pill">{CONV_TYPE_LABEL[type]}</span>}
+              <span>Envoyée le {new Date(d.dateDemande).toLocaleDateString('fr-FR')}</span>
+            </span>
+          </div>
         </div>
         <StatusBadge
-          status={d.statut}
-          tone={DEMANDE_STATUS_VARIANT[d.statut]}
-          label={DEMANDE_STATUS_LABEL[d.statut]}
+          status={displayStatus}
+          tone={DISPLAY_STATUS_VARIANT[displayStatus]}
+          label={DISPLAY_STATUS_LABEL[displayStatus]}
         />
       </div>
 
-      <DemandeStatusMessage demande={d} />
+      <DemandeStatusMessage demande={d} displayStatus={displayStatus} convention={convention} />
 
       <div className="adh-demande-actions">
         <Button variant="secondary" size="sm" onClick={onView}>
@@ -262,8 +331,10 @@ function DemandeRow({ demande: d, convention, onView, onCancel, onOpenConvention
   );
 }
 
-function DemandeStatusMessage({ demande: d }: { demande: ConventionDemande }) {
-  switch (d.statut) {
+function DemandeStatusMessage({
+  demande: d, displayStatus, convention,
+}: { demande: ConventionDemande; displayStatus: DisplayStatus; convention?: Convention }) {
+  switch (displayStatus) {
     case 'en_attente':
       return (
         <div className="adh-alert info adh-demande-msg">
@@ -271,16 +342,68 @@ function DemandeStatusMessage({ demande: d }: { demande: ConventionDemande }) {
           <div>Votre demande est en cours de traitement.</div>
         </div>
       );
-    case 'validee':
+    case 'validee': {
+      const total = d.nbTranchesSnapshot ?? convention?.nbTranches;
+      const offre = d.montantOffreSnapshot ?? convention?.montantOffre;
+      const payees = d.tranchesPayees ?? 0;
+      const showFinancement = !!total && !!offre && total > 0;
+      const mensualite = showFinancement ? offre / total : 0;
+      const restantes = showFinancement ? Math.max(0, total - payees) : 0;
+      const restantMontant = showFinancement ? restantes * mensualite : 0;
+      const pct = showFinancement ? Math.min(100, Math.round((payees / total) * 100)) : 0;
       return (
         <div className="adh-alert success adh-demande-msg">
           <CheckCircle2 size={16} className="adh-alert-icon" />
-          <div>
+          <div style={{ width: '100%' }}>
             Votre demande a été acceptée. La convention est maintenant active.
             {d.dateDecision && <> <span className="adh-demande-msg-date">(décision du {new Date(d.dateDecision).toLocaleDateString('fr-FR')})</span></>}
+            {showFinancement && (
+              <div
+                style={{
+                  marginTop: 10,
+                  padding: '10px 12px',
+                  background: 'white',
+                  border: '1px solid var(--color-success-100, #d1fae5)',
+                  borderRadius: 'var(--radius-md)',
+                  display: 'flex', flexDirection: 'column', gap: 6,
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, fontSize: 'var(--font-size-sm)' }}>
+                  <strong style={{ color: 'var(--color-text-primary)' }}>
+                    {payees} / {total} tranches payées
+                  </strong>
+                  <span style={{ color: 'var(--color-text-secondary)' }}>
+                    {restantes > 0
+                      ? `Reste ${restantMontant.toLocaleString('fr-FR', { style: 'currency', currency: 'TND' })}`
+                      : 'Soldée'}
+                  </span>
+                </div>
+                <div
+                  style={{
+                    height: 6,
+                    background: 'var(--color-surface-secondary)',
+                    borderRadius: 999,
+                    overflow: 'hidden',
+                  }}
+                >
+                  <div
+                    style={{
+                      height: '100%',
+                      width: `${pct}%`,
+                      background: 'linear-gradient(90deg, #10b981, #047857)',
+                      transition: 'width 200ms ease',
+                    }}
+                  />
+                </div>
+                <span style={{ fontSize: 12, color: 'var(--color-text-tertiary)' }}>
+                  Mensualité : {mensualite.toLocaleString('fr-FR', { style: 'currency', currency: 'TND' })} · prélevée sur la paie
+                </span>
+              </div>
+            )}
           </div>
         </div>
       );
+    }
     case 'refusee':
       return (
         <div className="adh-alert error adh-demande-msg">
@@ -300,17 +423,38 @@ function DemandeStatusMessage({ demande: d }: { demande: ConventionDemande }) {
           <div>Demande annulée.</div>
         </div>
       );
+    case 'terminee':
+      return (
+        <div className="adh-alert success adh-demande-msg">
+          <Archive size={16} className="adh-alert-icon" />
+          <div>
+            Convention terminée
+            {convention?.dateFin && <> le {new Date(convention.dateFin).toLocaleDateString('fr-FR')}</>}.
+          </div>
+        </div>
+      );
+    case 'expiree':
+      return (
+        <div className="adh-alert info adh-demande-msg" style={{ background: '#fffbeb', borderColor: '#fde68a' }}>
+          <CalendarX size={16} className="adh-alert-icon" />
+          <div>
+            Convention expirée avant traitement de votre demande
+            {convention?.dateFin && <> (échéance&nbsp;: {new Date(convention.dateFin).toLocaleDateString('fr-FR')})</>}.
+          </div>
+        </div>
+      );
   }
 }
 
 interface DemandeDetailsProps {
   demande: ConventionDemande;
+  displayStatus: DisplayStatus;
   convention?: Convention;
   onClose: () => void;
   onOpenConvention: () => void;
   onCancel: () => void;
 }
-function DemandeDetails({ demande: d, convention, onClose, onOpenConvention, onCancel }: DemandeDetailsProps) {
+function DemandeDetails({ demande: d, displayStatus, convention, onClose, onOpenConvention, onCancel }: DemandeDetailsProps) {
   const snap = d.conventionSnapshot;
   const fournisseurNom = convention?.fournisseurNom || snap?.fournisseurNom || '—';
   const type = convention?.type || snap?.type;
@@ -362,15 +506,15 @@ function DemandeDetails({ demande: d, convention, onClose, onOpenConvention, onC
           <span>Statut</span>
           <strong>
             <StatusBadge
-              status={d.statut}
-              tone={DEMANDE_STATUS_VARIANT[d.statut]}
-              label={DEMANDE_STATUS_LABEL[d.statut]}
+              status={displayStatus}
+              tone={DISPLAY_STATUS_VARIANT[displayStatus]}
+              label={DISPLAY_STATUS_LABEL[displayStatus]}
             />
           </strong>
         </div>
       </div>
 
-      <DemandeStatusMessage demande={d} />
+      <DemandeStatusMessage demande={d} displayStatus={displayStatus} convention={convention} />
 
       {d.commentaire && (
         <section>
@@ -389,13 +533,13 @@ function DemandeDetails({ demande: d, convention, onClose, onOpenConvention, onC
       )}
 
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, flexWrap: 'wrap' }}>
-        {d.statut === 'en_attente' && (
+        {displayStatus === 'en_attente' && (
           <Button variant="danger" size="sm" onClick={onCancel}>
             <Ban size={14} style={{ marginRight: 6 }} />
             Annuler la demande
           </Button>
         )}
-        {d.statut === 'refusee' && convention && (
+        {displayStatus === 'refusee' && convention && (
           <Button variant="secondary" size="sm" onClick={onOpenConvention}>
             <RotateCcw size={14} style={{ marginRight: 6 }} />
             Refaire une demande
@@ -411,6 +555,46 @@ function DemandeDetails({ demande: d, convention, onClose, onOpenConvention, onC
 }
 
 const INLINE_STYLES = `
+.adh-demandes-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+@media (max-width: 720px) { .adh-demandes-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.adh-summary-tile {
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px 16px;
+  background: white;
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xs, 0 1px 2px rgba(15,23,42,0.04));
+  transition: transform 150ms, box-shadow 150ms;
+}
+.adh-summary-tile:hover { transform: translateY(-1px); box-shadow: var(--shadow-sm); }
+.adh-summary-tile-icon {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 38px; height: 38px; border-radius: 10px;
+  background: var(--color-primary-50); color: var(--color-primary-700);
+  flex-shrink: 0;
+}
+.adh-summary-tile.tone-warning .adh-summary-tile-icon { background: #fff7ed; color: #c2410c; }
+.adh-summary-tile.tone-success .adh-summary-tile-icon { background: #ecfdf5; color: #047857; }
+.adh-summary-tile.tone-neutral .adh-summary-tile-icon { background: var(--color-surface-secondary); color: var(--color-text-secondary); }
+.adh-summary-tile-body { display: flex; flex-direction: column; min-width: 0; }
+.adh-summary-tile-label {
+  font-size: var(--font-size-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-tertiary);
+  font-weight: 600;
+}
+.adh-summary-tile-value {
+  font-size: var(--font-size-xl, 20px);
+  font-weight: 700;
+  color: var(--color-text-primary);
+  line-height: 1.1;
+}
 .adh-demandes-tabs {
   display: flex; gap: 8px; flex-wrap: wrap;
   margin-bottom: var(--space-4);
@@ -458,17 +642,47 @@ const INLINE_STYLES = `
   display: flex; flex-direction: column; gap: var(--space-3);
 }
 .adh-demande-card {
+  position: relative;
   background: white;
   border: 1px solid var(--color-border-light);
   border-radius: var(--radius-lg);
   padding: var(--space-4) var(--space-5);
-  transition: all 150ms;
+  transition: transform 150ms, box-shadow 150ms, border-color 150ms;
+  overflow: hidden;
 }
-.adh-demande-card:hover { box-shadow: var(--shadow-sm); }
+.adh-demande-card::before {
+  content: '';
+  position: absolute; left: 0; top: 0; bottom: 0;
+  width: 4px;
+  background: var(--color-border);
+}
+.adh-demande-card.status-en_attente::before { background: linear-gradient(180deg, #f59e0b, #d97706); }
+.adh-demande-card.status-validee::before    { background: linear-gradient(180deg, #10b981, #047857); }
+.adh-demande-card.status-refusee::before     { background: linear-gradient(180deg, #ef4444, #b91c1c); }
+.adh-demande-card.status-annulee::before     { background: linear-gradient(180deg, #94a3b8, #64748b); }
+.adh-demande-card.status-terminee::before    { background: linear-gradient(180deg, #6366f1, #4338ca); }
+.adh-demande-card.status-expiree::before     { background: linear-gradient(180deg, #fbbf24, #b45309); }
+.adh-demande-card:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md, 0 6px 16px rgba(15,23,42,0.06));
+  border-color: var(--color-border);
+}
 .adh-demande-head {
   display: flex; justify-content: space-between; align-items: flex-start;
   gap: var(--space-3); margin-bottom: var(--space-3);
   flex-wrap: wrap;
+}
+.adh-demande-identity { display: flex; gap: 12px; align-items: center; min-width: 0; }
+.adh-demande-avatar {
+  width: 42px; height: 42px;
+  flex-shrink: 0;
+  border-radius: 12px;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: linear-gradient(135deg, var(--color-primary-100), var(--color-primary-50));
+  color: var(--color-primary-700);
+  font-weight: 700;
+  font-size: var(--font-size-sm);
+  letter-spacing: 0.02em;
 }
 .adh-demande-title h3 {
   margin: 0 0 4px;
@@ -477,8 +691,19 @@ const INLINE_STYLES = `
   color: var(--color-text-primary);
 }
 .adh-demande-meta {
+  display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap;
   font-size: var(--font-size-xs);
   color: var(--color-text-tertiary);
+}
+.adh-demande-pill {
+  display: inline-block;
+  padding: 2px 8px;
+  background: var(--color-primary-50);
+  color: var(--color-primary-700);
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: 0.02em;
 }
 .adh-demande-msg {
   margin-bottom: var(--space-3) !important;

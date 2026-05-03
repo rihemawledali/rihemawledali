@@ -1,83 +1,109 @@
 /* ============================================
-   Bons & tickets — Adherent Portal
-   Conventions are now in their dedicated section.
+   Tickets restaurant — Adherent Portal
+   Conventions live in their dedicated section.
    ============================================ */
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import {
-  ShoppingBag, Ticket, AlertTriangle, Handshake, ArrowRight,
+  Ticket, AlertTriangle, Handshake, ArrowRight, Coffee, UtensilsCrossed,
 } from 'lucide-react';
 import { PageHeader } from '../../../components/layout/PageHeader';
 import { DataTable } from '../../../components/data/DataTable';
 import { StatusBadge } from '../../../components/data/StatusBadge';
 import { Button } from '../../../components/ui/Button';
 import { offresApi } from '../api/offresApi';
-import type { BonCommande, TicketRestaurant } from '../../../types/domain';
+import type { TicketRestaurant } from '../../../types/domain';
 
-type Tab = 'bons' | 'tickets';
+type StatusFilter = 'all' | 'attribue' | 'utilise' | 'expire';
 
 export function AdherentOffresPage() {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<Tab>('bons');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
 
   const { data: offres, isLoading } = useQuery({
     queryKey: ['adherent-offres'],
     queryFn: () => offresApi.getOffres(),
   });
 
-  const bonColumns = [
-    { key: 'numero', header: 'Numéro', cell: (b: BonCommande) => b.numero, width: '140px' },
-    { key: 'fournisseur', header: 'Fournisseur', cell: (b: BonCommande) => b.fournisseurNom },
-    {
-      key: 'montant',
-      header: 'Montant',
-      cell: (b: BonCommande) => `${b.montant.toFixed(0)} TND`,
-      align: 'right' as const,
-      width: '100px',
-    },
-    {
-      key: 'dateExpiration',
-      header: 'Expire le',
-      cell: (b: BonCommande) => new Date(b.dateExpiration).toLocaleDateString('fr-FR'),
-      width: '120px',
-    },
-    { key: 'statut', header: 'Statut', cell: (b: BonCommande) => <StatusBadge status={b.statut} />, width: '120px' },
-  ];
+  const allTickets = useMemo(() => offres?.tickets || [], [offres]);
+
+  const stats = useMemo(() => {
+    const available = allTickets.filter((t) => t.statut === 'attribue');
+    const used = allTickets.filter((t) => t.statut === 'utilise');
+    const totalAvailable = available.reduce((sum, t) => sum + t.montant, 0);
+    return {
+      availableCount: available.length,
+      usedCount: used.length,
+      totalAvailable,
+    };
+  }, [allTickets]);
+
+  const filteredTickets = useMemo(() => {
+    if (statusFilter === 'all') return allTickets;
+    return allTickets.filter((t) => t.statut === statusFilter);
+  }, [allTickets, statusFilter]);
 
   const ticketColumns = [
-    { key: 'numero', header: 'Numéro', cell: (t: TicketRestaurant) => t.numero, width: '140px' },
+    {
+      key: 'numero',
+      header: 'Numéro',
+      cell: (t: TicketRestaurant) => (
+        <span style={{ fontFamily: 'monospace', fontWeight: 600 }}>{t.numero}</span>
+      ),
+      width: '160px',
+    },
     {
       key: 'type',
       header: 'Type',
-      cell: (t: TicketRestaurant) => (t.typeBon === 'restaurant' ? 'Restaurant' : 'Cafétéria'),
-      width: '120px',
+      cell: (t: TicketRestaurant) => (
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          {t.typeBon === 'restaurant'
+            ? <UtensilsCrossed size={14} style={{ color: '#8a92a6' }} />
+            : <Coffee size={14} style={{ color: '#8a92a6' }} />}
+          {t.typeBon === 'restaurant' ? 'Restaurant' : 'Cafétéria'}
+        </span>
+      ),
+      width: '160px',
     },
     {
       key: 'montant',
       header: 'Montant',
-      cell: (t: TicketRestaurant) => `${t.montant.toFixed(2)} TND`,
+      cell: (t: TicketRestaurant) => (
+        <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>
+          {t.montant.toFixed(2)} TND
+        </span>
+      ),
       align: 'right' as const,
-      width: '100px',
+      width: '120px',
     },
     {
       key: 'dateEmission',
       header: 'Émis le',
       cell: (t: TicketRestaurant) => new Date(t.dateEmission).toLocaleDateString('fr-FR'),
-      width: '120px',
+      width: '130px',
     },
-    { key: 'statut', header: 'Statut', cell: (t: TicketRestaurant) => <StatusBadge status={t.statut} />, width: '120px' },
+    {
+      key: 'statut',
+      header: 'Statut',
+      cell: (t: TicketRestaurant) => <StatusBadge status={t.statut} />,
+      width: '130px',
+    },
   ];
 
-  const availableBons = offres?.bons?.filter((b) => b.statut === 'attribue') || [];
-  const availableTickets = offres?.tickets?.filter((t) => t.statut === 'attribue') || [];
+  const filters: { k: StatusFilter; label: string }[] = [
+    { k: 'all',      label: 'Tous' },
+    { k: 'attribue', label: 'Disponibles' },
+    { k: 'utilise',  label: 'Utilisés' },
+    { k: 'expire',   label: 'Expirés' },
+  ];
 
   return (
     <div>
       <PageHeader
-        title="Bons & tickets"
-        description="Vos bons de commande et tickets restaurant attribués par l'amicale."
+        title="Tickets restaurant"
+        description="Vos tickets restaurant et cafétéria attribués par l'amicale."
       />
 
       {/* Promo for conventions section */}
@@ -91,111 +117,114 @@ export function AdherentOffresPage() {
         <div className="adh-tile-icon tone-primary"><Handshake size={20} /></div>
         <div className="adh-conv-promo-text">
           <strong>Découvrez les conventions partenaires</strong>
-          <span>Profitez de remises chez nos fournisseurs partenaires en demandant l\u2019adhésion à une convention.</span>
+          <span>Profitez de remises chez nos fournisseurs partenaires en demandant l&rsquo;adhésion à une convention.</span>
         </div>
         <ArrowRight size={18} className="adh-conv-promo-arrow" />
       </div>
 
       {/* KPI tiles */}
-      <div className="adherent-stats-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', marginBottom: 'var(--space-5)' }}>
+      <div className="adh-stats-grid">
         <div className="adh-tile">
           <div className="adh-tile-head">
-            <div className="adh-tile-icon tone-info"><ShoppingBag size={20} /></div>
-            <span className="adh-tile-label">Bons disponibles</span>
-          </div>
-          <div className="adh-tile-value">{availableBons.length}</div>
-          <span className="adh-tile-meta">À utiliser avant expiration</span>
-        </div>
-        <div className="adh-tile">
-          <div className="adh-tile-head">
-            <div className="adh-tile-icon tone-warning"><Ticket size={20} /></div>
+            <div className="adh-tile-icon tone-warning"><Ticket size={18} /></div>
             <span className="adh-tile-label">Tickets disponibles</span>
           </div>
-          <div className="adh-tile-value">{availableTickets.length}</div>
-          <span className="adh-tile-meta">Tickets restaurant attribués</span>
+          <div className="adh-tile-value">{stats.availableCount}</div>
+          <span className="adh-tile-meta">À utiliser avant expiration</span>
+        </div>
+
+        <div className="adh-tile">
+          <div className="adh-tile-head">
+            <div className="adh-tile-icon tone-primary"><UtensilsCrossed size={18} /></div>
+            <span className="adh-tile-label">Valeur disponible</span>
+          </div>
+          <div className="adh-tile-value">
+            {stats.totalAvailable.toFixed(0)} <span style={{ fontSize: '0.95rem', color: 'var(--adh-text-3)' }}>TND</span>
+          </div>
+          <span className="adh-tile-meta">Total non encore consommé</span>
+        </div>
+
+        <div className="adh-tile">
+          <div className="adh-tile-head">
+            <div className="adh-tile-icon tone-success"><Coffee size={18} /></div>
+            <span className="adh-tile-label">Tickets utilisés</span>
+          </div>
+          <div className="adh-tile-value">{stats.usedCount}</div>
+          <span className="adh-tile-meta">Historique de consommation</span>
         </div>
       </div>
 
-      {/* Tab nav */}
+      {/* Status filters */}
       <div role="tablist" style={{
-        display: 'flex', gap: 4, padding: 4, marginBottom: 'var(--space-4)',
-        background: 'white', border: '1px solid var(--color-border-light)',
-        borderRadius: 'var(--radius-lg)', width: 'fit-content', maxWidth: '100%', overflowX: 'auto',
+        display: 'flex', gap: 4, padding: 4, marginBottom: 16,
+        background: 'var(--adh-surface)', border: '1px solid var(--adh-border)',
+        borderRadius: 10, width: 'fit-content', maxWidth: '100%', overflowX: 'auto',
       }}>
-        {([
-          { k: 'bons',    label: 'Bons de commande',    icon: ShoppingBag, count: availableBons.length },
-          { k: 'tickets', label: 'Tickets restaurant',  icon: Ticket,      count: availableTickets.length },
-        ] as const).map(({ k, label, icon: Icon, count }) => {
-          const active = activeTab === k;
+        {filters.map((f) => {
+          const active = statusFilter === f.k;
+          const count = f.k === 'all'
+            ? allTickets.length
+            : allTickets.filter((t) => t.statut === f.k).length;
           return (
             <button
-              key={k}
+              key={f.k}
               role="tab"
               aria-selected={active}
-              onClick={() => setActiveTab(k)}
+              onClick={() => setStatusFilter(f.k)}
               style={{
                 display: 'inline-flex', alignItems: 'center', gap: 8,
-                padding: '8px 14px', border: 'none', cursor: 'pointer',
-                borderRadius: 'var(--radius-md)',
-                background: active ? 'var(--color-primary-50)' : 'transparent',
-                color: active ? 'var(--color-primary-700)' : 'var(--color-text-secondary)',
+                padding: '7px 14px', border: 'none', cursor: 'pointer',
+                borderRadius: 8,
+                background: active ? '#eff6ff' : 'transparent',
+                color: active ? '#1d4ed8' : 'var(--adh-text-2)',
                 fontWeight: active ? 600 : 500,
-                fontSize: 'var(--font-size-sm)',
+                fontSize: '0.8125rem',
                 whiteSpace: 'nowrap',
                 transition: 'all 150ms',
               }}
             >
-              <Icon size={16} />
-              {label}
+              {f.label}
               <span style={{
                 display: 'inline-block', minWidth: 20, padding: '0 6px',
-                borderRadius: 999, fontSize: 11,
-                background: active ? 'var(--color-primary-600)' : 'var(--color-surface-tertiary)',
-                color: active ? 'white' : 'var(--color-text-secondary)',
+                borderRadius: 999, fontSize: 11, fontWeight: 600,
+                background: active ? '#2563eb' : 'var(--adh-surface-2)',
+                color: active ? 'white' : 'var(--adh-text-2)',
               }}>{count}</span>
             </button>
           );
         })}
       </div>
 
-      {activeTab === 'bons' && (
-        <div className="adherent-adhesion-history">
-          <div className="adherent-card-header">
-            <h3><ShoppingBag size={18} style={{ marginRight: 8 }} /> Bons de commande</h3>
-          </div>
-          <DataTable
-            columns={bonColumns}
-            rows={offres?.bons || []}
-            rowKey={(b) => b.id}
-            loading={isLoading}
-            emptyTitle="Aucun bon"
-            emptyDescription="Vous n'avez pas encore de bon de commande."
-          />
+      <section className="adh-card">
+        <div className="adh-card-header">
+          <h3 className="adh-card-title">
+            <Ticket size={16} /> Mes tickets restaurant
+          </h3>
+          <span className="adh-card-subtitle">
+            {filteredTickets.length} ticket{filteredTickets.length > 1 ? 's' : ''}
+          </span>
         </div>
-      )}
+        <DataTable
+          columns={ticketColumns}
+          rows={filteredTickets}
+          rowKey={(t) => t.id}
+          loading={isLoading}
+          emptyTitle="Aucun ticket"
+          emptyDescription="Vous n'avez pas encore de ticket restaurant pour ce filtre."
+        />
+      </section>
 
-      {activeTab === 'tickets' && (
-        <div className="adherent-adhesion-history">
-          <div className="adherent-card-header">
-            <h3><Ticket size={18} style={{ marginRight: 8 }} /> Tickets restaurant</h3>
-          </div>
-          <DataTable
-            columns={ticketColumns}
-            rows={offres?.tickets || []}
-            rowKey={(t) => t.id}
-            loading={isLoading}
-            emptyTitle="Aucun ticket"
-            emptyDescription="Vous n'avez pas encore de ticket restaurant."
-          />
-        </div>
-      )}
-
-      {!isLoading && availableBons.length === 0 && availableTickets.length === 0 && (
-        <div className="adh-alert info" style={{ marginTop: 'var(--space-4)' }}>
-          <AlertTriangle size={18} className="adh-alert-icon" />
+      {!isLoading && stats.availableCount === 0 && (
+        <div className="adh-alert info" style={{ marginTop: 16 }}>
+          <AlertTriangle size={16} className="adh-alert-icon" />
           <div>
-            Vous n'avez actuellement aucun bon ni ticket disponible. Consultez les{' '}
-            <Button variant="ghost" size="sm" onClick={() => navigate('/adherent/conventions')} style={{ padding: '0 4px', textDecoration: 'underline' }}>
+            Vous n'avez actuellement aucun ticket restaurant disponible. Consultez les{' '}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => navigate('/adherent/conventions')}
+              style={{ padding: '0 4px', textDecoration: 'underline' }}
+            >
               conventions partenaires
             </Button>{' '}
             pour profiter d'autres avantages.
@@ -210,34 +239,36 @@ export function AdherentOffresPage() {
 
 const INLINE_STYLES = `
 .adh-conv-promo {
-  display: flex; align-items: center; gap: var(--space-4);
-  padding: var(--space-4) var(--space-5);
-  margin-bottom: var(--space-4);
-  background: linear-gradient(135deg, var(--color-primary-50), white);
-  border: 1px solid var(--color-primary-100);
-  border-radius: var(--radius-lg);
+  display: flex; align-items: center; gap: 14px;
+  padding: 14px 18px;
+  margin-bottom: 16px;
+  background: linear-gradient(135deg, #eef4ff, white);
+  border: 1px solid #dbeafe;
+  border-radius: 12px;
   cursor: pointer;
   transition: all 200ms;
+  box-shadow: var(--adh-shadow-xs);
 }
 .adh-conv-promo:hover {
   transform: translateY(-1px);
-  box-shadow: var(--shadow-sm);
-  border-color: var(--color-primary-300);
+  box-shadow: var(--adh-shadow-sm);
+  border-color: #93c5fd;
 }
 .adh-conv-promo-text {
   flex: 1; min-width: 0;
   display: flex; flex-direction: column; gap: 2px;
 }
 .adh-conv-promo-text strong {
-  color: var(--color-primary-700);
-  font-size: var(--font-size-base);
+  color: #1d4ed8;
+  font-size: 0.875rem;
+  font-weight: 600;
 }
 .adh-conv-promo-text span {
-  color: var(--color-text-secondary);
-  font-size: var(--font-size-sm);
+  color: var(--adh-text-2);
+  font-size: 0.8125rem;
 }
 .adh-conv-promo-arrow {
-  color: var(--color-primary-600);
+  color: #2563eb;
   flex-shrink: 0;
   transition: transform 200ms;
 }

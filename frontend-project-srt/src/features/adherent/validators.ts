@@ -18,17 +18,13 @@ export const profileSchema = z.object({
 
 export type ProfileFormValues = z.infer<typeof profileSchema>;
 
-export const adhesionRequestSchema = z.object({
-  montantCotisation: z.number({ invalid_type_error: 'Montant requis' }).min(1, 'Montant doit être positif'),
-});
-
-export type AdhesionRequestFormValues = z.infer<typeof adhesionRequestSchema>;
-
 export const pretRequestSchema = z.object({
   montant: z.number({ invalid_type_error: 'Montant requis' }).min(100, 'Minimum 100 TND'),
   duree: z.number({ invalid_type_error: 'Durée requise' }).int().min(3, 'Minimum 3 mois').max(60, 'Maximum 60 mois'),
   taux: z.number().min(0).max(10).optional(),
   motif: z.string().min(5, 'Motif trop court (minimum 5 caractères)'),
+  documentNom: z.string().optional(),
+  documentSize: z.number().optional(),
 });
 
 export type PretRequestFormValues = z.infer<typeof pretRequestSchema>;
@@ -39,6 +35,8 @@ export const indemniteRequestSchema = z.object({
   }),
   montant: z.number({ invalid_type_error: 'Montant requis' }).min(1, 'Montant doit être positif'),
   motif: z.string().min(5, 'Motif trop court (minimum 5 caractères)'),
+  documentNom: z.string().optional(),
+  documentSize: z.number().optional(),
 });
 
 export type IndemniteRequestFormValues = z.infer<typeof indemniteRequestSchema>;

@@ -17,13 +17,49 @@ export function PaiementForm({ initial, onSubmit, onCancel, submitting }: Props)
   const { register, handleSubmit, formState: { errors } } = useForm<PaiementFormValues>({
     resolver: zodResolver(paiementSchema),
     defaultValues: initial
-      ? { reference: initial.reference, beneficiaire: initial.beneficiaire, montant: initial.montant, mode: initial.mode, statut: initial.statut, factureNumero: initial.factureNumero ?? '' }
-      : { reference: `PAY-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 9999)).padStart(4, '0')}`, beneficiaire: '', montant: 0, mode: 'virement', statut: 'en_attente', factureNumero: '' },
+      ? {
+          reference: initial.reference,
+          typePaiement: initial.typePaiement ?? 'AUTRE_SORTIE',
+          beneficiaireType: initial.beneficiaireType ?? 'AUTRE',
+          beneficiaireId: initial.beneficiaireId ?? '',
+          beneficiaire: initial.beneficiaire,
+          montant: initial.montant,
+          mode: initial.mode,
+          statut: initial.statut,
+          factureId: initial.factureId ?? '',
+          factureNumero: initial.factureNumero ?? '',
+          indemniteId: initial.indemniteId ?? '',
+          description: initial.description ?? '',
+        }
+      : {
+          reference: `PAY-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 9999)).padStart(4, '0')}`,
+          typePaiement: 'AUTRE_SORTIE',
+          beneficiaireType: 'AUTRE',
+          beneficiaireId: '',
+          beneficiaire: '',
+          montant: 0,
+          mode: 'virement',
+          statut: 'reussi',
+          factureId: '',
+          factureNumero: '',
+          indemniteId: '',
+          description: '',
+        },
   });
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="form-grid">
       <FormInput label="Référence" {...register('reference')} error={errors.reference?.message} />
+      <FormSelect
+        label="Type de paiement"
+        {...register('typePaiement')}
+        options={[
+          { value: 'PAIEMENT_FACTURE_FOURNISSEUR', label: 'Paiement facture fournisseur' },
+          { value: 'PAIEMENT_INDEMNITE', label: 'Paiement indemnité' },
+          { value: 'AUTRE_SORTIE', label: 'Autre sortie' },
+        ]}
+        error={errors.typePaiement?.message}
+      />
       <FormInput label="Bénéficiaire" {...register('beneficiaire')} error={errors.beneficiaire?.message} />
       <FormInput label="Montant (TND)" type="number" step="0.01" {...register('montant', { valueAsNumber: true })} error={errors.montant?.message} />
       <FormSelect label="Mode" {...register('mode')} options={[
@@ -39,6 +75,9 @@ export function PaiementForm({ initial, onSubmit, onCancel, submitting }: Props)
         { value: 'rembourse', label: 'Remboursé' },
       ]} error={errors.statut?.message} />
       <FormInput label="N° facture (optionnel)" {...register('factureNumero')} error={errors.factureNumero?.message} />
+      <div className="form-grid-full">
+        <FormInput label="Description (optionnel)" {...register('description')} error={errors.description?.message} />
+      </div>
       <div className="form-grid-full" style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-3)' }}>
         <Button type="button" variant="secondary" onClick={onCancel} disabled={submitting}>Annuler</Button>
         <Button type="submit" isLoading={submitting}>{initial ? 'Mettre à jour' : 'Créer'}</Button>
