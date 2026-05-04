@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8"/>
+  <title>Facture {{NUMERO}}</title>
+  <style>
+    @page { size: A4; margin: 18mm 16mm 22mm 16mm; }
+
+    * { box-sizing: border-box; }
+    body {
+      font-family: "Helvetica", "Arial", sans-serif;
+      color: #0f172a;
+      font-size: 10.5pt;
+      margin: 0;
+    }
+
+    /* ---------- Header ---------- */
+    .header {
+      display: table;
+      width: 100%;
+      border-bottom: 3px solid #0f172a;
+      padding-bottom: 12px;
+    }
+    .header .issuer,
+    .header .meta {
+      display: table-cell;
+      vertical-align: top;
+    }
+    .header .meta { text-align: right; }
+    .brand {
+      font-size: 18pt;
+      font-weight: 800;
+      letter-spacing: .02em;
+      color: #0f172a;
+      line-height: 1;
+    }
+    .brand small {
+      display: block;
+      font-size: 8pt;
+      font-weight: 500;
+      letter-spacing: .18em;
+      text-transform: uppercase;
+      color: #64748b;
+      margin-top: 4px;
+    }
+    .issuer-lines {
+      margin-top: 10px;
+      color: #475569;
+      font-size: 9pt;
+      line-height: 1.45;
+    }
+    .doc-title {
+      font-size: 26pt;
+      font-weight: 800;
+      letter-spacing: .06em;
+      color: #0f172a;
+      line-height: 1;
+    }
+    .doc-number {
+      margin-top: 6px;
+      color: #475569;
+      font-size: 10pt;
+    }
+    .doc-number strong { color: #0f172a; }
+
+    .status-pill {
+      display: inline-block;
+      margin-top: 10px;
+      padding: 4px 12px;
+      border-radius: 999px;
+      font-size: 9pt;
+      font-weight: 700;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+    .status--success  { background: #dcfce7; color: #166534; border: 1px solid #86efac; }
+    .status--warning  { background: #fef3c7; color: #92400e; border: 1px solid #fcd34d; }
+    .status--info     { background: #dbeafe; color: #1e40af; border: 1px solid #93c5fd; }
+    .status--danger   { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
+    .status--neutral  { background: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; }
+
+    /* ---------- Meta grid ---------- */
+    .meta-grid {
+      display: table;
+      width: 100%;
+      margin-top: 20px;
+      border-collapse: separate;
+      border-spacing: 0;
+    }
+    .meta-grid .cell {
+      display: table-cell;
+      width: 33.3333%;
+      padding: 10px 14px;
+      border: 1px solid #e2e8f0;
+      background: #f8fafc;
+    }
+    .meta-grid .cell + .cell { border-left: none; }
+    .meta-grid .label {
+      font-size: 7.5pt;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      color: #64748b;
+    }
+    .meta-grid .value {
+      margin-top: 4px;
+      font-size: 11pt;
+      font-weight: 600;
+      color: #0f172a;
+    }
+
+    /* ---------- Bill-to ---------- */
+    .billto {
+      margin-top: 24px;
+      padding: 14px 16px;
+      border-left: 4px solid #0f172a;
+      background: #f8fafc;
+    }
+    .billto .label {
+      font-size: 7.5pt;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      color: #64748b;
+      margin-bottom: 6px;
+    }
+    .billto .name {
+      font-size: 13pt;
+      font-weight: 700;
+      color: #0f172a;
+    }
+    .billto .lines {
+      margin-top: 4px;
+      color: #475569;
+      font-size: 9.5pt;
+      line-height: 1.5;
+    }
+
+    /* ---------- Line items ---------- */
+    .items {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 24px;
+    }
+    .items th, .items td {
+      padding: 10px 12px;
+      font-size: 10pt;
+      text-align: left;
+    }
+    .items thead th {
+      background: #0f172a;
+      color: #ffffff;
+      font-weight: 700;
+      font-size: 9pt;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+    }
+    .items tbody td {
+      border-bottom: 1px solid #e2e8f0;
+      vertical-align: top;
+    }
+    .items .col-num  { width: 22%; font-family: "Courier New", monospace; }
+    .items .col-desc { width: 58%; }
+    .items .col-amt  { width: 20%; text-align: right; font-weight: 700; }
+
+    /* ---------- Totals ---------- */
+    .totals {
+      margin-top: 14px;
+      width: 100%;
+    }
+    .totals .spacer { display: table-cell; width: 60%; }
+    .totals-box {
+      display: table-cell;
+      width: 40%;
+      border: 1px solid #0f172a;
+    }
+    .totals-box table { width: 100%; border-collapse: collapse; }
+    .totals-box td { padding: 8px 12px; font-size: 10pt; }
+    .totals-box .label-cell {
+      background: #f1f5f9;
+      color: #475569;
+      font-weight: 600;
+      text-transform: uppercase;
+      font-size: 8.5pt;
+      letter-spacing: .08em;
+    }
+    .totals-box .amount-cell {
+      text-align: right;
+      font-size: 14pt;
+      font-weight: 800;
+      color: #0f172a;
+    }
+
+    /* ---------- Footer ---------- */
+    .footer {
+      position: running(footer);
+      border-top: 1px solid #e2e8f0;
+      padding-top: 8px;
+      font-size: 8pt;
+      color: #64748b;
+      display: table;
+      width: 100%;
+    }
+    .footer .left,
+    .footer .right { display: table-cell; }
+    .footer .right { text-align: right; }
+    @page { @bottom-center { content: element(footer); } }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <div class="issuer">
+      <div class="brand">
+        Amicale SRT
+        <small>Société Régionale de Transport</small>
+      </div>
+      <div class="issuer-lines">
+        Service trésorerie<br/>
+        Sfax, Tunisie
+      </div>
+    </div>
+    <div class="meta">
+      <div class="doc-title">FACTURE</div>
+      <div class="doc-number">N° <strong>{{NUMERO}}</strong></div>
+      <div class="status-pill status--{{STATUT_CLASS}}">{{STATUT_LABEL}}</div>
+    </div>
+  </div>
+
+  <div class="meta-grid">
+    <div class="cell">
+      <div class="label">Date d'émission</div>
+      <div class="value">{{DATE_EMISSION}}</div>
+    </div>
+    <div class="cell">
+      <div class="label">Date d'échéance</div>
+      <div class="value">{{DATE_ECHEANCE}}</div>
+    </div>
+    <div class="cell">
+      <div class="label">Imprimée le</div>
+      <div class="value">{{DATE_IMPRESSION}}</div>
+    </div>
+  </div>
+
+  <div class="billto">
+    <div class="label">Fournisseur</div>
+    <div class="name">{{FOURNISSEUR_NOM}}</div>
+    <div class="lines">
+      {{FOURNISSEUR_ADRESSE}}<br/>
+      Tél : {{FOURNISSEUR_TELEPHONE}} &#160;·&#160; {{FOURNISSEUR_EMAIL}}
+    </div>
+  </div>
+
+  <table class="items">
+    <thead>
+      <tr>
+        <th class="col-num">Référence</th>
+        <th class="col-desc">Description</th>
+        <th class="col-amt">Montant</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="col-num">{{NUMERO}}</td>
+        <td class="col-desc">{{DESCRIPTION}}</td>
+        <td class="col-amt">{{MONTANT}} TND</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="totals">
+    <div class="spacer"></div>
+    <div class="totals-box">
+      <table>
+        <tr>
+          <td class="label-cell">Total TTC</td>
+          <td class="amount-cell">{{MONTANT}} TND</td>
+        </tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="footer">
+    <div class="left">Amicale SRT — Document officiel généré automatiquement.</div>
+    <div class="right">Imprimée le {{DATE_IMPRESSION}}</div>
+  </div>
+
+</body>
+</html>

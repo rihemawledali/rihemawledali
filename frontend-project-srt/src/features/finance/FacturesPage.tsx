@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Pencil, Trash2, CreditCard, Ban } from 'lucide-react';
+import { Plus, Pencil, Trash2, CreditCard, Ban, FileDown } from 'lucide-react';
 import { PageHeader } from '../../components/layout/PageHeader';
 import { Button } from '../../components/ui/Button';
 import { DataTable, type Column } from '../../components/data/DataTable';
@@ -78,7 +78,20 @@ export function FacturesPage() {
 
   const create = useMutation({
     mutationFn: async (v: FactureFormValues) => facturesApi.create(await buildPayload(v)),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['factures'] }); qc.invalidateQueries({ queryKey: ['dashboard'] }); setCreating(false); toast.push({ title: 'Facture créée', variant: 'success' }); },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['factures'] });
+      qc.invalidateQueries({ queryKey: ['dashboard'] });
+      setCreating(false);
+      toast.push({ title: 'Facture créée', variant: 'success' });
+    },
+  });
+  const downloadPdf = useMutation({
+    mutationFn: (id: string) => facturesApi.downloadPdf(id),
+    onError: (e) => toast.push({
+      title: 'Téléchargement impossible',
+      description: e instanceof Error ? e.message : 'Erreur inconnue',
+      variant: 'error',
+    }),
   });
   const update = useMutation({
     mutationFn: async ({ id, v }: { id: string; v: FactureFormValues }) => facturesApi.update(id, await buildPayload(v)),
@@ -171,6 +184,17 @@ export function FacturesPage() {
                 </button>
               )}
               <button className="icon-btn icon-btn--primary" onClick={() => setEditing(f)} title="Modifier"><Pencil size={15} /></button>
+              {f.statut === 'payee' && (
+                <button
+                  className="icon-btn"
+                  onClick={() => downloadPdf.mutate(f.id)}
+                  title="Télécharger le PDF"
+                  aria-label={`Télécharger la facture ${f.numero} en PDF`}
+                  disabled={downloadPdf.isPending}
+                >
+                  <FileDown size={15} />
+                </button>
+              )}
               {canCancel && (
                 <button className="icon-btn" onClick={() => setCancelling(f)} title="Annuler la facture"><Ban size={15} /></button>
               )}

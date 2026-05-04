@@ -1,29 +1,55 @@
-/* ============================================
-   Offres et conventions — Discovery page
-   ============================================ */
-
 import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import {
-  Search, Calendar, ArrowRight, AlertTriangle, Filter, X, Handshake, FileText, RotateCcw,
+  AlertTriangle,
+  ArrowRight,
+  Calendar,
+  CheckCircle2,
+  Clock3,
+  FileText,
+  Filter,
+  Handshake,
+  RotateCcw,
+  Search,
+  Sparkles,
+  X,
 } from 'lucide-react';
 import { PageHeader } from '../../../components/layout/PageHeader';
 import { Button } from '../../../components/ui/Button';
 import { StatusBadge } from '../../../components/data/StatusBadge';
 import { conventionsApi, getAdherentConventionStatus } from '../api/conventionsApi';
 import {
-  CONV_TYPE_LABEL, CONV_TYPE_ICON, CONV_TYPE_TONE,
-  ADHERENT_STATUS_LABEL, ADHERENT_STATUS_VARIANT,
+  ADHERENT_STATUS_LABEL,
+  ADHERENT_STATUS_VARIANT,
+  CONV_TYPE_ICON,
+  CONV_TYPE_LABEL,
+  CONV_TYPE_TONE,
 } from '../conventions/conventionHelpers';
 import type {
-  Convention, ConventionType, ConventionAdherentStatus,
+  Convention,
+  ConventionAdherentStatus,
+  ConventionType,
 } from '../../../types/domain';
+import './AdherentConventionsListPage.css';
 
 type ValidityFilter = 'all' | 'in_progress' | 'expiring_soon' | 'expired';
 
 const ALL_TYPES: ConventionType[] = ['sante', 'restauration', 'transport', 'commerce', 'education', 'loisir'];
-const ALL_STATUSES: ConventionAdherentStatus[] = ['disponible', 'deja_demandee', 'active', 'expiree', 'non_disponible'];
+const ALL_STATUSES: ConventionAdherentStatus[] = [
+  'disponible',
+  'deja_demandee',
+  'active',
+  'expiree',
+  'non_disponible',
+];
+
+const FILTER_LABELS: Record<ValidityFilter, string> = {
+  all: 'Toutes les validités',
+  in_progress: 'En cours',
+  expiring_soon: 'Expire bientôt',
+  expired: 'Expirées',
+};
 
 export function AdherentConventionsListPage() {
   const navigate = useNavigate();
@@ -33,7 +59,7 @@ export function AdherentConventionsListPage() {
   const [statusFilter, setStatusFilter] = useState<ConventionAdherentStatus | 'all'>('all');
   const [validityFilter, setValidityFilter] = useState<ValidityFilter>('all');
 
-  const { data: conventions, isLoading: convLoading } = useQuery({
+  const { data: conventions, isLoading: conventionsLoading } = useQuery({
     queryKey: ['adherent-conventions'],
     queryFn: () => conventionsApi.getConventions(),
   });
@@ -43,41 +69,65 @@ export function AdherentConventionsListPage() {
     queryFn: () => conventionsApi.getMyDemandes(),
   });
 
-  const isLoading = convLoading || demandesLoading;
+  const isLoading = conventionsLoading || demandesLoading;
 
   const decoratedConventions = useMemo(() => {
-    if (!conventions) return [];
     const today = new Date();
-    return conventions.map((c) => ({
-      convention: c,
-      adherentStatus: getAdherentConventionStatus(c, demandes || [], today),
+    return (conventions ?? []).map((convention) => ({
+      convention,
+      adherentStatus: getAdherentConventionStatus(convention, demandes ?? [], today),
     }));
   }, [conventions, demandes]);
 
-  const filtered = useMemo(() => {
-    const today = new Date();
-    return decoratedConventions.filter(({ convention: c, adherentStatus }) => {
-      // Search by supplier name
-      if (search.trim() && !c.fournisseurNom.toLowerCase().includes(search.trim().toLowerCase())) return false;
-      // Type
-      if (typeFilter !== 'all' && c.type !== typeFilter) return false;
-      // Adherent-facing status
-      if (statusFilter !== 'all' && adherentStatus !== statusFilter) return false;
-      // Validity
-      if (validityFilter !== 'all') {
-        const fin = new Date(c.dateFin);
-        const days = (fin.getTime() - today.getTime()) / 86400000;
-        if (validityFilter === 'expired' && days >= 0) return false;
-        if (validityFilter === 'expiring_soon' && (days < 0 || days > 60)) return false;
-        if (validityFilter === 'in_progress' && days < 0) return false;
+  const summary = useMemo(() => {
+    return decoratedConventions.reduce(
+      (acc, item) => {
+        acc.total += 1;
+        if (item.adherentStatus === 'disponible') acc.available += 1;
+        if (item.adherentStatus === 'deja_demandee') acc.pending += 1;
+        if (item.adherentStatus === 'active') acc.active += 1;
+        if (isExpiringSoon(item.convention)) acc.expiringSoon += 1;
+        return acc;
+      },
+      { total: 0, available: 0, pending: 0, active: 0, expiringSoon: 0 }
+    );
+  }, [decoratedConventions]);
+
+  const filteredConventions = useMemo(() => {
+    const normalizedSearch = search.trim().toLowerCase();
+
+    return decoratedConventions.filter(({ convention, adherentStatus }) => {
+      if (normalizedSearch) {
+        const searchable = [
+          convention.fournisseurNom,
+          convention.avantage,
+          convention.descriptionCourte,
+          CONV_TYPE_LABEL[convention.type],
+        ]
+          .filter(Boolean)
+          .join(' ')
+          .toLowerCase();
+
+        if (!searchable.includes(normalizedSearch)) return false;
       }
+
+      if (typeFilter !== 'all' && convention.type !== typeFilter) return false;
+      if (statusFilter !== 'all' && adherentStatus !== statusFilter) return false;
+
+      const daysLeft = getDaysLeft(convention.dateFin);
+      if (validityFilter === 'expired' && daysLeft >= 0) return false;
+      if (validityFilter === 'expiring_soon' && (daysLeft < 0 || daysLeft > 60)) return false;
+      if (validityFilter === 'in_progress' && daysLeft < 0) return false;
+
       return true;
     });
-  }, [decoratedConventions, search, typeFilter, statusFilter, validityFilter]);
+  }, [decoratedConventions, search, statusFilter, typeFilter, validityFilter]);
 
   const activeFilterCount =
-    (search.trim() ? 1 : 0) + (typeFilter !== 'all' ? 1 : 0)
-    + (statusFilter !== 'all' ? 1 : 0) + (validityFilter !== 'all' ? 1 : 0);
+    (search.trim() ? 1 : 0)
+    + (typeFilter !== 'all' ? 1 : 0)
+    + (statusFilter !== 'all' ? 1 : 0)
+    + (validityFilter !== 'all' ? 1 : 0);
 
   const resetFilters = () => {
     setSearch('');
@@ -87,126 +137,173 @@ export function AdherentConventionsListPage() {
   };
 
   return (
-    <div>
+    <div className="adh-conventions-page">
       <PageHeader
         title="Offres et conventions"
-        description="Consultez les conventions disponibles et demandez à bénéficier des avantages proposés par l'amicale."
+        description="Retrouvez les conventions partenaires disponibles et suivez vos avantages en cours."
       />
 
-      {/* Filters */}
-      <div className="adh-filters-card">
-        <div className="adh-filters-row">
-          <div className="adh-search-input">
-            <Search size={16} />
-            <input
-              type="text"
-              placeholder="Rechercher un fournisseur…"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              aria-label="Rechercher par nom de fournisseur"
-            />
-            {search && (
-              <button
-                type="button"
-                className="adh-search-clear"
-                onClick={() => setSearch('')}
-                aria-label="Effacer la recherche"
-              >
-                <X size={14} />
-              </button>
-            )}
-          </div>
+      <section className="adh-conventions-hero">
+        <div className="adh-conventions-hero-main">
+          <span className="adh-conventions-eyebrow">
+            <Sparkles size={14} />
+            Espace adhérent
+          </span>
+          <h2>Avantages partenaires</h2>
+          <p>Vos conventions disponibles, demandes en cours et avantages actifs au même endroit.</p>
+        </div>
+        <div className="adh-conventions-hero-actions">
+          <button
+            type="button"
+            className="adh-conventions-nav-btn"
+            onClick={() => navigate('/adherent/conventions/mes-demandes')}
+          >
+            <FileText size={17} />
+            <span>Mes demandes</span>
+          </button>
+        </div>
+      </section>
 
+      <section className="adh-conventions-summary" aria-label="Synthese conventions">
+        <SummaryCard icon={Handshake} label="Disponibles" value={summary.available} tone="success" />
+        <SummaryCard icon={Clock3} label="Demandes en cours" value={summary.pending} tone="warning" />
+        <SummaryCard icon={CheckCircle2} label="Actives" value={summary.active} tone="info" />
+        <SummaryCard icon={AlertTriangle} label="Bientôt expirées" value={summary.expiringSoon} tone="danger" />
+      </section>
+
+      <section className="adh-conventions-filters" aria-label="Filtres conventions">
+        <div className="adh-conventions-search">
+          <Search size={16} />
+          <input
+            type="text"
+            placeholder="Rechercher fournisseur, avantage, type..."
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            aria-label="Rechercher une convention"
+          />
+          {search.trim() && (
+            <button
+              type="button"
+              className="adh-conventions-clear"
+              onClick={() => setSearch('')}
+              aria-label="Effacer la recherche"
+            >
+              <X size={14} />
+            </button>
+          )}
+        </div>
+
+        <div className="adh-conventions-selects">
           <select
-            className="adh-select"
+            className="adh-conventions-select"
             value={typeFilter}
-            onChange={(e) => setTypeFilter(e.target.value as ConventionType | 'all')}
+            onChange={(event) => setTypeFilter(event.target.value as ConventionType | 'all')}
             aria-label="Filtrer par type"
           >
             <option value="all">Tous les types</option>
-            {ALL_TYPES.map((t) => <option key={t} value={t}>{CONV_TYPE_LABEL[t]}</option>)}
+            {ALL_TYPES.map((type) => (
+              <option key={type} value={type}>{CONV_TYPE_LABEL[type]}</option>
+            ))}
           </select>
 
           <select
-            className="adh-select"
+            className="adh-conventions-select"
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as ConventionAdherentStatus | 'all')}
+            onChange={(event) => setStatusFilter(event.target.value as ConventionAdherentStatus | 'all')}
             aria-label="Filtrer par statut"
           >
             <option value="all">Tous les statuts</option>
-            {ALL_STATUSES.map((s) => <option key={s} value={s}>{ADHERENT_STATUS_LABEL[s]}</option>)}
+            {ALL_STATUSES.map((status) => (
+              <option key={status} value={status}>{ADHERENT_STATUS_LABEL[status]}</option>
+            ))}
           </select>
 
           <select
-            className="adh-select"
+            className="adh-conventions-select"
             value={validityFilter}
-            onChange={(e) => setValidityFilter(e.target.value as ValidityFilter)}
+            onChange={(event) => setValidityFilter(event.target.value as ValidityFilter)}
             aria-label="Filtrer par validité"
           >
-            <option value="all">Toutes les validités</option>
-            <option value="in_progress">En cours de validité</option>
-            <option value="expiring_soon">Expire bientôt (&lt; 60 j)</option>
-            <option value="expired">Expirée</option>
+            {Object.entries(FILTER_LABELS).map(([value, label]) => (
+              <option key={value} value={value}>{label}</option>
+            ))}
           </select>
-
-          {activeFilterCount > 0 && (
-            <Button type="button" variant="secondary" size="sm" onClick={resetFilters}>
-              <RotateCcw size={14} style={{ marginRight: 6 }} />
-              Réinitialiser ({activeFilterCount})
-            </Button>
-          )}
         </div>
+
+        {activeFilterCount > 0 && (
+          <Button type="button" variant="secondary" size="sm" onClick={resetFilters}>
+            <RotateCcw size={14} className="adh-conventions-btn-icon" />
+            Réinitialiser ({activeFilterCount})
+          </Button>
+        )}
+      </section>
+
+      <div className="adh-conventions-results-head">
+        <div>
+          <span className="adh-conventions-results-kicker">Catalogue</span>
+          <h3>{filteredConventions.length} convention{filteredConventions.length > 1 ? 's' : ''}</h3>
+        </div>
+        <span className="adh-conventions-results-total">{summary.total} au total</span>
       </div>
 
-      {/* Quick links */}
-      <div className="adh-quicklinks">
-        <button className="adh-quicklink" onClick={() => navigate('/adherent/conventions/mes-demandes')}>
-          <FileText size={16} />
-          <span>Mes demandes</span>
-        </button>
-        <button className="adh-quicklink" onClick={() => navigate('/adherent/conventions/actives')}>
-          <Handshake size={16} />
-          <span>Mes conventions actives</span>
-        </button>
-      </div>
-
-      {/* Results */}
       {isLoading ? (
-        <div className="adh-offer-grid">
-          {[...Array(6)].map((_, i) => (
-            <div key={i} className="skeleton" style={{ height: 240, borderRadius: 'var(--radius-lg)' }} />
+        <div className="adh-conventions-grid">
+          {Array.from({ length: 6 }, (_, index) => (
+            <div key={index} className="adh-conventions-skeleton skeleton" />
           ))}
         </div>
-      ) : filtered.length === 0 ? (
-        <div className="adh-empty-card">
-          <div className="adh-empty-icon"><Filter size={28} /></div>
-          <h3>{activeFilterCount > 0 ? 'Aucun résultat' : 'Aucune convention disponible pour le moment.'}</h3>
+      ) : filteredConventions.length === 0 ? (
+        <section className="adh-empty-card adh-conventions-empty">
+          <div className="adh-empty-icon">
+            <Filter size={28} />
+          </div>
+          <h3>{activeFilterCount > 0 ? 'Aucun résultat' : 'Aucune convention disponible'}</h3>
           <p>
             {activeFilterCount > 0
-              ? 'Aucune convention ne correspond à vos critères. Essayez d\u2019élargir votre recherche.'
-              : 'Revenez plus tard pour consulter les nouvelles offres.'}
+              ? 'Aucune convention ne correspond aux filtres sélectionnés.'
+              : 'Les prochaines conventions apparaîtront ici dès leur publication.'}
           </p>
           {activeFilterCount > 0 && (
-            <Button variant="secondary" onClick={resetFilters} style={{ marginTop: 'var(--space-3)' }}>
-              <RotateCcw size={14} style={{ marginRight: 6 }} /> Réinitialiser les filtres
+            <Button variant="secondary" onClick={resetFilters}>
+              <RotateCcw size={14} className="adh-conventions-btn-icon" />
+              Réinitialiser les filtres
             </Button>
           )}
-        </div>
+        </section>
       ) : (
-        <div className="adh-offer-grid">
-          {filtered.map(({ convention: c, adherentStatus }) => (
+        <div className="adh-conventions-grid">
+          {filteredConventions.map(({ convention, adherentStatus }) => (
             <ConventionCard
-              key={c.id}
-              convention={c}
+              key={convention.id}
+              convention={convention}
               adherentStatus={adherentStatus}
-              onView={() => navigate(`/adherent/conventions/${c.id}`)}
+              onView={() => navigate(`/adherent/conventions/${convention.id}`)}
             />
           ))}
         </div>
       )}
-
-      <style>{INLINE_STYLES}</style>
     </div>
+  );
+}
+
+interface SummaryCardProps {
+  icon: typeof Handshake;
+  label: string;
+  value: number;
+  tone: 'success' | 'warning' | 'info' | 'danger';
+}
+
+function SummaryCard({ icon: Icon, label, value, tone }: SummaryCardProps) {
+  return (
+    <article className={`adh-conventions-summary-card is-${tone}`}>
+      <span className="adh-conventions-summary-icon">
+        <Icon size={18} />
+      </span>
+      <div>
+        <strong>{value}</strong>
+        <span>{label}</span>
+      </div>
+    </article>
   );
 }
 
@@ -216,37 +313,33 @@ interface ConventionCardProps {
   onView: () => void;
 }
 
-function ConventionCard({ convention: c, adherentStatus, onView }: ConventionCardProps) {
-  const Icon = CONV_TYPE_ICON[c.type];
-  const tone = CONV_TYPE_TONE[c.type];
-  const today = new Date();
-  const finDate = new Date(c.dateFin);
-  const daysLeft = Math.ceil((finDate.getTime() - today.getTime()) / 86400000);
-  const expiringSoon = daysLeft > 0 && daysLeft < 60;
-
+function ConventionCard({ convention, adherentStatus, onView }: ConventionCardProps) {
+  const Icon = CONV_TYPE_ICON[convention.type];
+  const tone = CONV_TYPE_TONE[convention.type];
+  const daysLeft = getDaysLeft(convention.dateFin);
+  const expiringSoon = daysLeft > 0 && daysLeft <= 60;
   const canRequest = adherentStatus === 'disponible';
 
   return (
-    <article className="adh-offer-card adh-offer-card--with-cover">
-      {/* ---- Cover image ---- */}
-      <div className={`adh-offer-cover tone-${tone}`}>
-        {c.imageUrl ? (
+    <article className="adh-convention-card">
+      <div className={`adh-convention-cover tone-${tone}`}>
+        {convention.imageUrl ? (
           <img
-            src={c.imageUrl}
-            alt={c.fournisseurNom}
+            src={convention.imageUrl}
+            alt={convention.fournisseurNom}
             loading="lazy"
-            onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+            onError={(event) => {
+              event.currentTarget.classList.add('is-hidden');
+            }}
           />
-        ) : (
-          <div className="adh-offer-cover-placeholder">
-            <Icon size={36} />
-          </div>
-        )}
-
-        <div className="adh-offer-cover-overlay">
-          <span className="adh-offer-cover-tag">
-            <Icon size={12} />
-            {CONV_TYPE_LABEL[c.type]}
+        ) : null}
+        <div className="adh-convention-cover-fallback">
+          <Icon size={34} />
+        </div>
+        <div className="adh-convention-cover-top">
+          <span className="adh-convention-type">
+            <Icon size={13} />
+            {CONV_TYPE_LABEL[convention.type]}
           </span>
           <StatusBadge
             status={adherentStatus}
@@ -254,62 +347,52 @@ function ConventionCard({ convention: c, adherentStatus, onView }: ConventionCar
             label={ADHERENT_STATUS_LABEL[adherentStatus]}
           />
         </div>
-
-        <div className="adh-offer-cover-discount">−{c.remise}%</div>
+        <span className="adh-convention-discount">-{convention.remise}%</span>
       </div>
 
-      {/* ---- Body ---- */}
-      <div className="adh-offer-card-body">
-        <div className="adh-offer-supplier">{c.fournisseurNom}</div>
-        {c.avantage && (
-          <div className="adh-offer-avantage">{c.avantage}</div>
+      <div className="adh-convention-body">
+        <div className="adh-convention-heading">
+          <h3>{convention.fournisseurNom}</h3>
+          {convention.avantage && <p>{convention.avantage}</p>}
+        </div>
+
+        {convention.descriptionCourte && (
+          <p className="adh-convention-description">{convention.descriptionCourte}</p>
         )}
 
-        {c.descriptionCourte && (
-          <p className="adh-offer-desc">{c.descriptionCourte}</p>
+        {convention.conditions && (
+          <p className="adh-convention-conditions">
+            <span>Conditions</span>
+            {convention.conditions}
+          </p>
         )}
 
-        {c.conditions && (
-          <div className="adh-offer-conditions">
-            <span className="adh-offer-conditions-label">Conditions :</span> {c.conditions}
-          </div>
-        )}
-
-        <div className="adh-offer-meta">
-          <Calendar size={13} />
-          <span>
-            Valide jusqu'au {new Date(c.dateFin).toLocaleDateString('fr-FR')}
-            {expiringSoon && (
-              <span style={{ color: '#b45309', fontWeight: 600 }}>
-                {' '}· {daysLeft} j restants
-              </span>
-            )}
-          </span>
+        <div className="adh-convention-meta">
+          <Calendar size={14} />
+          <span>Valide jusqu'au {formatDate(convention.dateFin)}</span>
+          {expiringSoon && <strong>{daysLeft} j restants</strong>}
         </div>
 
         {expiringSoon && adherentStatus !== 'expiree' && (
-          <div className="adh-alert warning" style={{ margin: 0, padding: '8px 10px' }}>
-            <AlertTriangle size={14} className="adh-alert-icon" />
-            <div style={{ fontSize: '0.75rem' }}>Cette convention expire bientôt.</div>
+          <div className="adh-convention-warning">
+            <AlertTriangle size={15} />
+            <span>Expire bientôt</span>
           </div>
         )}
 
-        <div className="adh-offer-actions">
+        <div className="adh-convention-actions">
           <Button variant="secondary" size="sm" onClick={onView}>
-            <FileText size={14} style={{ marginRight: 6 }} />
+            <FileText size={14} className="adh-conventions-btn-icon" />
             Détails
           </Button>
           {canRequest ? (
-            <Button size="sm" onClick={onView} style={{ flex: 1, minWidth: 'fit-content' }}>
-              Demander l'adhésion
-              <ArrowRight size={14} style={{ marginLeft: 6 }} />
+            <Button size="sm" onClick={onView}>
+              Demander
+              <ArrowRight size={14} className="adh-conventions-btn-icon is-after" />
             </Button>
           ) : (
-            <Button size="sm" disabled style={{ flex: 1, minWidth: 'fit-content' }}>
-              {adherentStatus === 'deja_demandee' && 'Demande en cours'}
-              {adherentStatus === 'active' && 'Convention active'}
-              {adherentStatus === 'expiree' && 'Convention expirée'}
-              {adherentStatus === 'non_disponible' && 'Non disponible'}
+            <Button size="sm" disabled>
+              {getUnavailableActionLabel(adherentStatus)}
             </Button>
           )}
         </div>
@@ -318,239 +401,30 @@ function ConventionCard({ convention: c, adherentStatus, onView }: ConventionCar
   );
 }
 
-const INLINE_STYLES = `
-.adh-filters-card {
-  background: var(--adh-surface);
-  border: 1px solid var(--adh-border);
-  border-radius: 12px;
-  padding: 12px 14px;
-  margin-bottom: 16px;
-  box-shadow: var(--adh-shadow-xs);
-}
-.adh-filters-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  align-items: center;
-}
-.adh-search-input {
-  display: flex; align-items: center; gap: 8px;
-  padding: 8px 12px;
-  background: var(--adh-surface-2);
-  border: 1px solid var(--adh-border);
-  border-radius: 9px;
-  min-width: 240px;
-  flex: 1;
-  max-width: 360px;
-  color: var(--adh-text-3);
-  transition: border-color 150ms, background 150ms;
-}
-.adh-search-input:focus-within {
-  border-color: var(--adh-accent);
-  background: white;
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.10);
-}
-.adh-search-input input {
-  border: none;
-  background: transparent;
-  font: inherit;
-  font-size: 0.8125rem;
-  color: var(--adh-text-1);
-  flex: 1;
-  outline: none;
-}
-.adh-search-input input::placeholder { color: var(--adh-text-3); }
-.adh-search-clear {
-  background: none; border: none; cursor: pointer;
-  color: var(--adh-text-3); display: flex; align-items: center;
-  padding: 2px;
-  border-radius: 4px;
-}
-.adh-search-clear:hover { color: var(--adh-text-1); background: rgba(0,0,0,0.05); }
-.adh-select {
-  padding: 8px 32px 8px 12px;
-  background-color: white;
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%238a92a6' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'></polyline></svg>");
-  background-repeat: no-repeat;
-  background-position: right 10px center;
-  appearance: none;
-  -webkit-appearance: none;
-  -moz-appearance: none;
-  border: 1px solid var(--adh-border);
-  border-radius: 9px;
-  font: inherit;
-  font-size: 0.8125rem;
-  color: var(--adh-text-1);
-  cursor: pointer;
-  min-width: 160px;
-  transition: border-color 150ms, box-shadow 150ms;
-}
-.adh-select:hover { border-color: var(--adh-border-strong); }
-.adh-select:focus {
-  outline: none;
-  border-color: var(--adh-accent);
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
-}
-.adh-quicklinks {
-  display: flex; gap: 8px;
-  margin-bottom: 16px;
-  flex-wrap: wrap;
-}
-.adh-quicklink {
-  display: inline-flex; align-items: center; gap: 8px;
-  padding: 7px 14px;
-  background: var(--adh-surface);
-  border: 1px solid var(--adh-border);
-  border-radius: 999px;
-  color: var(--adh-text-2);
-  font-size: 0.8125rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 150ms;
-}
-.adh-quicklink:hover {
-  background: var(--adh-surface-2);
-  color: var(--adh-text-1);
-  border-color: var(--adh-border-strong);
-}
-.adh-quicklink svg { color: var(--adh-text-3); }
-.adh-quicklink:hover svg { color: var(--adh-accent); }
-
-/* ---- Card with cover image ---- */
-.adh-offer-card--with-cover {
-  padding: 0;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
-.adh-offer-cover {
-  position: relative;
-  width: 100%;
-  aspect-ratio: 16 / 9;
-  background: var(--adh-surface-2);
-  overflow: hidden;
-  border-bottom: 1px solid var(--adh-border);
-}
-.adh-offer-cover img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-  transition: transform 400ms cubic-bezier(0.4, 0, 0.2, 1);
-}
-.adh-offer-card--with-cover:hover .adh-offer-cover img {
-  transform: scale(1.04);
-}
-.adh-offer-cover-placeholder {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: linear-gradient(135deg, #eef2f7, #ffffff);
-  color: var(--adh-text-3);
-}
-.adh-offer-cover.tone-success .adh-offer-cover-placeholder { background: linear-gradient(135deg, #f0fdf4, #ffffff); color: #15803d; }
-.adh-offer-cover.tone-primary .adh-offer-cover-placeholder { background: linear-gradient(135deg, #eff6ff, #ffffff); color: #1d4ed8; }
-.adh-offer-cover.tone-warning .adh-offer-cover-placeholder { background: linear-gradient(135deg, #fffbeb, #ffffff); color: #b45309; }
-.adh-offer-cover.tone-error   .adh-offer-cover-placeholder { background: linear-gradient(135deg, #fef2f2, #ffffff); color: #b91c1c; }
-.adh-offer-cover.tone-info    .adh-offer-cover-placeholder { background: linear-gradient(135deg, #ecfeff, #ffffff); color: #0e7490; }
-.adh-offer-cover.tone-violet  .adh-offer-cover-placeholder { background: linear-gradient(135deg, #f5f3ff, #ffffff); color: #6d28d9; }
-
-.adh-offer-cover-overlay {
-  position: absolute;
-  top: 10px;
-  left: 10px;
-  right: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  pointer-events: none;
-}
-.adh-offer-cover-overlay > * { pointer-events: auto; }
-
-.adh-offer-cover-tag {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 4px 9px;
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
-  color: var(--adh-text-1);
-  font-size: 0.6875rem;
-  font-weight: 600;
-  border-radius: 999px;
-  border: 1px solid rgba(0, 0, 0, 0.04);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+function getUnavailableActionLabel(status: ConventionAdherentStatus) {
+  if (status === 'deja_demandee') return 'Demande en cours';
+  if (status === 'active') return 'Active';
+  if (status === 'expiree') return 'Expirée';
+  return 'Non disponible';
 }
 
-.adh-offer-cover-discount {
-  position: absolute;
-  bottom: 10px;
-  right: 10px;
-  background: #16a34a;
-  color: white;
-  font-size: 1.0625rem;
-  font-weight: 700;
-  padding: 5px 12px;
-  border-radius: 8px;
-  letter-spacing: -0.02em;
-  font-variant-numeric: tabular-nums;
-  box-shadow: 0 4px 12px -2px rgba(22, 163, 74, 0.45),
-              0 0 0 1px rgba(22, 163, 74, 0.20);
+function getDaysLeft(date: string) {
+  const today = new Date();
+  const endDate = new Date(date);
+  today.setHours(0, 0, 0, 0);
+  endDate.setHours(0, 0, 0, 0);
+  return Math.ceil((endDate.getTime() - today.getTime()) / 86400000);
 }
 
-.adh-offer-card-body {
-  padding: 16px 18px 18px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  flex: 1;
-}
-.adh-offer-avantage {
-  font-size: 0.8125rem;
-  color: #15803d;
-  font-weight: 600;
-  margin-top: -4px;
-}
-.adh-offer-actions {
-  display: flex;
-  gap: 8px;
-  margin-top: auto;
-  padding-top: 4px;
-  flex-wrap: wrap;
+function isExpiringSoon(convention: Convention) {
+  const daysLeft = getDaysLeft(convention.dateFin);
+  return daysLeft > 0 && daysLeft <= 60;
 }
 
-.adh-offer-supplier {
-  font-size: 0.9375rem;
-  font-weight: 600;
-  color: var(--adh-text-1);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  letter-spacing: -0.01em;
+function formatDate(date: string) {
+  return new Intl.DateTimeFormat('fr-FR', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  }).format(new Date(date));
 }
-.adh-offer-desc {
-  margin: 0;
-  font-size: 0.8125rem;
-  color: var(--adh-text-2);
-  line-height: 1.5;
-}
-.adh-offer-conditions {
-  font-size: 0.75rem;
-  color: var(--adh-text-3);
-  line-height: 1.5;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-.adh-offer-conditions-label {
-  font-weight: 600;
-  color: var(--adh-text-2);
-}
-`;

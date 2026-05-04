@@ -37,6 +37,18 @@ public class TicketRestaurant {
     @JoinColumn(name = "adherent_id")
     private User adherent;
 
+    /** Parent stock order — nullable for legacy/standalone tickets. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "bon_commande_id")
+    private BonCommande bonCommande;
+
     @Column(name = "date_emission", nullable = false)
     private LocalDate dateEmission;
+
+    /** Set when the treasurer assigns the ticket to an adhérent. */
+    @Column(name = "date_attribution")
+    private LocalDate dateAttribution;
+
+    @Column(name = "date_decision")
+    private LocalDate dateDecision;
 }

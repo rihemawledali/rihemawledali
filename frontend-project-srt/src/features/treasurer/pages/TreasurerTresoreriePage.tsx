@@ -2,24 +2,80 @@
    Treasurer — Trésorerie (état des comptes)
    ============================================ */
 
-import { useQuery } from '@tanstack/react-query';
-import { Wallet, ArrowDownToLine, ArrowUpFromLine, Building2 } from 'lucide-react';
+import { useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Wallet, ArrowDownToLine, ArrowUpFromLine, Building2, Plus, Pencil, Trash2 } from 'lucide-react';
 import { PageHeader } from '../../../components/layout/PageHeader';
 import { StatCard } from '../../../components/charts/StatCard';
 import { ChartCard } from '../../../components/charts/ChartCard';
 import { DataTable, type Column } from '../../../components/data/DataTable';
+import { Modal } from '../../../components/data/Modal';
+import { ConfirmDialog } from '../../../components/data/ConfirmDialog';
+import { Button } from '../../../components/ui/Button';
+import { useToast } from '../../../components/feedback/useToast';
 import { formatCurrency, formatDate } from '../../../lib/formatters';
 import { treasurerTresorerieApi } from '../api/treasurerListApi';
 import { treasurerApi } from '../api/treasurerApi';
+import { CompteBancaireForm } from '../forms/CompteBancaireForm';
 import type { CompteBancaire } from '../../../types/domain';
+import type { CompteBancaireFormValues } from '../../../lib/validators';
 import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
 } from 'recharts';
 import '../../dashboard/pages/OverviewPage.css';
 
 export function TreasurerTresoreriePage() {
+  const qc = useQueryClient();
+  const toast = useToast();
   const snap = useQuery({ queryKey: ['treasurer', 'tresorerie'], queryFn: treasurerTresorerieApi.snapshot });
   const cashflow = useQuery({ queryKey: ['treasurer', 'cashflow'], queryFn: treasurerApi.getCashflow });
+
+  const [creating, setCreating] = useState(false);
+  const [editing, setEditing] = useState<CompteBancaire | null>(null);
+  const [deleting, setDeleting] = useState<CompteBancaire | null>(null);
+
+  const invalidate = () => {
+    qc.invalidateQueries({ queryKey: ['treasurer', 'tresorerie'] });
+    qc.invalidateQueries({ queryKey: ['treasurer', 'stats'] });
+    qc.invalidateQueries({ queryKey: ['dashboard'] });
+  };
+
+  /** Map a REST error body to a human-readable toast message. */
+  const toastError = (fallback: string) => (err: unknown) => {
+    const msg = extractErrorMessage(err) ?? fallback;
+    toast.push({ title: msg, variant: 'error' });
+  };
+
+  const createMut = useMutation({
+    mutationFn: (v: CompteBancaireFormValues) => treasurerTresorerieApi.createCompte(v),
+    onSuccess: () => {
+      setCreating(false);
+      invalidate();
+      toast.push({ title: 'Compte bancaire créé', variant: 'success' });
+    },
+    onError: toastError('Création impossible.'),
+  });
+
+  const updateMut = useMutation({
+    mutationFn: ({ id, v }: { id: string; v: CompteBancaireFormValues }) =>
+      treasurerTresorerieApi.updateCompte(id, v),
+    onSuccess: () => {
+      setEditing(null);
+      invalidate();
+      toast.push({ title: 'Compte mis à jour', variant: 'success' });
+    },
+    onError: toastError('Mise à jour impossible.'),
+  });
+
+  const deleteMut = useMutation({
+    mutationFn: (id: string) => treasurerTresorerieApi.deleteCompte(id),
+    onSuccess: () => {
+      setDeleting(null);
+      invalidate();
+      toast.push({ title: 'Compte supprimé', variant: 'success' });
+    },
+    onError: toastError('Suppression impossible.'),
+  });
 
   const compteColumns: Column<CompteBancaire>[] = [
     {
@@ -57,6 +113,11 @@ export function TreasurerTresoreriePage() {
         title="Trésorerie"
         description="État de la trésorerie en temps réel"
         breadcrumb={['Trésorerie', 'Finance', 'Trésorerie']}
+        actions={(
+          <Button onClick={() => setCreating(true)}>
+            <Plus size={16} /> Nouveau compte
+          </Button>
+        )}
       />
 
       <div className="overview-stats">
@@ -132,8 +193,68 @@ export function TreasurerTresoreriePage() {
           loading={snap.isLoading}
           rowKey={(c) => c.id}
           emptyTitle="Aucun compte enregistré"
+          emptyDescription="Créez un compte bancaire pour alimenter la trésorerie."
+          rowActions={(c) => (
+            <div style={{ display: 'inline-flex', gap: 'var(--space-2)', justifyContent: 'flex-end' }}>
+              <Button variant="secondary" size="sm" onClick={() => setEditing(c)} aria-label="Modifier">
+                <Pencil size={14} />
+              </Button>
+              <Button variant="danger" size="sm" onClick={() => setDeleting(c)} aria-label="Supprimer">
+                <Trash2 size={14} />
+              </Button>
+            </div>
+          )}
+          actionsWidth="110px"
         />
       </section>
+
+      {/* Create */}
+      <Modal open={creating} onClose={() => setCreating(false)} title="Nouveau compte bancaire">
+        <CompteBancaireForm
+          onSubmit={(v) => createMut.mutateAsync(v)}
+          onCancel={() => setCreating(false)}
+          submitting={createMut.isPending}
+        />
+      </Modal>
+
+      {/* Edit */}
+      <Modal open={!!editing} onClose={() => setEditing(null)} title="Modifier le compte bancaire">
+        {editing && (
+          <CompteBancaireForm
+            initial={editing}
+            onSubmit={(v) => updateMut.mutateAsync({ id: editing.id, v })}
+            onCancel={() => setEditing(null)}
+            submitting={updateMut.isPending}
+          />
+        )}
+      </Modal>
+
+      {/* Delete confirmation */}
+      <ConfirmDialog
+        open={!!deleting}
+        title="Supprimer ce compte ?"
+        message={
+          deleting
+            ? `Confirmer la suppression de « ${deleting.banque} — ${deleting.iban} » ? Cette action est irréversible.`
+            : ''
+        }
+        confirmLabel="Supprimer"
+        destructive
+        loading={deleteMut.isPending}
+        onConfirm={() => deleting && deleteMut.mutate(deleting.id)}
+        onCancel={() => setDeleting(null)}
+      />
     </div>
   );
+}
+
+/**
+ * Extract a human-readable message from an apiClient error.
+ * apiClient throws `ApiError extends Error` where `.message` is already
+ * the backend's `error` field (see `lib/apiClient.ts`).
+ */
+function extractErrorMessage(err: unknown): string | null {
+  if (err instanceof Error && err.message) return err.message;
+  if (typeof err === 'string') return err;
+  return null;
 }

@@ -1,28 +1,40 @@
-/* ============================================
-   Adherent Profile — Refined design
-   ============================================ */
-
 import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import type { LucideIcon } from 'lucide-react';
 import {
-  User, Mail, Phone, Calendar, Wallet, Users, Edit2, KeyRound, ShieldCheck,
-  Hash, Heart, BadgeCheck, Headphones, MessageCircle,
+  BadgeCheck,
+  Calendar,
+  Edit2,
+  Hash,
+  Headphones,
+  Heart,
+  KeyRound,
+  Mail,
+  MessageCircle,
+  Phone,
+  ShieldCheck,
+  User,
+  Users,
+  Wallet,
 } from 'lucide-react';
 import { PageHeader } from '../../../components/layout/PageHeader';
 import { Button } from '../../../components/ui/Button';
 import { Modal } from '../../../components/data/Modal';
 import { useToast } from '../../../components/feedback/useToast';
 import {
-  profileApi, type ProfileUpdateRequest, type ChangePasswordRequest,
+  profileApi,
+  type ChangePasswordRequest,
+  type ProfileUpdateRequest,
 } from '../api/profileApi';
-import { ProfileEditForm } from '../forms/ProfileEditForm';
 import { ChangePasswordForm } from '../forms/ChangePasswordForm';
+import { ProfileEditForm } from '../forms/ProfileEditForm';
 import type { ProfileFormValues } from '../validators';
+import './AdherentAccountPages.css';
 
 export function AdherentProfilePage() {
   const [editing, setEditing] = useState(false);
-  const [changingPwd, setChangingPwd] = useState(false);
-  const qc = useQueryClient();
+  const [changingPassword, setChangingPassword] = useState(false);
+  const queryClient = useQueryClient();
   const toast = useToast();
 
   const { data: profile, isLoading } = useQuery({
@@ -31,9 +43,9 @@ export function AdherentProfilePage() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: (req: ProfileUpdateRequest) => profileApi.updateProfile(req),
+    mutationFn: (request: ProfileUpdateRequest) => profileApi.updateProfile(request),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['adherent-profile'] });
+      queryClient.invalidateQueries({ queryKey: ['adherent-profile'] });
       setEditing(false);
       toast.push({ title: 'Profil mis à jour', variant: 'success' });
     },
@@ -43,14 +55,14 @@ export function AdherentProfilePage() {
   });
 
   const passwordMutation = useMutation({
-    mutationFn: (req: ChangePasswordRequest) => profileApi.changePassword(req),
+    mutationFn: (request: ChangePasswordRequest) => profileApi.changePassword(request),
     onSuccess: () => {
-      setChangingPwd(false);
+      setChangingPassword(false);
       toast.push({ title: 'Mot de passe modifié', variant: 'success' });
     },
-    onError: (err) => {
+    onError: (error) => {
       toast.push({
-        title: err instanceof Error ? err.message : 'Échec du changement',
+        title: error instanceof Error ? error.message : 'Échec du changement',
         variant: 'error',
       });
     },
@@ -70,124 +82,124 @@ export function AdherentProfilePage() {
 
   if (isLoading || !profile) {
     return (
-      <div>
-        <PageHeader title="Mon profil" description="Chargement…" />
-        <div className="adh-profile-grid">
-          <div className="skeleton" style={{ height: 460 }} />
-          <div className="skeleton" style={{ height: 320 }} />
+      <div className="adh-account-page">
+        <PageHeader title="Mon profil" description="Chargement..." />
+        <div className="adh-profile-shell">
+          <div className="adh-profile-main-skeleton skeleton" />
+          <div className="adh-profile-side-skeleton skeleton" />
         </div>
       </div>
     );
   }
 
-  const initials = `${profile.prenom?.[0] || ''}${profile.nom?.[0] || ''}`.toUpperCase();
+  const initials = `${profile.prenom?.[0] || ''}${profile.nom?.[0] || ''}`.toUpperCase() || 'A';
   const fullName = `${profile.prenom} ${profile.nom}`;
-  const memberSince = profile.createdAt
-    ? new Date(profile.createdAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
-    : '—';
+  const memberSince = profile.createdAt ? formatLongDate(profile.createdAt) : 'Non renseigné';
 
-  const rows = [
-    { icon: User,     label: 'Nom complet',       value: fullName },
-    { icon: Hash,     label: 'Matricule',         value: profile.matricule || '—' },
-    { icon: Mail,     label: 'Email',             value: profile.email },
-    { icon: Phone,    label: 'Téléphone',         value: profile.telephone || '—' },
-    { icon: Calendar, label: 'Membre depuis',     value: memberSince },
-    { icon: Heart,    label: 'Situation',         value: profile.marie ? 'Marié(e)' : 'Célibataire' },
-    { icon: Users,    label: 'Enfants à charge',  value: String(profile.enfants ?? 0) },
-    { icon: Wallet,   label: 'Salaire mensuel',   value: `${(profile.salaire || 0).toLocaleString('fr-FR')} TND` },
+  const rows: Array<{ icon: LucideIcon; label: string; value: string }> = [
+    { icon: User, label: 'Nom complet', value: fullName },
+    { icon: Hash, label: 'Matricule', value: profile.matricule || 'Non renseigné' },
+    { icon: Mail, label: 'Email', value: profile.email },
+    { icon: Phone, label: 'Téléphone', value: profile.telephone || 'Non renseigné' },
+    { icon: Calendar, label: 'Membre depuis', value: memberSince },
+    { icon: Heart, label: 'Situation', value: profile.marie ? 'Marié(e)' : 'Célibataire' },
+    { icon: Users, label: 'Enfants à charge', value: String(profile.enfants ?? 0) },
+    { icon: Wallet, label: 'Salaire mensuel', value: formatCurrency(profile.salaire || 0) },
   ];
 
   return (
-    <div>
+    <div className="adh-account-page">
       <PageHeader
         title="Mon profil"
-        description="Vos informations personnelles et la sécurité du compte."
-        actions={
+        description="Vos informations personnelles et les paramètres de sécurité du compte."
+        actions={(
           <Button onClick={() => setEditing(true)}>
-            <Edit2 size={15} style={{ marginRight: 8 }} />
+            <Edit2 size={15} className="adh-account-btn-icon" />
             Modifier
           </Button>
-        }
+        )}
       />
 
-      <div className="adh-profile-grid">
-        {/* ---- Main profile card ---- */}
-        <article className="adh-profile-card">
-          <div className="adh-profile-banner" />
-          <div className="adh-profile-header">
-            <div className="adh-profile-avatar">{initials || 'A'}</div>
-            <div style={{ flex: 1, minWidth: 0, paddingBottom: 4 }}>
-              <h2 style={{
-                margin: '0 0 4px',
-                fontSize: '1.125rem',
-                fontWeight: 700,
-                color: 'var(--adh-text-1)',
-                letterSpacing: '-0.015em',
-              }}>{fullName}</h2>
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                <span className="adh-profile-tag">
-                  <BadgeCheck size={11} /> Adhérent
+      <div className="adh-profile-shell">
+        <article className="adh-profile-main-card">
+          <div className="adh-profile-identity">
+            <div className="adh-profile-avatar-large">{initials}</div>
+            <div className="adh-profile-heading">
+              <span className="adh-account-kicker">Compte adhérent</span>
+              <h2>{fullName}</h2>
+              <div className="adh-profile-badges">
+                <span className="adh-profile-badge">
+                  <BadgeCheck size={13} />
+                  Adhérent
                 </span>
-                <span
-                  className={`adh-profile-status-pill ${profile.status === 'actif' ? 'active' : 'inactive'}`}
-                >
+                <span className={`adh-profile-status ${profile.status === 'actif' ? 'is-active' : 'is-inactive'}`}>
                   {profile.status === 'actif' ? 'Compte actif' : 'Compte inactif'}
                 </span>
               </div>
             </div>
           </div>
 
-          <div className="adh-profile-list">
-            {rows.map((r, i) => {
-              const Icon = r.icon;
-              return (
-                <div key={i} className="adh-profile-row">
-                  <span className="adh-profile-row-icon"><Icon size={15} /></span>
-                  <span className="adh-profile-row-label">{r.label}</span>
-                  <span className="adh-profile-row-value">{r.value}</span>
+          <div className="adh-profile-info-grid">
+            {rows.map(({ icon: Icon, label, value }) => (
+              <div key={label} className="adh-profile-info-item">
+                <span className="adh-profile-info-icon">
+                  <Icon size={16} />
+                </span>
+                <div>
+                  <span>{label}</span>
+                  <strong>{value}</strong>
                 </div>
-              );
-            })}
+              </div>
+            ))}
           </div>
         </article>
 
-        {/* ---- Side: security + help ---- */}
-        <aside className="adh-profile-side">
-          <section className="adh-profile-side-section">
-            <h3 className="adh-profile-side-title"><ShieldCheck size={13} /> Sécurité</h3>
-            <p className="adh-profile-side-text">
-              Votre mot de passe est <strong>chiffré et privé</strong>. Pensez à le renouveler
-              régulièrement et utilisez un mot de passe long et unique.
+        <aside className="adh-profile-aside">
+          <section className="adh-account-panel">
+            <header className="adh-account-panel-head">
+              <span className="adh-account-panel-icon is-info">
+                <ShieldCheck size={18} />
+              </span>
+              <div>
+                <h3>Sécurité</h3>
+                <p>Accès et mot de passe</p>
+              </div>
+            </header>
+            <p className="adh-account-panel-copy">
+              Gardez un mot de passe unique et mettez-le à jour lorsque nécessaire.
             </p>
-            <Button variant="secondary" size="sm" onClick={() => setChangingPwd(true)} style={{ marginTop: 10 }}>
-              <KeyRound size={14} style={{ marginRight: 6 }} />
+            <Button variant="secondary" size="sm" onClick={() => setChangingPassword(true)}>
+              <KeyRound size={14} className="adh-account-btn-icon" />
               Changer mon mot de passe
             </Button>
           </section>
 
-          <section className="adh-profile-side-section">
-            <h3 className="adh-profile-side-title"><Headphones size={13} /> Besoin d'aide ?</h3>
-            <p className="adh-profile-side-text">
-              Pour toute modification nécessitant une vérification (matricule, salaire,
-              situation familiale), contactez l'administration de l'Amicale SRT.
+          <section className="adh-account-panel">
+            <header className="adh-account-panel-head">
+              <span className="adh-account-panel-icon is-success">
+                <Headphones size={18} />
+              </span>
+              <div>
+                <h3>Assistance</h3>
+                <p>Contact Amicale SRT</p>
+              </div>
+            </header>
+            <p className="adh-account-panel-copy">
+              Pour les données sensibles comme le matricule, le salaire ou la situation familiale,
+              contactez l’administration.
             </p>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10 }}>
-              <a
-                href="mailto:contact@amicale-srt.tn"
-                className="adh-profile-tag"
-                style={{ textDecoration: 'none', cursor: 'pointer' }}
-              >
-                <Mail size={11} /> Email
+            <div className="adh-profile-contact-row">
+              <a href="mailto:contact@amicale-srt.tn">
+                <Mail size={13} />
+                Email
               </a>
-              <a
-                href="tel:+21671000000"
-                className="adh-profile-tag"
-                style={{ textDecoration: 'none', cursor: 'pointer' }}
-              >
-                <Phone size={11} /> Téléphone
+              <a href="tel:+21671000000">
+                <Phone size={13} />
+                Téléphone
               </a>
-              <span className="adh-profile-tag">
-                <MessageCircle size={11} /> 9h–17h
+              <span>
+                <MessageCircle size={13} />
+                9h-17h
               </span>
             </div>
           </section>
@@ -204,17 +216,34 @@ export function AdherentProfilePage() {
       </Modal>
 
       <Modal
-        open={changingPwd}
-        onClose={() => setChangingPwd(false)}
+        open={changingPassword}
+        onClose={() => setChangingPassword(false)}
         title="Changer mon mot de passe"
         size="sm"
       >
         <ChangePasswordForm
-          onSubmit={async (vals) => { await passwordMutation.mutateAsync(vals); }}
-          onCancel={() => setChangingPwd(false)}
+          onSubmit={async (values) => {
+            await passwordMutation.mutateAsync(values);
+          }}
+          onCancel={() => setChangingPassword(false)}
           submitting={passwordMutation.isPending}
         />
       </Modal>
     </div>
   );
+}
+
+function formatLongDate(date: string) {
+  return new Intl.DateTimeFormat('fr-FR', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  }).format(new Date(date));
+}
+
+function formatCurrency(value: number) {
+  return new Intl.NumberFormat('fr-FR', {
+    style: 'currency',
+    currency: 'TND',
+  }).format(value);
 }

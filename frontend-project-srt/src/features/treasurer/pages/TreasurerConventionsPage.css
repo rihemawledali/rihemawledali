@@ -1,0 +1,459 @@
+.treasurer-conventions-page {
+  display: grid;
+  gap: var(--space-5);
+}
+
+.convention-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+.convention-metric,
+.convention-workspace {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-xs);
+}
+
+.convention-workspace {
+  padding: var(--space-5);
+}
+
+.convention-workspace-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.convention-eyebrow {
+  display: block;
+  margin-bottom: var(--space-1);
+  color: var(--color-text-tertiary);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  text-transform: uppercase;
+}
+
+.convention-workspace-header h2 {
+  margin: 0;
+  color: var(--color-text-primary);
+  font-size: var(--font-size-lg);
+  line-height: var(--line-height-tight);
+}
+
+.convention-workspace-header p {
+  margin: 3px 0 0;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.convention-metric {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 96px;
+  padding: var(--space-4);
+}
+
+.convention-metric--primary {
+  border-color: var(--color-primary-100);
+  background: linear-gradient(135deg, var(--color-primary-50), var(--color-surface));
+}
+
+.convention-metric--warning {
+  border-color: var(--color-warning-100);
+  background: linear-gradient(135deg, var(--color-warning-50), var(--color-surface));
+}
+
+.convention-metric--success {
+  border-color: var(--color-success-100);
+  background: linear-gradient(135deg, var(--color-success-50), var(--color-surface));
+}
+
+.convention-metric--error {
+  border-color: var(--color-error-100);
+  background: linear-gradient(135deg, var(--color-error-50), var(--color-surface));
+}
+
+.convention-metric > span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
+  color: var(--color-primary-700);
+  background: var(--color-primary-50);
+  border-radius: var(--radius-md);
+}
+
+.convention-metric--warning > span {
+  color: var(--color-warning-700);
+  background: var(--color-warning-50);
+}
+
+.convention-metric--success > span {
+  color: var(--color-success-700);
+  background: var(--color-success-50);
+}
+
+.convention-metric--error > span {
+  color: var(--color-error-700);
+  background: var(--color-error-50);
+}
+
+.convention-metric p {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  text-transform: uppercase;
+}
+
+.convention-metric strong {
+  display: block;
+  margin-top: 3px;
+  color: var(--color-text-primary);
+  font-size: var(--font-size-base);
+  overflow-wrap: anywhere;
+}
+
+.convention-workspace {
+  background:
+    linear-gradient(180deg, rgba(248, 250, 252, 0.86), rgba(255, 255, 255, 1) 130px),
+    var(--color-surface);
+}
+
+.convention-toolbar {
+  margin: var(--space-4) 0;
+}
+
+.convention-reference-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  line-height: 1.35;
+}
+
+.convention-reference-cell span:last-child,
+.convention-member-cell span,
+.convention-muted {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.convention-member-cell {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 220px;
+}
+
+.convention-member-cell > div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.convention-member-cell strong,
+.convention-member-cell span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.convention-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
+  color: var(--color-primary-700);
+  background: var(--color-primary-50);
+  border: 1px solid var(--color-primary-100);
+  border-radius: var(--radius-full);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+}
+
+.convention-avatar--xl {
+  width: 58px;
+  height: 58px;
+  flex-basis: 58px;
+  font-size: var(--font-size-md);
+}
+
+.convention-cell {
+  display: flex;
+  min-width: 240px;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.convention-cell > span {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.convention-cell small {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+}
+
+.convention-row-actions,
+.convention-modal-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.convention-row-actions .btn {
+  min-width: 86px;
+}
+
+.convention-pagination {
+  margin-top: var(--space-3);
+}
+
+.convention-detail {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.convention-detail-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-5);
+  background: linear-gradient(135deg, var(--color-primary-50), var(--color-surface));
+  border: 1px solid var(--color-primary-100);
+  border-radius: var(--radius-md);
+}
+
+.convention-detail-person {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.convention-detail-person h3 {
+  margin: 0;
+  color: var(--color-text-primary);
+  font-size: var(--font-size-xl);
+  line-height: var(--line-height-tight);
+}
+
+.convention-detail-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.convention-detail-chips span {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: 26px;
+  padding: 2px var(--space-2);
+  color: var(--color-text-secondary);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+}
+
+.convention-detail-metrics,
+.convention-detail-layout {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.convention-detail-metrics {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.convention-detail-layout {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.convention-detail-metric,
+.convention-detail-panel,
+.convention-note {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.convention-detail-metric {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+  padding: var(--space-3);
+}
+
+.convention-detail-metric > span,
+.convention-detail-panel header > span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
+  color: var(--color-primary-700);
+  background: var(--color-primary-50);
+  border-radius: var(--radius-md);
+}
+
+.convention-detail-metric--primary {
+  border-color: var(--color-primary-100);
+  background: var(--color-primary-50);
+}
+
+.convention-detail-metric--success {
+  border-color: var(--color-success-100);
+  background: var(--color-success-50);
+}
+
+.convention-detail-metric--success > span {
+  color: var(--color-success-700);
+  background: var(--color-success-50);
+}
+
+.convention-detail-metric p,
+.convention-detail-field span {
+  margin: 0;
+  color: var(--color-text-tertiary);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  text-transform: uppercase;
+}
+
+.convention-detail-metric strong {
+  display: block;
+  margin-top: 2px;
+  color: var(--color-text-primary);
+  font-size: var(--font-size-base);
+  overflow-wrap: anywhere;
+}
+
+.convention-detail-panel,
+.convention-note {
+  padding: var(--space-4);
+}
+
+.convention-detail-panel header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.convention-detail-panel h4,
+.convention-note h4 {
+  margin: 0;
+  color: var(--color-text-primary);
+  font-size: var(--font-size-base);
+}
+
+.convention-note h4 {
+  margin-bottom: var(--space-3);
+}
+
+.convention-detail-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: var(--space-3);
+}
+
+.convention-detail-field {
+  min-width: 0;
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--color-border-light);
+}
+
+.convention-detail-field div {
+  margin-top: var(--space-1);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+  overflow-wrap: anywhere;
+}
+
+.convention-note p {
+  margin: 0;
+  color: var(--color-text-primary);
+  line-height: var(--line-height-normal);
+}
+
+.convention-reject-body {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.convention-reject-body p {
+  margin: 0;
+  color: var(--color-text-secondary);
+}
+
+.convention-reject-body label {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.convention-reject-body label span {
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+}
+
+.convention-reject-body textarea {
+  min-height: 86px;
+  padding: 8px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  resize: vertical;
+  font: inherit;
+}
+
+@media (max-width: 1180px) {
+  .convention-metrics-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .convention-workspace {
+    padding: var(--space-4);
+  }
+
+  .convention-metrics-grid,
+  .convention-detail-layout,
+  .convention-detail-metrics {
+    grid-template-columns: 1fr;
+  }
+
+  .convention-workspace-header,
+  .convention-detail-header,
+  .convention-detail-person {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .convention-row-actions .btn,
+  .convention-modal-actions .btn {
+    min-width: 100%;
+  }
+}

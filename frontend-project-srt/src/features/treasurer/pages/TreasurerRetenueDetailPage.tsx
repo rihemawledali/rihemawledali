@@ -10,7 +10,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   ArrowLeft, Hash, User, Calendar, Wallet, ListChecks, FileText, BadgeCheck,
   CheckCircle2, ArrowRight, AlertTriangle, Building2, Banknote, HandCoins,
-  Download, Undo2,
+  Download, Undo2, Ticket,
 } from 'lucide-react';
 import { PageHeader } from '../../../components/layout/PageHeader';
 import { Button } from '../../../components/ui/Button';
@@ -66,12 +66,14 @@ const TYPE_LABEL: Record<RetenueLigneType, string> = {
   COTISATION: 'Cotisation',
   PRET: 'Prêt',
   CONVENTION: 'Convention',
+  TICKET_RESTAURANT: 'Ticket restaurant',
 };
 
 const TYPE_ICON: Record<RetenueLigneType, React.ReactNode> = {
   COTISATION: <HandCoins size={14} />,
   PRET: <Banknote size={14} />,
   CONVENTION: <Building2 size={14} />,
+  TICKET_RESTAURANT: <Ticket size={14} />,
 };
 
 function formatMonth(mois: number, annee: number): string {

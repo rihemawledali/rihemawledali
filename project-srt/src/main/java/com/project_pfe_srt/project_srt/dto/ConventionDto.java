@@ -19,6 +19,13 @@ public class ConventionDto {
     private String statut;
     private String description;
 
+    // ----- Mode d'avantage -----
+    private String typeConvention;
+    private String modeAvantage;
+    private Double tauxReduction;
+    private Double montantReduction;
+    private String descriptionAvantage;
+
     public static ConventionDto from(Convention c) {
         return ConventionDto.builder()
                 .id(c.getId().toString())
@@ -30,6 +37,11 @@ public class ConventionDto {
                 .remise(c.getRemise())
                 .statut(c.getStatut())
                 .description(c.getDescription())
+                .typeConvention(c.getTypeConvention())
+                .modeAvantage(c.getModeAvantage() == null ? null : c.getModeAvantage().name())
+                .tauxReduction(c.getTauxReduction())
+                .montantReduction(c.getMontantReduction())
+                .descriptionAvantage(c.getDescriptionAvantage())
                 .build();
     }
 }

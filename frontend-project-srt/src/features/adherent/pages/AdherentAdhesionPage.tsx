@@ -1,22 +1,25 @@
-/* ============================================
-   Adherent Adhesion Page
-   - Adhesion is automatic (no renewal action).
-   - Page shows current adhesion + history only.
-   ============================================ */
-
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import type { LucideIcon } from 'lucide-react';
 import {
-  BadgeCheck, Calendar, DollarSign, AlertTriangle, RefreshCw, History, Hash, Ban,
-  Clock,
+  AlertTriangle,
+  BadgeCheck,
+  Ban,
+  Calendar,
+  Clock3,
+  CreditCard,
+  Hash,
+  History,
+  RefreshCw,
 } from 'lucide-react';
 import { PageHeader } from '../../../components/layout/PageHeader';
 import { DataTable } from '../../../components/data/DataTable';
-import { StatusBadge } from '../../../components/data/StatusBadge';
 import { Modal } from '../../../components/data/Modal';
+import { StatusBadge } from '../../../components/data/StatusBadge';
 import { Button } from '../../../components/ui/Button';
 import { adhesionApi } from '../api/adhesionApi';
 import type { Adhesion } from '../../../types/domain';
+import './AdherentAccountPages.css';
 
 export function AdherentAdhesionPage() {
   const queryClient = useQueryClient();
@@ -41,173 +44,133 @@ export function AdherentAdhesionPage() {
     },
   });
 
-  const activeHistory = (history || []).filter((a) => a.statut === 'active');
-  const pendingDemande = (history || []).find((a) => a.statut === 'en_attente');
-
-  const daysUntilExpiry = adhesion?.dateFin
-    ? Math.ceil((new Date(adhesion.dateFin).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
-    : null;
-
-  const isExpiringSoon = daysUntilExpiry !== null && daysUntilExpiry <= 5 && daysUntilExpiry > 0;
-  const isExpired = daysUntilExpiry !== null && daysUntilExpiry <= 0;
+  const activeHistory = (history ?? []).filter((item) => item.statut === 'active');
+  const pendingDemande = (history ?? []).find((item) => item.statut === 'en_attente');
+  const expiryDays = adhesion?.dateFin ? getDaysUntil(adhesion.dateFin) : null;
+  const isExpiringSoon = expiryDays !== null && expiryDays <= 5 && expiryDays > 0;
+  const isExpired = expiryDays !== null && expiryDays <= 0;
 
   const historyColumns = [
     {
       key: 'dateDebut',
       header: 'Début',
-      cell: (a: Adhesion) => new Date(a.dateDebut).toLocaleDateString('fr-FR'),
+      cell: (item: Adhesion) => formatDate(item.dateDebut),
     },
     {
       key: 'dateFin',
       header: 'Fin',
-      cell: (a: Adhesion) => new Date(a.dateFin).toLocaleDateString('fr-FR'),
+      cell: (item: Adhesion) => formatDate(item.dateFin),
     },
     {
       key: 'montantCotisation',
       header: 'Cotisation',
-      cell: (a: Adhesion) => (
-        <span style={{ fontVariantNumeric: 'tabular-nums' }}>
-          {a.montantCotisation} TND/mois
-        </span>
-      ),
+      cell: (item: Adhesion) => <span className="adh-account-num">{formatCurrency(item.montantCotisation)} / mois</span>,
       align: 'right' as const,
     },
     {
       key: 'statut',
       header: 'Statut',
-      cell: (a: Adhesion) => <StatusBadge status={a.statut} />,
+      cell: (item: Adhesion) => <StatusBadge status={item.statut} />,
     },
   ];
 
   return (
-    <div>
+    <div className="adh-account-page">
       <PageHeader
         title="Mon adhésion"
-        description="Votre adhésion à l'Amicale SRT et son historique."
+        description="Votre statut d’adhésion à l’Amicale SRT et son historique."
       />
 
       {adhesionLoading ? (
-        <div className="skeleton" style={{ height: 220, borderRadius: 12, marginBottom: 16 }} />
+        <div className="adh-membership-skeleton skeleton" />
       ) : adhesion ? (
-        <section className="adherent-adhesion-card">
-          <div className="adherent-adhesion-header">
-            <div className="adherent-adhesion-icon">
-              <BadgeCheck size={26} />
+        <section className="adh-membership-card">
+          <header className="adh-membership-head">
+            <div className="adh-membership-title">
+              <span className="adh-membership-icon">
+                <BadgeCheck size={24} />
+              </span>
+              <div>
+                <span className="adh-account-kicker">Statut adhésion</span>
+                <h2>Adhésion active</h2>
+                <p>Renouvellement automatique avec retenue mensuelle.</p>
+              </div>
             </div>
-            <div className="adherent-adhesion-info">
-              <h2>Adhésion active</h2>
-              <p>Renouvellement automatique chaque mois.</p>
-            </div>
+
             {(isExpiringSoon || isExpired) && (
-              <div className={`adherent-adhesion-alert ${isExpired ? 'expired' : 'warning'}`}>
+              <span className={`adh-membership-alert ${isExpired ? 'is-danger' : 'is-warning'}`}>
                 <AlertTriangle size={16} />
-                <span>
-                  {isExpired
-                    ? 'Adhésion expirée — renouvellement en cours'
-                    : `Renouvellement dans ${daysUntilExpiry} j`}
-                </span>
-              </div>
+                {isExpired ? 'Renouvellement en cours' : `Renouvellement dans ${expiryDays} j`}
+              </span>
             )}
+          </header>
+
+          <div className="adh-membership-detail-grid">
+            <MembershipDetail icon={Hash} label="Référence" value={adhesion.id} />
+            <MembershipDetail icon={Calendar} label="Date de début" value={formatDate(adhesion.dateDebut)} />
+            <MembershipDetail icon={Calendar} label="Date de fin" value={formatDate(adhesion.dateFin)} />
+            <MembershipDetail icon={CreditCard} label="Cotisation mensuelle" value={formatCurrency(adhesion.montantCotisation)} />
           </div>
 
-          <div className="adherent-adhesion-details">
-            <div className="adherent-adhesion-detail">
-              <Hash size={16} />
-              <div>
-                <span className="label">Référence</span>
-                <span className="value">{adhesion.id}</span>
-              </div>
-            </div>
-            <div className="adherent-adhesion-detail">
-              <Calendar size={16} />
-              <div>
-                <span className="label">Date de début</span>
-                <span className="value">
-                  {new Date(adhesion.dateDebut).toLocaleDateString('fr-FR')}
-                </span>
-              </div>
-            </div>
-            <div className="adherent-adhesion-detail">
-              <Calendar size={16} />
-              <div>
-                <span className="label">Date de fin</span>
-                <span className="value">
-                  {new Date(adhesion.dateFin).toLocaleDateString('fr-FR')}
-                </span>
-              </div>
-            </div>
-            <div className="adherent-adhesion-detail">
-              <DollarSign size={16} />
-              <div>
-                <span className="label">Cotisation mensuelle</span>
-                <span className="value">{adhesion.montantCotisation} TND</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="adh-alert info" style={{ marginTop: 16, marginBottom: 0 }}>
-            <RefreshCw size={16} className="adh-alert-icon" />
+          <div className="adh-membership-note">
+            <RefreshCw size={17} />
             <div>
-              <strong>Renouvellement automatique chaque mois.</strong> Votre adhésion est
-              reconduite chaque mois sans intervention de votre part. La cotisation de{' '}
-              <strong>{adhesion.montantCotisation} TND</strong> est prélevée automatiquement sur
-              votre salaire en début de mois.
+              <strong>Renouvellement automatique</strong>
+              <span>
+                La cotisation de {formatCurrency(adhesion.montantCotisation)} est prélevée sur votre salaire
+                au début de chaque mois.
+              </span>
             </div>
           </div>
 
           {adhesion.statut === 'active' && (
-            <div className="adherent-adhesion-actions" style={{ marginTop: 16, display: 'flex', justifyContent: 'flex-end' }}>
-              <Button
-                variant="danger"
-                onClick={() => setCancelOpen(true)}
-              >
-                <Ban size={16} style={{ marginRight: 6 }} /> Annuler mon adhésion
+            <div className="adh-membership-actions">
+              <Button variant="danger" onClick={() => setCancelOpen(true)}>
+                <Ban size={16} className="adh-account-btn-icon" />
+                Annuler mon adhésion
               </Button>
             </div>
           )}
         </section>
       ) : pendingDemande ? (
-        <section className="adh-empty-card">
+        <section className="adh-empty-card adh-account-empty">
           <div className="adh-empty-icon">
-            <Clock size={22} />
+            <Clock3 size={24} />
           </div>
           <h3>Demande en cours de validation</h3>
           <p>
-            Votre demande d'adhésion a bien été soumise le{' '}
-            <strong>{new Date(pendingDemande.dateDebut).toLocaleDateString('fr-FR')}</strong>.
-            Elle est actuellement <strong>en attente de validation</strong> par le trésorier.
-            Dès qu'elle sera acceptée, la cotisation mensuelle de{' '}
-            <strong>{pendingDemande.montantCotisation} TND</strong> sera automatiquement
-            prélevée sur votre salaire.
+            Votre demande soumise le {formatDate(pendingDemande.dateDebut)} est en attente de validation.
+            La cotisation de {formatCurrency(pendingDemande.montantCotisation)} sera prélevée après acceptation.
           </p>
         </section>
       ) : (
-        <section className="adh-empty-card">
+        <section className="adh-empty-card adh-account-empty">
           <div className="adh-empty-icon">
-            <AlertTriangle size={22} />
+            <AlertTriangle size={24} />
           </div>
           <h3>Aucune adhésion enregistrée</h3>
-          <p>
-            Aucune adhésion n'est associée à votre compte. Pour toute question,
-            contactez le trésorier de l'Amicale SRT.
-          </p>
+          <p>Aucune adhésion n’est associée à votre compte pour le moment.</p>
         </section>
       )}
 
-      <section className="adh-card" style={{ marginTop: 16 }}>
-        <div className="adh-card-header">
-          <h3 className="adh-card-title">
-            <History size={16} /> Historique des adhésions
-          </h3>
-          <span className="adh-card-subtitle">
-            {activeHistory.length} période{activeHistory.length > 1 ? 's' : ''} active{activeHistory.length > 1 ? 's' : ''}
-          </span>
-        </div>
+      <section className="adh-account-section-card">
+        <header className="adh-account-section-head">
+          <div>
+            <h3>
+              <History size={17} />
+              Historique des adhésions
+            </h3>
+            <p>
+              {activeHistory.length} période{activeHistory.length > 1 ? 's' : ''} active{activeHistory.length > 1 ? 's' : ''}
+            </p>
+          </div>
+        </header>
+
         <DataTable
           columns={historyColumns}
           rows={activeHistory}
           loading={historyLoading}
-          rowKey={(a) => a.id}
+          rowKey={(item) => item.id}
           emptyTitle="Aucune adhésion active"
           emptyDescription="Aucune période active à afficher pour le moment."
         />
@@ -217,9 +180,9 @@ export function AdherentAdhesionPage() {
         open={cancelOpen}
         onClose={() => setCancelOpen(false)}
         title="Annuler mon adhésion"
-        description="Cette action met fin à votre adhésion mensuelle. Vous perdrez l'accès aux avantages de l'Amicale."
+        description="Cette action met fin à votre adhésion mensuelle."
         footer={(
-          <>
+          <div className="adh-account-modal-actions">
             <Button variant="secondary" onClick={() => setCancelOpen(false)} disabled={cancelMutation.isPending}>
               Garder mon adhésion
             </Button>
@@ -230,20 +193,54 @@ export function AdherentAdhesionPage() {
             >
               Confirmer l’annulation
             </Button>
-          </>
+          </div>
         )}
       >
-        <p style={{ margin: 0, color: 'var(--adh-text-2)' }}>
-          Êtes-vous sûr de vouloir annuler votre adhésion à l'Amicale SRT&nbsp;? Le prélèvement
-          mensuel de <strong>{adhesion?.montantCotisation} TND</strong> sera arrêté au prochain
-          cycle.
-        </p>
-        {cancelMutation.isError && (
-          <p style={{ marginTop: 12, color: 'var(--color-error-600, #dc2626)' }}>
-            Une erreur est survenue. Veuillez réessayer.
+        <div className="adh-account-confirm">
+          <p>
+            Confirmez-vous l’annulation de votre adhésion à l’Amicale SRT ?
+            Le prélèvement mensuel de <strong>{formatCurrency(adhesion?.montantCotisation ?? 0)}</strong> sera arrêté au prochain cycle.
           </p>
-        )}
+          {cancelMutation.isError && <span>Une erreur est survenue. Veuillez réessayer.</span>}
+        </div>
       </Modal>
     </div>
   );
+}
+
+function MembershipDetail({ icon: Icon, label, value }: { icon: LucideIcon; label: string; value: string }) {
+  return (
+    <div className="adh-membership-detail">
+      <span>
+        <Icon size={16} />
+      </span>
+      <div>
+        <small>{label}</small>
+        <strong>{value}</strong>
+      </div>
+    </div>
+  );
+}
+
+function getDaysUntil(date: string) {
+  const today = new Date();
+  const endDate = new Date(date);
+  today.setHours(0, 0, 0, 0);
+  endDate.setHours(0, 0, 0, 0);
+  return Math.ceil((endDate.getTime() - today.getTime()) / 86400000);
+}
+
+function formatDate(date: string) {
+  return new Intl.DateTimeFormat('fr-FR', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  }).format(new Date(date));
+}
+
+function formatCurrency(value: number) {
+  return new Intl.NumberFormat('fr-FR', {
+    style: 'currency',
+    currency: 'TND',
+  }).format(value);
 }

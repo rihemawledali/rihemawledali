@@ -194,13 +194,25 @@ export function PaiementsPage() {
   const payFacture = useMutation({
     mutationFn: ({ factureId, payload }: { factureId: string; payload: { reference: string; montant: number; mode: Paiement['mode']; description?: string } }) =>
       paiementsApi.payFacture(factureId, payload),
-    onSuccess: () => {
+    onSuccess: async (_data, variables) => {
       qc.invalidateQueries({ queryKey: ['paiements'] });
       qc.invalidateQueries({ queryKey: ['factures'] });
       qc.invalidateQueries({ queryKey: ['historique'] });
       qc.invalidateQueries({ queryKey: ['treasurer', 'tresorerie'] });
       closePrefilled();
       toast.push({ title: 'Facture payée', variant: 'success' });
+      // Best-effort auto-download of the freshly paid facture PDF. A
+      // rendering failure must not undo the payment success feedback,
+      // so we only surface a secondary toast.
+      try {
+        await facturesApi.downloadPdf(variables.factureId);
+      } catch (e) {
+        toast.push({
+          title: 'PDF indisponible',
+          description: e instanceof Error ? e.message : 'Échec du téléchargement.',
+          variant: 'error',
+        });
+      }
     },
     onError: (e) => toast.push({ title: e instanceof Error ? e.message : 'Erreur', variant: 'error' }),
   });

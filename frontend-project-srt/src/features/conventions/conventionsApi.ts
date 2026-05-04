@@ -3,7 +3,7 @@
    ============================================ */
 
 import type {
-  Convention, ConventionStatus, ConventionType, PageQuery, PageResult,
+  Convention, ConventionStatus, ConventionType, ModeAvantage, PageQuery, PageResult,
 } from '../../types/domain';
 import { get, post, put, del } from '../../lib/apiClient';
 
@@ -17,6 +17,11 @@ interface BackendConventionDto {
   remise: number;
   statut: string;
   description: string | null;
+  typeConvention?: string | null;
+  modeAvantage?: string | null;
+  tauxReduction?: number | null;
+  montantReduction?: number | null;
+  descriptionAvantage?: string | null;
 }
 
 interface BackendConventionRequest {
@@ -27,6 +32,11 @@ interface BackendConventionRequest {
   remise?: number;
   statut?: string;
   description?: string;
+  typeConvention?: string;
+  modeAvantage?: string;
+  tauxReduction?: number | null;
+  montantReduction?: number | null;
+  descriptionAvantage?: string;
 }
 
 function fromDto(dto: BackendConventionDto): Convention {
@@ -37,9 +47,14 @@ function fromDto(dto: BackendConventionDto): Convention {
     type: dto.type as ConventionType,
     dateDebut: dto.dateDebut,
     dateFin: dto.dateFin,
-    remise: dto.remise,
+    remise: dto.remise ?? 0,
     statut: dto.statut as ConventionStatus,
     description: dto.description ?? undefined,
+    typeConvention: dto.typeConvention ?? undefined,
+    modeAvantage: (dto.modeAvantage ?? undefined) as ModeAvantage | undefined,
+    tauxReduction: dto.tauxReduction ?? undefined,
+    montantReduction: dto.montantReduction ?? undefined,
+    descriptionAvantage: dto.descriptionAvantage ?? undefined,
   };
 }
 
@@ -53,6 +68,11 @@ function toRequest(c: Partial<Convention>): BackendConventionRequest {
   if (c.remise !== undefined) r.remise = c.remise;
   if (c.statut !== undefined) r.statut = c.statut;
   if (c.description !== undefined) r.description = c.description;
+  if (c.typeConvention !== undefined) r.typeConvention = c.typeConvention;
+  if (c.modeAvantage !== undefined) r.modeAvantage = c.modeAvantage;
+  if (c.tauxReduction !== undefined) r.tauxReduction = c.tauxReduction;
+  if (c.montantReduction !== undefined) r.montantReduction = c.montantReduction;
+  if (c.descriptionAvantage !== undefined) r.descriptionAvantage = c.descriptionAvantage;
   return r;
 }
 

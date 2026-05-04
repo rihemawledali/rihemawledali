@@ -1,15 +1,28 @@
 /* ============================================
-   Treasurer — Demandes de conventions
-   Workflow: en_attente → validee | refusee
+   Treasurer - Demandes de conventions
+   Workflow: en_attente -> validee | refusee
    ============================================ */
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Check, X, Eye, Handshake, Clock, CheckCircle2, Ban } from 'lucide-react';
+import {
+  Ban,
+  Calendar,
+  Check,
+  CheckCircle2,
+  Clock3,
+  Eye,
+  Handshake,
+  Hash,
+  Percent,
+  Store,
+  Tag,
+  User,
+  X,
+} from 'lucide-react';
 import { PageHeader } from '../../../components/layout/PageHeader';
 import { DataTable, type Column } from '../../../components/data/DataTable';
 import { StatusBadge } from '../../../components/data/StatusBadge';
-import { StatCard } from '../../../components/charts/StatCard';
 import { Button } from '../../../components/ui/Button';
 import { SearchInput } from '../../../components/data/SearchInput';
 import { FilterBar, SelectFilter } from '../../../components/data/FilterBar';
@@ -23,7 +36,7 @@ import {
   type ConventionDemandeStatutBE,
 } from '../api/treasurerListApi';
 import '../../../components/layout/CrudPage.css';
-import '../../dashboard/pages/OverviewPage.css';
+import './TreasurerConventionsPage.css';
 
 const STATUT_LABEL: Record<ConventionDemandeStatutBE, string> = {
   en_attente: 'En attente',
@@ -39,6 +52,13 @@ const STATUT_TONE: Record<ConventionDemandeStatutBE, 'warning' | 'success' | 'er
   annulee: 'neutral',
 };
 
+const STATUT_OPTIONS = [
+  { value: 'en_attente', label: 'En attente' },
+  { value: 'validee', label: 'Validée' },
+  { value: 'refusee', label: 'Refusée' },
+  { value: 'annulee', label: 'Annulée' },
+];
+
 const CONV_TYPE_LABEL: Record<string, string> = {
   sante: 'Santé',
   restauration: 'Restauration',
@@ -48,6 +68,15 @@ const CONV_TYPE_LABEL: Record<string, string> = {
   education: 'Éducation',
 };
 
+const CONV_TYPE_TONE: Record<string, 'primary' | 'success' | 'info' | 'warning' | 'error'> = {
+  sante: 'error',
+  restauration: 'warning',
+  transport: 'info',
+  loisir: 'primary',
+  commerce: 'success',
+  education: 'info',
+};
+
 export function TreasurerConventionsPage() {
   const qc = useQueryClient();
   const toast = useToast();
@@ -55,6 +84,7 @@ export function TreasurerConventionsPage() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [statut, setStatut] = useState('');
+  const [viewing, setViewing] = useState<ConventionDemandeRow | null>(null);
   const [rejecting, setRejecting] = useState<ConventionDemandeRow | null>(null);
   const [motif, setMotif] = useState('');
 
@@ -73,9 +103,9 @@ export function TreasurerConventionsPage() {
     const items = all.data?.items ?? [];
     return {
       total: items.length,
-      enAttente: items.filter((d) => d.statut === 'en_attente').length,
-      validees: items.filter((d) => d.statut === 'validee').length,
-      refusees: items.filter((d) => d.statut === 'refusee').length,
+      pending: items.filter((d) => d.statut === 'en_attente').length,
+      validated: items.filter((d) => d.statut === 'validee').length,
+      refused: items.filter((d) => d.statut === 'refusee').length,
     };
   }, [all.data]);
 
@@ -110,37 +140,32 @@ export function TreasurerConventionsPage() {
       {
         key: 'reference',
         header: 'Référence',
-        cell: (d) => <span className="cell-mono">DEM-{d.id.toUpperCase()}</span>,
-        width: '140px',
+        cell: (d) => (
+          <div className="convention-reference-cell">
+            <span className="cell-mono">DEM-{d.id.toUpperCase()}</span>
+            <span>{formatDate(d.dateDemande)}</span>
+          </div>
+        ),
+        width: '165px',
       },
       {
         key: 'adherent',
         header: 'Adhérent',
-        cell: (d) => <strong className="cell-strong">{d.adherentNom}</strong>,
+        cell: (d) => (
+          <div className="convention-member-cell">
+            <span className="convention-avatar" aria-hidden="true">{getInitials(d.adherentNom)}</span>
+            <div>
+              <strong className="cell-strong">{d.adherentNom}</strong>
+              <span>Demande de convention</span>
+            </div>
+          </div>
+        ),
+        width: '260px',
       },
       {
         key: 'convention',
         header: 'Convention',
-        cell: (d) => {
-          const snap = d.conventionSnapshot;
-          if (!snap) return <span style={{ color: 'var(--color-text-secondary)' }}>—</span>;
-          const typeLabel = snap.type ? CONV_TYPE_LABEL[snap.type] ?? snap.type : '';
-          return (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              <strong>{snap.fournisseurNom ?? '—'}</strong>
-              <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-secondary)' }}>
-                {typeLabel}
-                {snap.remise != null ? ` · ${snap.remise}% de remise` : ''}
-              </span>
-            </div>
-          );
-        },
-      },
-      {
-        key: 'date',
-        header: 'Demande',
-        cell: (d) => formatDate(d.dateDemande),
-        width: '130px',
+        cell: (d) => <ConventionCell row={d} />,
       },
       {
         key: 'statut',
@@ -158,176 +183,367 @@ export function TreasurerConventionsPage() {
     [],
   );
 
+  const rows = query.data?.items ?? [];
+  const visiblePending = rows.filter((d) => d.statut === 'en_attente').length;
+
   return (
-    <div className="overview-page">
+    <div className="treasurer-conventions-page">
       <PageHeader
         title="Demandes de conventions"
-        description="Valider ou refuser les demandes d'adhésion aux conventions"
+        description="Valider ou refuser les demandes d'adhésion aux conventions."
         breadcrumb={['Trésorerie', 'Demandes', 'Conventions']}
       />
 
-      <div className="overview-stats">
-        <StatCard
-          label="Total demandes"
-          value={formatNumber(stats.total)}
-          icon={<Handshake size={22} />}
-          tone="primary"
-          loading={all.isLoading}
-        />
-        <StatCard
-          label="En attente"
-          value={formatNumber(stats.enAttente)}
-          icon={<Clock size={22} />}
-          tone="warning"
-          loading={all.isLoading}
-        />
-        <StatCard
-          label="Validées"
-          value={formatNumber(stats.validees)}
-          icon={<CheckCircle2 size={22} />}
-          tone="success"
-          loading={all.isLoading}
-        />
-        <StatCard
-          label="Refusées"
-          value={formatNumber(stats.refusees)}
-          icon={<Ban size={22} />}
-          tone="error"
-          loading={all.isLoading}
-        />
-      </div>
+      <section className="convention-metrics-grid">
+        <ConventionMetric icon={<Handshake size={18} />} label="Total demandes" value={formatNumber(stats.total)} loading={all.isLoading} tone="primary" />
+        <ConventionMetric icon={<Clock3 size={18} />} label="En attente" value={formatNumber(stats.pending)} loading={all.isLoading} tone="warning" />
+        <ConventionMetric icon={<CheckCircle2 size={18} />} label="Validées" value={formatNumber(stats.validated)} loading={all.isLoading} tone="success" />
+        <ConventionMetric icon={<Ban size={18} />} label="Refusées" value={formatNumber(stats.refused)} loading={all.isLoading} tone="error" />
+      </section>
 
-      <div className="crud-toolbar">
-        <FilterBar>
-          <SearchInput
-            value={search}
-            onChange={(v) => { setSearch(v); setPage(1); }}
-            placeholder="Adhérent, statut, commentaire…"
+      <section className="convention-workspace">
+        <div className="convention-workspace-header">
+          <div>
+            <h2>Dossiers de conventions</h2>
+            <p>
+              {visiblePending > 0
+                ? `${formatNumber(visiblePending)} demande(s) en attente sur cette page.`
+                : 'Aucune décision urgente dans la liste affichée.'}
+            </p>
+          </div>
+          <StatusBadge
+            status="en_attente"
+            tone={visiblePending > 0 ? 'warning' : 'neutral'}
+            label={`${formatNumber(visiblePending)} en attente`}
           />
-          <SelectFilter
-            label="Statut"
-            value={statut}
-            onChange={(v) => { setStatut(v); setPage(1); }}
-            options={[
-              { value: 'en_attente', label: 'En attente' },
-              { value: 'validee', label: 'Validée' },
-              { value: 'refusee', label: 'Refusée' },
-              { value: 'annulee', label: 'Annulée' },
-            ]}
-          />
-        </FilterBar>
-      </div>
+        </div>
 
-      <DataTable
-        columns={columns}
-        rows={query.data?.items ?? []}
-        loading={query.isLoading}
-        rowKey={(d) => d.id}
-        emptyTitle="Aucune demande de convention"
-        rowActions={(d) => {
-          const pending = d.statut === 'en_attente';
-          return (
-            <span className="row-actions" style={{ display: 'inline-flex', gap: 6 }}>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() =>
-                  toast.push({
-                    title: d.commentaire
-                      ? `Commentaire : ${d.commentaire}`
-                      : `Référence DEM-${d.id.toUpperCase()}`,
-                    variant: 'info',
-                  })
-                }
-                title="Détails"
-              >
-                <Eye size={14} />
-              </Button>
-              {pending && (
-                <>
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    onClick={() => valider.mutate(d.id)}
-                    disabled={valider.isPending}
-                    title="Valider"
-                  >
-                    <Check size={14} />
-                  </Button>
-                  <Button
-                    variant="danger"
-                    size="sm"
-                    onClick={() => { setRejecting(d); setMotif(''); }}
-                    title="Refuser"
-                  >
-                    <X size={14} />
-                  </Button>
-                </>
-              )}
-            </span>
-          );
-        }}
+        <div className="crud-toolbar convention-toolbar">
+          <FilterBar>
+            <SearchInput
+              value={search}
+              onChange={(v) => { setSearch(v); setPage(1); }}
+              placeholder="Rechercher par adhérent, statut ou commentaire..."
+            />
+            <SelectFilter
+              label="Statut"
+              value={statut}
+              onChange={(v) => { setStatut(v); setPage(1); }}
+              options={STATUT_OPTIONS}
+            />
+          </FilterBar>
+        </div>
+
+        <DataTable
+          columns={columns}
+          rows={rows}
+          loading={query.isLoading}
+          rowKey={(d) => d.id}
+          emptyTitle="Aucune demande de convention"
+          emptyDescription="Essayez un autre statut ou une autre recherche."
+          actionsWidth="280px"
+          rowActions={(d) => {
+            const pending = d.statut === 'en_attente';
+            return (
+              <span className="convention-row-actions">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setViewing(d)}
+                  aria-label={`Voir la demande de ${d.adherentNom}`}
+                >
+                  <Eye size={14} /> Détails
+                </Button>
+                {pending && (
+                  <>
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={() => valider.mutate(d.id)}
+                      disabled={valider.isPending || refuser.isPending}
+                      isLoading={valider.isPending && valider.variables === d.id}
+                    >
+                      <Check size={14} /> Valider
+                    </Button>
+                    <Button
+                      variant="danger"
+                      size="sm"
+                      onClick={() => { setRejecting(d); setMotif(''); }}
+                      disabled={valider.isPending || refuser.isPending}
+                    >
+                      <X size={14} /> Refuser
+                    </Button>
+                  </>
+                )}
+              </span>
+            );
+          }}
+        />
+
+        {query.data && query.data.total > 0 && (
+          <div className="data-table-card convention-pagination">
+            <Pagination page={page} size={10} total={query.data.total} onPageChange={setPage} />
+          </div>
+        )}
+      </section>
+
+      <ConventionDetailModal
+        row={viewing}
+        validating={valider.isPending}
+        refusing={refuser.isPending}
+        onClose={() => setViewing(null)}
+        onValidate={() => { if (viewing) { valider.mutate(viewing.id); setViewing(null); } }}
+        onRefuse={() => { if (viewing) { setRejecting(viewing); setMotif(''); setViewing(null); } }}
       />
 
-      {query.data && query.data.total > 0 && (
-        <div className="data-table-card" style={{ marginTop: 'var(--space-3)' }}>
-          <Pagination page={page} size={10} total={query.data.total} onPageChange={setPage} />
-        </div>
-      )}
-
-      <Modal
-        open={!!rejecting}
+      <RejectConventionModal
+        row={rejecting}
+        motif={motif}
+        loading={refuser.isPending}
+        onMotifChange={setMotif}
         onClose={() => { setRejecting(null); setMotif(''); }}
-        title="Refuser cette demande de convention ?"
-        size="sm"
-        footer={
-          <>
-            <Button
-              variant="secondary"
-              onClick={() => { setRejecting(null); setMotif(''); }}
-              disabled={refuser.isPending}
-            >
-              Annuler
-            </Button>
-            <Button
-              variant="danger"
-              onClick={() =>
-                rejecting &&
-                refuser.mutate({ id: rejecting.id, motif: motif.trim() || undefined })
-              }
-              disabled={refuser.isPending}
-            >
-              Refuser
-            </Button>
-          </>
+        onConfirm={() =>
+          rejecting &&
+          refuser.mutate({ id: rejecting.id, motif: motif.trim() || undefined })
         }
-      >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <p style={{ margin: 0, color: 'var(--color-text-secondary)' }}>
-            La demande de <strong>{rejecting?.adherentNom ?? ''}</strong> sera marquée
-            comme refusée.
-          </p>
-          <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            <span style={{ fontWeight: 600, fontSize: 'var(--font-size-sm)' }}>
-              Motif (optionnel)
-            </span>
-            <textarea
-              value={motif}
-              onChange={(e) => setMotif(e.target.value)}
-              rows={3}
-              placeholder="Ex. Budget insuffisant, convention suspendue…"
-              style={{
-                padding: '8px 10px',
-                borderRadius: 'var(--radius-md)',
-                border: '1px solid var(--color-border)',
-                fontFamily: 'inherit',
-                fontSize: 'inherit',
-                resize: 'vertical',
-              }}
-            />
-          </label>
-        </div>
-      </Modal>
+      />
     </div>
   );
+}
+
+function ConventionCell({ row }: { row: ConventionDemandeRow }) {
+  const snap = row.conventionSnapshot;
+  if (!snap) return <span className="convention-muted">Convention non renseignée</span>;
+
+  const typeLabel = snap.type ? CONV_TYPE_LABEL[snap.type] ?? snap.type : 'Type non renseigné';
+  const tone = snap.type ? CONV_TYPE_TONE[snap.type] ?? 'primary' : 'primary';
+
+  return (
+    <div className="convention-cell">
+      <strong>{snap.fournisseurNom ?? 'Fournisseur non renseigné'}</strong>
+      <span>
+        <StatusBadge status={snap.type ?? 'convention'} tone={tone} label={typeLabel} />
+        {snap.remise != null && <small>{snap.remise}% de remise</small>}
+      </span>
+    </div>
+  );
+}
+
+function ConventionMetric({
+  icon,
+  label,
+  value,
+  loading,
+  tone,
+}: {
+  icon: ReactNode;
+  label: string;
+  value: string;
+  loading?: boolean;
+  tone: 'primary' | 'warning' | 'success' | 'error';
+}) {
+  return (
+    <article className={`convention-metric convention-metric--${tone}`}>
+      <span>{icon}</span>
+      <div>
+        <p>{label}</p>
+        <strong>{loading ? '...' : value}</strong>
+      </div>
+    </article>
+  );
+}
+
+function ConventionDetailModal({
+  row,
+  validating,
+  refusing,
+  onClose,
+  onValidate,
+  onRefuse,
+}: {
+  row: ConventionDemandeRow | null;
+  validating: boolean;
+  refusing: boolean;
+  onClose: () => void;
+  onValidate: () => void;
+  onRefuse: () => void;
+}) {
+  const snap = row?.conventionSnapshot;
+  const typeLabel = snap?.type ? CONV_TYPE_LABEL[snap.type] ?? snap.type : 'Non renseigné';
+
+  return (
+    <Modal
+      open={!!row}
+      onClose={onClose}
+      title={row ? `Dossier convention - ${row.adherentNom}` : ''}
+      description={row ? `Référence DEM-${row.id.toUpperCase()}` : ''}
+      size="lg"
+      footer={row?.statut === 'en_attente' ? (
+        <div className="convention-modal-actions">
+          <Button variant="secondary" onClick={onClose}>Fermer</Button>
+          <Button variant="danger" onClick={onRefuse} disabled={validating || refusing}>
+            <X size={14} /> Refuser
+          </Button>
+          <Button variant="primary" onClick={onValidate} disabled={validating || refusing} isLoading={validating}>
+            <Check size={14} /> Valider
+          </Button>
+        </div>
+      ) : (
+        <Button variant="secondary" onClick={onClose}>Fermer</Button>
+      )}
+    >
+      {row && (
+        <div className="convention-detail">
+          <section className="convention-detail-header">
+            <div className="convention-detail-person">
+              <span className="convention-avatar convention-avatar--xl" aria-hidden="true">
+                {getInitials(row.adherentNom)}
+              </span>
+              <div>
+                <span className="convention-eyebrow">Demande de convention</span>
+                <h3>{row.adherentNom}</h3>
+                <div className="convention-detail-chips">
+                  <span><Hash size={13} /> DEM-{row.id.toUpperCase()}</span>
+                  <span><Calendar size={13} /> {formatDate(row.dateDemande)}</span>
+                </div>
+              </div>
+            </div>
+            <StatusBadge status={row.statut} tone={STATUT_TONE[row.statut]} label={STATUT_LABEL[row.statut]} />
+          </section>
+
+          <section className="convention-detail-metrics">
+            <ConventionDetailMetric icon={<Store size={16} />} label="Fournisseur" value={snap?.fournisseurNom ?? 'Non renseigné'} tone="primary" />
+            <ConventionDetailMetric icon={<Tag size={16} />} label="Type" value={typeLabel} />
+            <ConventionDetailMetric icon={<Percent size={16} />} label="Remise" value={snap?.remise != null ? `${snap.remise}%` : 'Non renseignée'} tone="success" />
+          </section>
+
+          <div className="convention-detail-layout">
+            <DetailPanel title="Informations demande" icon={<User size={16} />}>
+              <DetailField label="Adhérent" value={<strong>{row.adherentNom}</strong>} />
+              <DetailField label="Référence" value={<span className="cell-mono">DEM-{row.id.toUpperCase()}</span>} />
+              <DetailField label="Date demande" value={formatDate(row.dateDemande)} />
+              <DetailField label="Statut" value={<StatusBadge status={row.statut} tone={STATUT_TONE[row.statut]} label={STATUT_LABEL[row.statut]} />} />
+              {row.dateDecision && <DetailField label="Date décision" value={formatDate(row.dateDecision)} />}
+            </DetailPanel>
+
+            <DetailPanel title="Convention demandée" icon={<Handshake size={16} />}>
+              <DetailField label="Fournisseur" value={snap?.fournisseurNom ?? 'Non renseigné'} />
+              <DetailField label="Type" value={typeLabel} />
+              <DetailField label="Remise" value={snap?.remise != null ? `${snap.remise}%` : 'Non renseignée'} />
+              <DetailField label="Avantage" value={snap?.avantage ?? 'Non renseigné'} />
+            </DetailPanel>
+          </div>
+
+          {(row.commentaire || row.motifRefus) && (
+            <section className="convention-note">
+              <h4>{row.motifRefus ? 'Motif / commentaire' : 'Commentaire adhérent'}</h4>
+              <p>{row.motifRefus ?? row.commentaire}</p>
+            </section>
+          )}
+        </div>
+      )}
+    </Modal>
+  );
+}
+
+function RejectConventionModal({
+  row,
+  motif,
+  loading,
+  onMotifChange,
+  onClose,
+  onConfirm,
+}: {
+  row: ConventionDemandeRow | null;
+  motif: string;
+  loading: boolean;
+  onMotifChange: (value: string) => void;
+  onClose: () => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <Modal
+      open={!!row}
+      onClose={onClose}
+      title="Refuser cette demande de convention ?"
+      size="sm"
+      footer={(
+        <div className="convention-modal-actions">
+          <Button variant="secondary" onClick={onClose} disabled={loading}>
+            Annuler
+          </Button>
+          <Button variant="danger" onClick={onConfirm} disabled={loading}>
+            Refuser
+          </Button>
+        </div>
+      )}
+    >
+      <div className="convention-reject-body">
+        <p>
+          La demande de <strong>{row?.adherentNom ?? ''}</strong> sera marquée comme refusée.
+        </p>
+        <label>
+          <span>Motif (optionnel)</span>
+          <textarea
+            value={motif}
+            onChange={(e) => onMotifChange(e.target.value)}
+            rows={3}
+            placeholder="Ex. Budget insuffisant, convention suspendue..."
+          />
+        </label>
+      </div>
+    </Modal>
+  );
+}
+
+function ConventionDetailMetric({
+  icon,
+  label,
+  value,
+  tone = 'neutral',
+}: {
+  icon: ReactNode;
+  label: string;
+  value: ReactNode;
+  tone?: 'neutral' | 'primary' | 'success';
+}) {
+  return (
+    <div className={`convention-detail-metric convention-detail-metric--${tone}`}>
+      <span>{icon}</span>
+      <div>
+        <p>{label}</p>
+        <strong>{value}</strong>
+      </div>
+    </div>
+  );
+}
+
+function DetailPanel({ title, icon, children }: { title: string; icon: ReactNode; children: ReactNode }) {
+  return (
+    <section className="convention-detail-panel">
+      <header>
+        <span>{icon}</span>
+        <h4>{title}</h4>
+      </header>
+      <div className="convention-detail-list">{children}</div>
+    </section>
+  );
+}
+
+function DetailField({ label, value }: { label: string; value: ReactNode }) {
+  return (
+    <div className="convention-detail-field">
+      <span>{label}</span>
+      <div>{value}</div>
+    </div>
+  );
+}
+
+function getInitials(name: string) {
+  return name
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join('');
 }

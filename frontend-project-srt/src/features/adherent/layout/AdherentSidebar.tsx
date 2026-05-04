@@ -5,7 +5,7 @@
 import { NavLink, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, User, BadgeCheck, Banknote, HeartHandshake, Tag, History, LogOut, ChevronsLeft,
-  Handshake, FileClock, Star,
+  Handshake, FileClock,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import logoUrl from '../../../assets/amicalite-srt-logo-v1.png';
@@ -40,7 +40,6 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { to: '/adherent/conventions',                label: 'Offres et conventions',     icon: Handshake },
       { to: '/adherent/conventions/mes-demandes',   label: 'Mes demandes',              icon: FileClock },
-      { to: '/adherent/conventions/actives',        label: 'Mes conventions actives',   icon: Star },
     ],
   },
   {

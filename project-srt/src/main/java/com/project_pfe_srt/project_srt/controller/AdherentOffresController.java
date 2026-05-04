@@ -24,4 +24,22 @@ public class AdherentOffresController {
                 "tickets", offresService.listMyTickets(authUtils.currentAdherent())
         ));
     }
+
+    @PostMapping("/tickets/{id}/accept")
+    public ResponseEntity<?> acceptTicket(@PathVariable Long id) {
+        try {
+            return ResponseEntity.ok(offresService.acceptTicket(authUtils.currentAdherent(), id));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/tickets/{id}/reject")
+    public ResponseEntity<?> rejectTicket(@PathVariable Long id) {
+        try {
+            return ResponseEntity.ok(offresService.rejectTicket(authUtils.currentAdherent(), id));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
 }

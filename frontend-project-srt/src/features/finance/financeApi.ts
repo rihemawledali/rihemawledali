@@ -27,7 +27,7 @@ import type {
   IndemniteType,
   IndemniteStatus,
 } from '../../types/domain';
-import { get, post, put, del } from '../../lib/apiClient';
+import { get, post, put, del, downloadBlob, triggerBlobDownload } from '../../lib/apiClient';
 import { paginate } from '../../lib/paginate';
 
 // ---------------- DTO shapes returned by the backend ----------------
@@ -318,6 +318,21 @@ export const facturesApi = {
   remove: async (id: string): Promise<{ success: true }> => {
     await del(`/api/treasurer/factures/${id}`);
     return { success: true as const };
+  },
+
+  /**
+   * Fetches the freshly-rendered PDF for the given facture and triggers a
+   * browser download. The filename comes from the `Content-Disposition`
+   * header (falls back to `facture-<id>.pdf`).
+   */
+  downloadPdf: async (id: string): Promise<{ filename: string }> => {
+    const { blob, filename } = await downloadBlob(
+      `/api/treasurer/factures/${id}/pdf`,
+      { method: 'GET', headers: { Accept: 'application/pdf' } },
+    );
+    const finalName = filename || `facture-${id}.pdf`;
+    triggerBlobDownload(blob, finalName);
+    return { filename: finalName };
   },
 };
 

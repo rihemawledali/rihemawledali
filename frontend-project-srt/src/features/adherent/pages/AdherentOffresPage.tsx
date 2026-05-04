@@ -4,7 +4,7 @@
    ============================================ */
 
 import { useMemo, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import {
   Ticket, AlertTriangle, Handshake, ArrowRight, Coffee, UtensilsCrossed,
@@ -14,12 +14,15 @@ import { DataTable } from '../../../components/data/DataTable';
 import { StatusBadge } from '../../../components/data/StatusBadge';
 import { Button } from '../../../components/ui/Button';
 import { offresApi } from '../api/offresApi';
+import { useToast } from '../../../components/feedback/useToast';
 import type { TicketRestaurant } from '../../../types/domain';
 
 type StatusFilter = 'all' | 'attribue' | 'utilise' | 'expire';
 
 export function AdherentOffresPage() {
   const navigate = useNavigate();
+  const qc = useQueryClient();
+  const toast = useToast();
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
 
   const { data: offres, isLoading } = useQuery({
@@ -28,6 +31,30 @@ export function AdherentOffresPage() {
   });
 
   const allTickets = useMemo(() => offres?.tickets || [], [offres]);
+
+  const acceptTicket = useMutation({
+    mutationFn: (id: string) => offresApi.acceptTicket(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['adherent-offres'] });
+      qc.invalidateQueries({ queryKey: ['adherent-dashboard'] });
+      toast.push({
+        title: 'Ticket accepte',
+        description: '50% de sa valeur sera ajoute a votre retenue mensuelle.',
+        variant: 'success',
+      });
+    },
+    onError: (e) => toast.push({ title: e instanceof Error ? e.message : 'Erreur', variant: 'error' }),
+  });
+
+  const rejectTicket = useMutation({
+    mutationFn: (id: string) => offresApi.rejectTicket(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['adherent-offres'] });
+      qc.invalidateQueries({ queryKey: ['adherent-dashboard'] });
+      toast.push({ title: 'Ticket refuse', variant: 'success' });
+    },
+    onError: (e) => toast.push({ title: e instanceof Error ? e.message : 'Erreur', variant: 'error' }),
+  });
 
   const stats = useMemo(() => {
     const available = allTickets.filter((t) => t.statut === 'attribue');
@@ -87,15 +114,47 @@ export function AdherentOffresPage() {
     {
       key: 'statut',
       header: 'Statut',
-      cell: (t: TicketRestaurant) => <StatusBadge status={t.statut} />,
+      cell: (t: TicketRestaurant) => (
+        <StatusBadge
+          status={t.statut}
+          label={t.statut === 'attribue' ? 'À accepter' : t.statut === 'utilise' ? 'Accepté' : undefined}
+        />
+      ),
       width: '130px',
+    },
+    {
+      key: 'actions',
+      header: 'Decision',
+      cell: (t: TicketRestaurant) => t.statut === 'attribue' ? (
+        <span style={{ display: 'inline-flex', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+          <Button
+            size="sm"
+            onClick={() => acceptTicket.mutate(t.id)}
+            isLoading={acceptTicket.isPending && acceptTicket.variables === t.id}
+            disabled={rejectTicket.isPending}
+          >
+            Accepter
+          </Button>
+          <Button
+            size="sm"
+            variant="danger"
+            onClick={() => rejectTicket.mutate(t.id)}
+            isLoading={rejectTicket.isPending && rejectTicket.variables === t.id}
+            disabled={acceptTicket.isPending}
+          >
+            Refuser
+          </Button>
+        </span>
+      ) : <span className="cell-muted">Decide</span>,
+      align: 'right' as const,
+      width: '190px',
     },
   ];
 
   const filters: { k: StatusFilter; label: string }[] = [
     { k: 'all',      label: 'Tous' },
-    { k: 'attribue', label: 'Disponibles' },
-    { k: 'utilise',  label: 'Utilisés' },
+    { k: 'attribue', label: 'À accepter' },
+    { k: 'utilise',  label: 'Acceptés' },
     { k: 'expire',   label: 'Expirés' },
   ];
 
@@ -127,30 +186,30 @@ export function AdherentOffresPage() {
         <div className="adh-tile">
           <div className="adh-tile-head">
             <div className="adh-tile-icon tone-warning"><Ticket size={18} /></div>
-            <span className="adh-tile-label">Tickets disponibles</span>
+            <span className="adh-tile-label">Tickets à accepter</span>
           </div>
           <div className="adh-tile-value">{stats.availableCount}</div>
-          <span className="adh-tile-meta">À utiliser avant expiration</span>
+          <span className="adh-tile-meta">Accepter ou refuser</span>
         </div>
 
         <div className="adh-tile">
           <div className="adh-tile-head">
             <div className="adh-tile-icon tone-primary"><UtensilsCrossed size={18} /></div>
-            <span className="adh-tile-label">Valeur disponible</span>
+            <span className="adh-tile-label">Valeur à décider</span>
           </div>
           <div className="adh-tile-value">
             {stats.totalAvailable.toFixed(0)} <span style={{ fontSize: '0.95rem', color: 'var(--adh-text-3)' }}>TND</span>
           </div>
-          <span className="adh-tile-meta">Total non encore consommé</span>
+          <span className="adh-tile-meta">50% retenu après acceptation</span>
         </div>
 
         <div className="adh-tile">
           <div className="adh-tile-head">
             <div className="adh-tile-icon tone-success"><Coffee size={18} /></div>
-            <span className="adh-tile-label">Tickets utilisés</span>
+            <span className="adh-tile-label">Tickets acceptés</span>
           </div>
           <div className="adh-tile-value">{stats.usedCount}</div>
-          <span className="adh-tile-meta">Historique de consommation</span>
+          <span className="adh-tile-meta">Ajoutés à la retenue</span>
         </div>
       </div>
 
@@ -218,7 +277,7 @@ export function AdherentOffresPage() {
         <div className="adh-alert info" style={{ marginTop: 16 }}>
           <AlertTriangle size={16} className="adh-alert-icon" />
           <div>
-            Vous n'avez actuellement aucun ticket restaurant disponible. Consultez les{' '}
+            Vous n'avez actuellement aucun ticket restaurant à accepter. Consultez les{' '}
             <Button
               variant="ghost"
               size="sm"

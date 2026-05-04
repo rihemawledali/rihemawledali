@@ -25,17 +25,43 @@ public class BonCommande {
     @JoinColumn(name = "fournisseur_id", nullable = false)
     private Fournisseur fournisseur;
 
+    /**
+     * Kept for backward compatibility with legacy rows that were assigned
+     * directly to one adhérent. New rows are stock-level (no adhérent).
+     */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "adherent_id")
     private User adherent;
 
+    /** restaurant | cafeteria — governs the type of tickets generated. */
+    @Builder.Default
+    @Column(name = "type_bon", nullable = false)
+    private String typeBon = "restaurant";
+
+    /** Total value, e.g. 1000 DT. */
     @Column(nullable = false)
     private Double montant;
 
-    /** en_attente | attribue | utilise | expire */
+    /** Face value of a single ticket, e.g. 10 DT. */
+    @Column(name = "valeur_unitaire")
+    private Double valeurUnitaire;
+
+    /** Total number of tickets generated from this bon. */
+    @Column(name = "quantite_totale")
+    private Integer quantiteTotale;
+
+    /** Tickets still unassigned (statut = en_attente). */
+    @Column(name = "quantite_restante")
+    private Integer quantiteRestante;
+
+    /**
+     * Workflow:
+     *   brouillon → valide → (epuise | expire)
+     * Legacy values still accepted: en_attente, attribue, utilise.
+     */
     @Builder.Default
     @Column(nullable = false)
-    private String statut = "en_attente";
+    private String statut = "brouillon";
 
     @Column(name = "date_emission", nullable = false)
     private LocalDate dateEmission;

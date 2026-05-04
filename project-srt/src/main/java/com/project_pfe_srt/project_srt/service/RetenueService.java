@@ -43,6 +43,7 @@ public class RetenueService {
     private final UserRepository userRepository;
     private final AdhesionRepository adhesionRepository;
     private final PretRepository pretRepository;
+    private final TicketRepository ticketRepository;
 
     // ----- Listing -----
 
@@ -183,7 +184,23 @@ public class RetenueService {
                     .statut("GENEREE").build());
         }
 
-        // 3) Conventions — placeholder (no recurring billing modeled yet).
+        // 3) Accepted tickets restaurant — adherent pays 50% once, in the acceptance month.
+        for (TicketRestaurant ticket : ticketRepository.findByAdherentIdAndStatutOrderByDateDecisionDesc(adherent.getId(), "utilise")) {
+            LocalDate decisionDate = ticket.getDateDecision() == null ? ticket.getDateAttribution() : ticket.getDateDecision();
+            if (decisionDate == null || decisionDate.getMonthValue() != mois || decisionDate.getYear() != annee) {
+                continue;
+            }
+            double ticketAmount = ticket.getMontant() == null ? 0d : ticket.getMontant();
+            double retained = Math.round((ticketAmount * 0.5d) * 100d) / 100d;
+            rows.add(RetenueLigne.builder()
+                    .retenue(master).type("TICKET_RESTAURANT")
+                    .montant(retained)
+                    .libelle("Ticket restaurant #" + ticket.getNumero() + " (50%)")
+                    .sourceRefId(ticket.getId())
+                    .statut("GENEREE").build());
+        }
+
+        // 4) Conventions — placeholder (no recurring billing modeled yet).
         // Add specific lines here when conventions gain a billing schedule.
 
         for (RetenueLigne line : rows) {
@@ -369,7 +386,7 @@ public class RetenueService {
                 double v = l.getMontant() == null ? 0d : l.getMontant();
                 if ("COTISATION".equalsIgnoreCase(l.getType())) cot += v;
                 else if ("PRET".equalsIgnoreCase(l.getType())) pret += v;
-                else if ("CONVENTION".equalsIgnoreCase(l.getType())) conv += v;
+                else if ("CONVENTION".equalsIgnoreCase(l.getType()) || "TICKET_RESTAURANT".equalsIgnoreCase(l.getType())) conv += v;
             }
             String adherentNom = r.getAdherent() == null ? "" :
                     ((r.getAdherent().getPrenom() == null ? "" : r.getAdherent().getPrenom() + " ")

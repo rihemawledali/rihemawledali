@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useQuery } from '@tanstack/react-query';
@@ -6,7 +7,7 @@ import { FormInput } from '../../components/ui/FormInput';
 import { FormSelect } from '../../components/ui/FormSelect';
 import { Button } from '../../components/ui/Button';
 import { usersApi } from '../users/usersApi';
-import type { TicketRestaurant } from '../../types/domain';
+import type { BonStatus, TicketRestaurant } from '../../types/domain';
 
 interface Props {
   initial?: TicketRestaurant;
@@ -15,7 +16,23 @@ interface Props {
   submitting?: boolean;
 }
 
+const TICKET_STATUSES = ['en_attente', 'attribue', 'utilise', 'expire'] as const;
+
+function toTicketStatus(status: BonStatus | undefined): TicketFormValues['statut'] {
+  return TICKET_STATUSES.includes(status as TicketFormValues['statut'])
+    ? (status as TicketFormValues['statut'])
+    : 'en_attente';
+}
+
 export function TicketForm({ initial, onSubmit, onCancel, submitting }: Props) {
+  const [defaults] = useState(() => {
+    const today = new Date();
+    return {
+      numero: `TR-${today.getFullYear()}-${String(Math.floor(Math.random() * 9999)).padStart(4, '0')}`,
+      dateEmission: today.toISOString().slice(0, 10),
+    };
+  });
+
   const adherents = useQuery({
     queryKey: ['users', 'adherent-options'],
     queryFn: () => usersApi.list({ page: 1, size: 500, filters: { role: 'adherent' } }),
@@ -24,12 +41,12 @@ export function TicketForm({ initial, onSubmit, onCancel, submitting }: Props) {
   const { register, handleSubmit, formState: { errors } } = useForm<TicketFormValues>({
     resolver: zodResolver(ticketSchema),
     defaultValues: initial
-      ? { numero: initial.numero, typeBon: initial.typeBon, montant: initial.montant, statut: initial.statut, adherentId: initial.adherentId ?? '', dateEmission: initial.dateEmission.slice(0, 10) }
-      : { numero: `TR-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 9999)).padStart(4, '0')}`, typeBon: 'restaurant', montant: 8, statut: 'en_attente', adherentId: '', dateEmission: new Date().toISOString().slice(0, 10) },
+      ? { numero: initial.numero, typeBon: initial.typeBon, montant: initial.montant, statut: toTicketStatus(initial.statut), adherentId: initial.adherentId ?? '', dateEmission: initial.dateEmission.slice(0, 10) }
+      : { numero: defaults.numero, typeBon: 'restaurant', montant: 8, statut: 'en_attente', adherentId: '', dateEmission: defaults.dateEmission },
   });
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="form-grid">
+    <form onSubmit={handleSubmit((values) => onSubmit(values))} className="form-grid">
       <FormInput label="Numéro" {...register('numero')} error={errors.numero?.message} />
       <FormSelect label="Type de bon" {...register('typeBon')} options={[
         { value: 'restaurant', label: 'Restaurant' }, { value: 'cafeteria', label: 'Cafétéria' },

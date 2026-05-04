@@ -390,9 +390,6 @@ export function AdherentConventionDetailsPage() {
                   <CheckCircle2 size={18} className="adh-alert-icon" />
                   <div>Cette convention est <strong>active</strong> pour vous. Vous pouvez en bénéficier.</div>
                 </div>
-                <Button variant="secondary" onClick={() => navigate('/adherent/conventions/actives')} style={{ width: '100%', marginTop: 12 }}>
-                  Mes conventions actives
-                </Button>
               </>
             ) : (
               <>

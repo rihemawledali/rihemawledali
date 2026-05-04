@@ -80,21 +80,41 @@ export interface Indemnite {
   documentSize?: number;
 }
 
-export type BonStatus = 'en_attente' | 'attribue' | 'utilise' | 'expire';
+export type BonStatus =
+  | 'en_attente'
+  | 'attribue'
+  | 'utilise'
+  | 'expire'
+  | 'brouillon'
+  | 'valide'
+  | 'epuise';
+
+export type TicketType = 'restaurant' | 'cafeteria';
+
 export interface BonCommande {
   id: string;
   numero: string;
+  /** Legacy direct assignment fields. New ticket stock orders normally leave these empty. */
   adherentId?: string;
   adherentNom?: string;
   fournisseurId: string;
   fournisseurNom: string;
+  typeBon?: TicketType;
   montant: number;
+  valeurUnitaire?: number;
+  quantiteTotale?: number;
+  quantiteRestante?: number;
+  quantiteAttribuee?: number;
   statut: BonStatus;
   dateEmission: string;
   dateExpiration: string;
 }
 
-export type TicketType = 'restaurant' | 'cafeteria';
+export interface BonCommandeDetail {
+  bon: BonCommande;
+  tickets: TicketRestaurant[];
+}
+
 export interface TicketRestaurant {
   id: string;
   numero: string;
@@ -103,11 +123,32 @@ export interface TicketRestaurant {
   statut: BonStatus;
   adherentId?: string;
   adherentNom?: string;
+  adherentMatricule?: string;
+  bonCommandeId?: string;
+  bonCommandeNumero?: string;
   dateEmission: string;
+  dateAttribution?: string;
+  dateDecision?: string;
+}
+
+export interface TicketAssignPayload {
+  bonCommandeId: string;
+  adherentId: string;
+  quantite: number;
 }
 
 export type ConventionType = 'sante' | 'restauration' | 'transport' | 'loisir' | 'commerce' | 'education';
 export type ConventionStatus = 'active' | 'expiree' | 'en_negociation' | 'suspendue';
+
+/**
+ * Mode d'avantage applied by a Convention.
+ * - REMISE_POURCENTAGE  : discount expressed as a % (`tauxReduction`)
+ * - REMISE_MONTANT_FIXE : fixed-amount discount (`montantReduction`)
+ */
+export type ModeAvantage =
+  | 'REMISE_POURCENTAGE'
+  | 'REMISE_MONTANT_FIXE';
+
 export interface Convention {
   id: string;
   fournisseurId: string;
@@ -115,7 +156,13 @@ export interface Convention {
   type: ConventionType;
   dateDebut: string;
   dateFin: string;
-  remise: number; // %
+  /**
+   * Legacy global discount (%). The DB column is now nullable but the API
+   * coalesces `null → 0` so consumers can treat this as a number.
+   * The real benefit is described by `modeAvantage` + `tauxReduction` /
+   * `montantReduction`.
+   */
+  remise: number;
   statut: ConventionStatus;
   description?: string;
   descriptionCourte?: string;
@@ -144,6 +191,18 @@ export interface Convention {
   montantOffre?: number;
   /** Fixed number of monthly tranches the offer is split into. */
   nbTranches?: number;
+
+  // ----- Mode d'avantage -----
+  /** Free-text sub-type (e.g. partenariat, cadre, offre ponctuelle). */
+  typeConvention?: string;
+  /** Mode d'avantage enum value (see {@link ModeAvantage}). */
+  modeAvantage?: ModeAvantage;
+  /** Discount percentage when {@link modeAvantage} is `REMISE_POURCENTAGE`. */
+  tauxReduction?: number;
+  /** Fixed amount when {@link modeAvantage} is `REMISE_MONTANT_FIXE` or `SUBVENTION_AMICALE`. */
+  montantReduction?: number;
+  /** Free-text advantage description (required for `PRIX_NEGOCIE` / `AUTRE`). */
+  descriptionAvantage?: string;
 }
 
 /**

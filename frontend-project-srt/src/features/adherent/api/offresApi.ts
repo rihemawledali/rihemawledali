@@ -4,7 +4,7 @@
    Conventions are handled by conventionsApi.ts.
    ============================================ */
 
-import { get } from '../../../lib/apiClient';
+import { get, post } from '../../../lib/apiClient';
 import type { TicketRestaurant } from '../../../types/domain';
 import { mockTicketsRestaurant, delay } from './mockData';
 
@@ -20,6 +20,16 @@ export const offresApi = {
       return delay({ tickets: mockTicketsRestaurant }, 400);
     }
     const { data } = await get<OffresData>('/api/adherent/offres');
+    return data;
+  },
+
+  async acceptTicket(id: string): Promise<TicketRestaurant> {
+    const { data } = await post<TicketRestaurant>(`/api/adherent/offres/tickets/${id}/accept`, {});
+    return data;
+  },
+
+  async rejectTicket(id: string): Promise<TicketRestaurant> {
+    const { data } = await post<TicketRestaurant>(`/api/adherent/offres/tickets/${id}/reject`, {});
     return data;
   },
 };

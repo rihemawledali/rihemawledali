@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Pencil, Trash2, Mail, Phone } from 'lucide-react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import type { LucideIcon } from 'lucide-react';
+import { Building2, Mail, Pencil, Phone, Plus, Store, Trash2, UserCheck, UserX } from 'lucide-react';
 import { PageHeader } from '../../components/layout/PageHeader';
 import { Button } from '../../components/ui/Button';
 import { DataTable, type Column } from '../../components/data/DataTable';
@@ -16,14 +17,19 @@ import { SupplierForm } from './SupplierForm';
 import type { Fournisseur } from '../../types/domain';
 import type { SupplierFormValues } from '../../lib/validators';
 import '../../components/layout/CrudPage.css';
+import '../admin/AdminManagementPages.css';
 
 const CAT_LABEL: Record<string, string> = {
-  sante: 'Santé', restauration: 'Restauration', transport: 'Transport',
-  loisir: 'Loisir', commerce: 'Commerce', education: 'Éducation',
+  sante: 'Santé',
+  restauration: 'Restauration',
+  transport: 'Transport',
+  loisir: 'Loisir',
+  commerce: 'Commerce',
+  education: 'Éducation',
 };
 
 export function SuppliersPage() {
-  const qc = useQueryClient();
+  const queryClient = useQueryClient();
   const toast = useToast();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
@@ -41,97 +47,220 @@ export function SuppliersPage() {
   });
 
   const create = useMutation({
-    mutationFn: (v: SupplierFormValues) => suppliersApi.create(v),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['suppliers'] }); qc.invalidateQueries({ queryKey: ['dashboard'] }); setCreating(false); toast.push({ title: 'Fournisseur créé', variant: 'success' }); },
+    mutationFn: (values: SupplierFormValues) => suppliersApi.create(values),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['suppliers'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      setCreating(false);
+      toast.push({ title: 'Fournisseur créé', variant: 'success' });
+    },
   });
+
   const update = useMutation({
-    mutationFn: ({ id, v }: { id: string; v: SupplierFormValues }) => suppliersApi.update(id, v),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['suppliers'] }); setEditing(null); toast.push({ title: 'Fournisseur mis à jour', variant: 'success' }); },
+    mutationFn: ({ id, values }: { id: string; values: SupplierFormValues }) => suppliersApi.update(id, values),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['suppliers'] });
+      setEditing(null);
+      toast.push({ title: 'Fournisseur mis à jour', variant: 'success' });
+    },
   });
+
   const remove = useMutation({
     mutationFn: (id: string) => suppliersApi.remove(id),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['suppliers'] }); setDeleting(null); toast.push({ title: 'Supprimé', variant: 'success' }); },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['suppliers'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      setDeleting(null);
+      toast.push({ title: 'Fournisseur supprimé', variant: 'success' });
+    },
   });
 
-  const onSort = (k: string) => sortBy === k ? setSortDir(sortDir === 'asc' ? 'desc' : 'asc') : (setSortBy(k), setSortDir('asc'));
+  const onSort = (key: string) => {
+    if (sortBy === key) setSortDir(sortDir === 'asc' ? 'desc' : 'asc');
+    else {
+      setSortBy(key);
+      setSortDir('asc');
+    }
+  };
 
   const columns: Column<Fournisseur>[] = useMemo(() => [
-    { key: 'nom', header: 'Fournisseur', sortable: true, cell: (f) => (
-      <div className="row-stack">
-        <strong className="cell-strong">{f.nom}</strong>
-        <span>{f.adresse}</span>
-      </div>
-    )},
-    { key: 'contact', header: 'Contact', cell: (f) => (
-      <div className="row-stack">
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><Mail size={12} />{f.email}</span>
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><Phone size={12} />{f.telephone}</span>
-      </div>
-    )},
-    { key: 'categorie', header: 'Catégorie', sortable: true, cell: (f) => <StatusBadge status={f.categorie} tone="info" label={CAT_LABEL[f.categorie]} /> },
-    { key: 'status', header: 'Statut', sortable: true, cell: (f) => <StatusBadge status={f.status} /> },
+    {
+      key: 'nom',
+      header: 'Fournisseur',
+      sortable: true,
+      cell: (supplier) => (
+        <div className="row-stack">
+          <strong className="cell-strong">{supplier.nom}</strong>
+          <span>{supplier.adresse || 'Adresse non renseignée'}</span>
+        </div>
+      ),
+    },
+    {
+      key: 'contact',
+      header: 'Contact',
+      cell: (supplier) => (
+        <div className="row-stack">
+          <span className="admin-contact-line"><Mail size={12} />{supplier.email || 'Email non renseigné'}</span>
+          <span className="admin-contact-line"><Phone size={12} />{supplier.telephone || 'Téléphone non renseigné'}</span>
+        </div>
+      ),
+    },
+    {
+      key: 'categorie',
+      header: 'Catégorie',
+      sortable: true,
+      cell: (supplier) => <StatusBadge status={supplier.categorie} tone="info" label={CAT_LABEL[supplier.categorie]} />,
+    },
+    { key: 'status', header: 'Statut', sortable: true, cell: (supplier) => <StatusBadge status={supplier.status} /> },
   ], []);
 
+  const rows = query.data?.items ?? [];
+  const total = query.data?.total ?? 0;
+  const activeCount = rows.filter((supplier) => supplier.status === 'actif').length;
+  const inactiveCount = rows.filter((supplier) => supplier.status === 'inactif').length;
+  const categoriesCount = new Set(rows.map((supplier) => supplier.categorie)).size;
+
   return (
-    <div>
+    <div className="admin-surface">
       <PageHeader
         title="Fournisseurs"
-        description="Annuaire des partenaires conventionnés"
+        description="Annuaire des partenaires conventionnés."
         breadcrumb={['Administration', 'Gestion', 'Fournisseurs']}
-        actions={<Button onClick={() => setCreating(true)}><Plus size={16} />Nouveau fournisseur</Button>}
-      />
-
-      <div className="crud-toolbar">
-        <FilterBar>
-          <SearchInput value={search} onChange={(v) => { setSearch(v); setPage(1); }} placeholder="Rechercher nom, email..." />
-          <SelectFilter
-            label="Catégorie" value={categorie}
-            onChange={(v) => { setCategorie(v); setPage(1); }}
-            options={Object.entries(CAT_LABEL).map(([value, label]) => ({ value, label }))}
-          />
-          <SelectFilter
-            label="Statut" value={status}
-            onChange={(v) => { setStatus(v); setPage(1); }}
-            options={[{ value: 'actif', label: 'Actif' }, { value: 'inactif', label: 'Inactif' }]}
-          />
-        </FilterBar>
-      </div>
-
-      <DataTable
-        columns={columns}
-        rows={query.data?.items ?? []}
-        loading={query.isLoading}
-        rowKey={(f) => f.id}
-        sortBy={sortBy} sortDir={sortDir} onSortChange={onSort}
-        emptyTitle="Aucun fournisseur"
-        rowActions={(f) => (
-          <span className="row-actions">
-            <button className="icon-btn icon-btn--primary" onClick={() => setEditing(f)} title="Modifier"><Pencil size={15} /></button>
-            <button className="icon-btn icon-btn--danger" onClick={() => setDeleting(f)} title="Supprimer"><Trash2 size={15} /></button>
-          </span>
+        actions={(
+          <Button onClick={() => setCreating(true)}>
+            <Plus size={16} className="admin-btn-icon" />
+            Nouveau fournisseur
+          </Button>
         )}
       />
 
-      {query.data && query.data.total > 0 && (
-        <div className="data-table-card" style={{ marginTop: 'var(--space-3)' }}>
-          <Pagination page={page} size={10} total={query.data.total} onPageChange={setPage} />
+      <section className="admin-hero">
+        <div>
+          <span className="admin-hero-kicker">Réseau partenaires</span>
+          <h2>Fournisseurs conventionnés</h2>
+          <p>Centralisez les contacts, catégories et statuts des partenaires de l’Amicale SRT.</p>
         </div>
-      )}
+      </section>
+
+      <section className="admin-metrics" aria-label="Synthèse fournisseurs">
+        <AdminMetric icon={Building2} label="Résultats" value={total} tone="info" />
+        <AdminMetric icon={UserCheck} label="Actifs sur la page" value={activeCount} tone="success" />
+        <AdminMetric icon={Store} label="Catégories visibles" value={categoriesCount} tone="neutral" />
+        <AdminMetric icon={UserX} label="Inactifs" value={inactiveCount} tone="warning" />
+      </section>
+
+      <section className="admin-workspace">
+        <div className="admin-toolbar-panel">
+          <div className="crud-toolbar">
+            <FilterBar>
+              <SearchInput value={search} onChange={(value) => { setSearch(value); setPage(1); }} placeholder="Rechercher nom, email, téléphone..." />
+              <SelectFilter
+                label="Catégorie"
+                value={categorie}
+                onChange={(value) => { setCategorie(value); setPage(1); }}
+                options={Object.entries(CAT_LABEL).map(([value, label]) => ({ value, label }))}
+              />
+              <SelectFilter
+                label="Statut"
+                value={status}
+                onChange={(value) => { setStatus(value); setPage(1); }}
+                options={[
+                  { value: 'actif', label: 'Actif' },
+                  { value: 'inactif', label: 'Inactif' },
+                ]}
+              />
+            </FilterBar>
+          </div>
+        </div>
+
+        <div className="admin-table-panel">
+          <header className="admin-table-head">
+            <div>
+              <span className="admin-section-kicker">Annuaire</span>
+              <h3>Liste des fournisseurs</h3>
+              <p>{total} fournisseur{total > 1 ? 's' : ''} trouvé{total > 1 ? 's' : ''}</p>
+            </div>
+          </header>
+
+          <DataTable
+            columns={columns}
+            rows={rows}
+            loading={query.isLoading}
+            rowKey={(supplier) => supplier.id}
+            sortBy={sortBy}
+            sortDir={sortDir}
+            onSortChange={onSort}
+            emptyTitle="Aucun fournisseur"
+            emptyDescription="Aucun fournisseur ne correspond à vos critères."
+            rowActions={(supplier) => (
+              <span className="row-actions">
+                <button className="icon-btn icon-btn--primary" onClick={() => setEditing(supplier)} title="Modifier">
+                  <Pencil size={15} />
+                </button>
+                <button className="icon-btn icon-btn--danger" onClick={() => setDeleting(supplier)} title="Supprimer">
+                  <Trash2 size={15} />
+                </button>
+              </span>
+            )}
+          />
+
+          {query.data && query.data.total > 0 && (
+            <div className="admin-pagination">
+              <Pagination page={page} size={10} total={query.data.total} onPageChange={setPage} />
+            </div>
+          )}
+        </div>
+      </section>
 
       <Modal open={creating} onClose={() => setCreating(false)} title="Nouveau fournisseur">
-        <SupplierForm onCancel={() => setCreating(false)} onSubmit={(v) => create.mutateAsync(v)} submitting={create.isPending} />
+        <SupplierForm onCancel={() => setCreating(false)} onSubmit={(values) => create.mutateAsync(values)} submitting={create.isPending} />
       </Modal>
+
       <Modal open={!!editing} onClose={() => setEditing(null)} title="Modifier le fournisseur">
-        {editing && <SupplierForm initial={editing} onCancel={() => setEditing(null)} onSubmit={(v) => update.mutateAsync({ id: editing.id, v })} submitting={update.isPending} />}
+        {editing && (
+          <SupplierForm
+            initial={editing}
+            onCancel={() => setEditing(null)}
+            onSubmit={(values) => update.mutateAsync({ id: editing.id, values })}
+            submitting={update.isPending}
+          />
+        )}
       </Modal>
+
       <ConfirmDialog
         open={!!deleting}
         title="Supprimer ce fournisseur ?"
         message={`Le fournisseur "${deleting?.nom}" sera supprimé définitivement.`}
-        confirmLabel="Supprimer" destructive loading={remove.isPending}
+        confirmLabel="Supprimer"
+        destructive
+        loading={remove.isPending}
         onCancel={() => setDeleting(null)}
         onConfirm={() => deleting && remove.mutate(deleting.id)}
       />
     </div>
+  );
+}
+
+function AdminMetric({
+  icon: Icon,
+  label,
+  value,
+  tone,
+}: {
+  icon: LucideIcon;
+  label: string;
+  value: number;
+  tone: 'success' | 'warning' | 'info' | 'neutral';
+}) {
+  return (
+    <article className={`admin-metric is-${tone}`}>
+      <span className="admin-metric-icon">
+        <Icon size={18} />
+      </span>
+      <div>
+        <strong>{value}</strong>
+        <span>{label}</span>
+      </div>
+    </article>
   );
 }

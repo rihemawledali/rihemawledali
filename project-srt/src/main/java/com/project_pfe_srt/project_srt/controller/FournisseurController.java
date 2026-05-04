@@ -17,7 +17,7 @@ import java.util.Set;
 @RestController
 @RequestMapping("/api/fournisseurs")
 @RequiredArgsConstructor
-@PreAuthorize("hasRole('ADMIN')")
+@PreAuthorize("hasAnyRole('ADMIN','TRESORIER')")
 public class FournisseurController {
 
     private static final Set<String> CATEGORIES = Set.of(
@@ -59,6 +59,7 @@ public class FournisseurController {
     }
 
     @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> create(@RequestBody FournisseurRequest req) {
         try {
             if (req.getNom() == null || req.getNom().isBlank()) {
@@ -80,6 +81,7 @@ public class FournisseurController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> update(@PathVariable Long id, @RequestBody FournisseurRequest req) {
         return fournisseurRepository.findById(id)
                 .<ResponseEntity<?>>map(f -> {
@@ -100,6 +102,7 @@ public class FournisseurController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> delete(@PathVariable Long id) {
         if (!fournisseurRepository.existsById(id)) {
             return ResponseEntity.status(404).body(Map.of("error", "Fournisseur introuvable."));

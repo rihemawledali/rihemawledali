@@ -1,18 +1,24 @@
 package com.project_pfe_srt.project_srt.service;
 
+import com.project_pfe_srt.project_srt.dto.BonCommandeDetailDto;
 import com.project_pfe_srt.project_srt.dto.BonCommandeDto;
 import com.project_pfe_srt.project_srt.dto.BonCommandeRequest;
+import com.project_pfe_srt.project_srt.dto.TicketDto;
 import com.project_pfe_srt.project_srt.entity.BonCommande;
 import com.project_pfe_srt.project_srt.entity.Fournisseur;
 import com.project_pfe_srt.project_srt.entity.Role;
+import com.project_pfe_srt.project_srt.entity.TicketRestaurant;
 import com.project_pfe_srt.project_srt.entity.User;
 import com.project_pfe_srt.project_srt.repository.BonCommandeRepository;
 import com.project_pfe_srt.project_srt.repository.FournisseurRepository;
+import com.project_pfe_srt.project_srt.repository.TicketRepository;
 import com.project_pfe_srt.project_srt.repository.UserRepository;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
@@ -20,21 +26,47 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class BonCommandeService {
 
-    private static final Set<String> STATUTS = Set.of("en_attente", "attribue", "utilise", "expire");
+    private static final Set<String> STATUTS = Set.of(
+            // legacy
+            "en_attente", "attribue", "utilise",
+            // new
+            "brouillon", "valide", "epuise", "expire");
+
+    private static final Set<String> TYPES = Set.of("restaurant", "cafeteria");
 
     private final BonCommandeRepository repo;
     private final FournisseurRepository fournisseurRepository;
     private final UserRepository userRepository;
+    private final TicketRepository ticketRepository;
 
     public List<BonCommandeDto> list() {
         return repo.findAllByOrderByDateEmissionDesc().stream()
                 .map(BonCommandeDto::from).toList();
     }
 
+    public BonCommandeDetailDto getById(Long id) {
+        BonCommande b = repo.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Bon de commande introuvable."));
+        List<TicketDto> tickets = ticketRepository
+                .findByBonCommandeIdOrderByNumeroAsc(b.getId()).stream()
+                .map(TicketDto::from).toList();
+        return BonCommandeDetailDto.builder()
+                .bon(BonCommandeDto.from(b))
+                .tickets(tickets)
+                .build();
+    }
+
     private static String requireStatut(String value, String fallback) {
         if (value == null || value.isBlank()) return fallback;
         String v = value.trim().toLowerCase();
         if (!STATUTS.contains(v)) throw new IllegalArgumentException("Statut invalide.");
+        return v;
+    }
+
+    private static String requireType(String value, String fallback) {
+        if (value == null || value.isBlank()) return fallback;
+        String v = value.trim().toLowerCase();
+        if (!TYPES.contains(v)) throw new IllegalArgumentException("Type de bon invalide (restaurant | cafeteria).");
         return v;
     }
 
@@ -47,15 +79,41 @@ public class BonCommandeService {
         }
     }
 
+    /**
+     * Creates a stock-level bon de commande and pre-generates all its
+     * tickets (statut = en_attente, unassigned). The bon itself starts
+     * in « brouillon » — use {@link #valider(Long)} to allow assignment.
+     */
+    @Transactional
     public BonCommandeDto create(BonCommandeRequest req) {
         if (req.getNumero() == null || req.getNumero().isBlank())
             throw new IllegalArgumentException("Numéro requis.");
         if (repo.existsByNumero(req.getNumero()))
             throw new IllegalArgumentException("Numéro déjà utilisé.");
         if (req.getMontant() == null || req.getMontant() <= 0)
-            throw new IllegalArgumentException("Montant invalide.");
+            throw new IllegalArgumentException("Montant total invalide.");
+        if (req.getValeurUnitaire() == null || req.getValeurUnitaire() <= 0)
+            throw new IllegalArgumentException("Valeur unitaire d'un ticket invalide.");
         if (req.getFournisseurId() == null)
             throw new IllegalArgumentException("Fournisseur requis.");
+
+        // Derive the number of tickets from the two monetary inputs when
+        // omitted. Also sanity-check the ratio so the caller cannot
+        // accidentally mix inconsistent values (e.g. 1000 DT / 7 DT = 142,85 → refused).
+        int quantite;
+        if (req.getQuantiteTotale() != null && req.getQuantiteTotale() > 0) {
+            quantite = req.getQuantiteTotale();
+        } else {
+            double raw = req.getMontant() / req.getValeurUnitaire();
+            if (Math.abs(raw - Math.round(raw)) > 1e-6) {
+                throw new IllegalArgumentException(
+                        "Le montant total doit être un multiple exact de la valeur unitaire.");
+            }
+            quantite = (int) Math.round(raw);
+        }
+        if (quantite <= 0 || quantite > 10_000) {
+            throw new IllegalArgumentException("Quantité de tickets hors plage (1..10000).");
+        }
 
         Fournisseur f = fournisseurRepository.findById(req.getFournisseurId())
                 .orElseThrow(() -> new IllegalArgumentException("Fournisseur introuvable."));
@@ -75,21 +133,60 @@ public class BonCommandeService {
             throw new IllegalArgumentException("La date d'expiration doit être après la date d'émission.");
         }
 
+        String typeBon = requireType(req.getTypeBon(), "restaurant");
+
         BonCommande b = BonCommande.builder()
                 .numero(req.getNumero().trim())
                 .fournisseur(f)
                 .adherent(adherent)
+                .typeBon(typeBon)
                 .montant(req.getMontant())
-                .statut(requireStatut(req.getStatut(), "en_attente"))
+                .valeurUnitaire(req.getValeurUnitaire())
+                .quantiteTotale(quantite)
+                .quantiteRestante(quantite)
+                .statut(requireStatut(req.getStatut(), "brouillon"))
                 .dateEmission(emission)
                 .dateExpiration(expiration)
                 .build();
+        b = repo.save(b);
+
+        // Pre-generate tickets. The numero pattern (BON-<i>) guarantees
+        // global uniqueness because the bon's own numero is unique.
+        List<TicketRestaurant> tickets = new ArrayList<>(quantite);
+        for (int i = 1; i <= quantite; i++) {
+            tickets.add(TicketRestaurant.builder()
+                    .numero(b.getNumero() + "-" + String.format("%04d", i))
+                    .typeBon(typeBon)
+                    .montant(req.getValeurUnitaire())
+                    .statut("en_attente")
+                    .bonCommande(b)
+                    .dateEmission(emission)
+                    .build());
+        }
+        ticketRepository.saveAll(tickets);
+        return BonCommandeDto.from(b);
+    }
+
+    /** Move a {@code brouillon} bon to {@code valide}. Idempotent. */
+    @Transactional
+    public BonCommandeDto valider(Long id) {
+        BonCommande b = repo.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Bon de commande introuvable."));
+        String s = b.getStatut() == null ? "" : b.getStatut().toLowerCase();
+        if ("epuise".equals(s) || "expire".equals(s)) {
+            throw new IllegalArgumentException("Ce bon ne peut plus être validé (statut : " + s + ").");
+        }
+        b.setStatut("valide");
         return BonCommandeDto.from(repo.save(b));
     }
 
+    @Transactional
     public BonCommandeDto update(Long id, BonCommandeRequest req) {
         BonCommande b = repo.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Bon de commande introuvable."));
+
+        boolean hasAssignedTickets =
+                ticketRepository.countByBonCommandeIdAndStatut(b.getId(), "attribue") > 0;
 
         if (req.getNumero() != null && !req.getNumero().equalsIgnoreCase(b.getNumero())) {
             if (repo.existsByNumero(req.getNumero()))
@@ -106,8 +203,13 @@ public class BonCommandeService {
                     .orElseThrow(() -> new IllegalArgumentException("Adhérent introuvable."));
             b.setAdherent(a);
         }
+        if (req.getTypeBon() != null) b.setTypeBon(requireType(req.getTypeBon(), b.getTypeBon()));
         if (req.getMontant() != null) {
             if (req.getMontant() <= 0) throw new IllegalArgumentException("Montant invalide.");
+            if (hasAssignedTickets && !req.getMontant().equals(b.getMontant())) {
+                throw new IllegalArgumentException(
+                        "Impossible de modifier le montant : des tickets ont déjà été attribués.");
+            }
             b.setMontant(req.getMontant());
         }
         if (req.getStatut() != null) b.setStatut(requireStatut(req.getStatut(), b.getStatut()));
@@ -117,8 +219,16 @@ public class BonCommandeService {
         return BonCommandeDto.from(repo.save(b));
     }
 
+    @Transactional
     public void delete(Long id) {
-        if (!repo.existsById(id)) throw new IllegalArgumentException("Bon de commande introuvable.");
-        repo.deleteById(id);
+        BonCommande b = repo.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Bon de commande introuvable."));
+        long assigned = ticketRepository.countByBonCommandeIdAndStatut(b.getId(), "attribue");
+        if (assigned > 0) {
+            throw new IllegalArgumentException(
+                    "Impossible de supprimer : " + assigned + " ticket(s) déjà attribué(s).");
+        }
+        ticketRepository.deleteAll(ticketRepository.findByBonCommandeIdOrderByNumeroAsc(b.getId()));
+        repo.deleteById(b.getId());
     }
 }

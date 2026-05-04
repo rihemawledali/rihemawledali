@@ -7,7 +7,6 @@ export interface DashboardStats {
   pretsActifs: number;
   revenuTotal: number;
   demandesEnAttente: number;
-  conventionsActives: number;
   fournisseursActifs: number;
   // delta (vs last period) — synthetic
   trendAdherents: number;
@@ -29,11 +28,10 @@ export const dashboardApi = {
       db.prets.filter((p) => p.statut === 'en_attente').length +
       db.indemnites.filter((i) => i.statut === 'en_attente').length +
       db.bonsCommande.filter((b) => b.statut === 'en_attente').length;
-    const conventionsActives = db.conventions.filter((c) => c.statut === 'active').length;
     const fournisseursActifs = db.fournisseurs.filter((f) => f.status === 'actif').length;
     return delay({
       totalAdherents, pretsActifs, revenuTotal, demandesEnAttente,
-      conventionsActives, fournisseursActifs,
+      fournisseursActifs,
       trendAdherents: 12.4, trendRevenu: 8.7, trendPrets: -3.1, trendDemandes: 5.6,
     });
   },

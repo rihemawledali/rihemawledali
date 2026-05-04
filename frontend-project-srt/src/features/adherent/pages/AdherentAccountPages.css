@@ -1,0 +1,657 @@
+.adh-account-page {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.adh-account-kicker {
+  display: block;
+  margin-bottom: 5px;
+  color: var(--adh-text-3);
+  font-size: 0.72rem;
+  font-weight: 760;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.adh-account-btn-icon {
+  margin-right: 7px;
+  flex-shrink: 0;
+}
+
+.adh-account-num {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.adh-profile-shell {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: 18px;
+  align-items: start;
+}
+
+.adh-profile-main-skeleton {
+  height: 470px;
+  border-radius: 14px;
+}
+
+.adh-profile-side-skeleton {
+  height: 330px;
+  border-radius: 14px;
+}
+
+.adh-profile-main-card {
+  overflow: hidden;
+  border: 1px solid var(--adh-border);
+  border-radius: 14px;
+  background: var(--adh-surface);
+  box-shadow: var(--adh-shadow-xs);
+}
+
+.adh-profile-identity {
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+  padding: 22px;
+  border-bottom: 1px solid var(--adh-border);
+  background:
+    linear-gradient(135deg, rgba(239, 246, 255, 0.95), rgba(255, 255, 255, 0.96) 48%, rgba(240, 253, 244, 0.72)),
+    var(--adh-surface);
+}
+
+.adh-profile-avatar-large {
+  width: 76px;
+  height: 76px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border: 3px solid #ffffff;
+  border-radius: 18px;
+  background: #0f172a;
+  color: #ffffff;
+  font-size: 1.35rem;
+  font-weight: 820;
+  box-shadow: var(--adh-shadow-md);
+}
+
+.adh-profile-heading {
+  min-width: 0;
+}
+
+.adh-profile-heading h2 {
+  margin: 0;
+  color: var(--adh-text-1);
+  font-size: 1.35rem;
+  line-height: 1.2;
+  font-weight: 800;
+  letter-spacing: 0;
+  overflow-wrap: anywhere;
+}
+
+.adh-profile-badges {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+
+.adh-profile-badge,
+.adh-profile-status,
+.adh-profile-contact-row a,
+.adh-profile-contact-row span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--adh-border);
+  border-radius: 999px;
+  background: #ffffff;
+  color: var(--adh-text-2);
+  font-size: 0.74rem;
+  font-weight: 720;
+  text-decoration: none;
+}
+
+.adh-profile-status.is-active {
+  border-color: #bbf7d0;
+  background: #f0fdf4;
+  color: #15803d;
+}
+
+.adh-profile-status.is-inactive {
+  border-color: #e2e8f0;
+  background: #f8fafc;
+  color: var(--adh-text-2);
+}
+
+.adh-profile-info-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0;
+}
+
+.adh-profile-info-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  min-width: 0;
+  padding: 16px 18px;
+  border-right: 1px solid var(--adh-border);
+  border-bottom: 1px solid var(--adh-border);
+}
+
+.adh-profile-info-item:nth-child(2n) {
+  border-right: 0;
+}
+
+.adh-profile-info-item:nth-last-child(-n + 2) {
+  border-bottom: 0;
+}
+
+.adh-profile-info-icon {
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border-radius: 10px;
+  background: var(--adh-surface-2);
+  color: var(--adh-text-2);
+}
+
+.adh-profile-info-item div {
+  min-width: 0;
+}
+
+.adh-profile-info-item span:not(.adh-profile-info-icon) {
+  display: block;
+  color: var(--adh-text-3);
+  font-size: 0.72rem;
+  font-weight: 720;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.adh-profile-info-item strong {
+  display: block;
+  margin-top: 4px;
+  color: var(--adh-text-1);
+  font-size: 0.9rem;
+  font-weight: 730;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.adh-profile-aside {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.adh-account-panel {
+  padding: 16px;
+  border: 1px solid var(--adh-border);
+  border-radius: 14px;
+  background: var(--adh-surface);
+  box-shadow: var(--adh-shadow-xs);
+}
+
+.adh-account-panel-head {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  margin-bottom: 12px;
+}
+
+.adh-account-panel-icon {
+  width: 40px;
+  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border-radius: 11px;
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.adh-account-panel-icon.is-success {
+  background: #f0fdf4;
+  color: #15803d;
+}
+
+.adh-account-panel-head h3 {
+  margin: 0;
+  color: var(--adh-text-1);
+  font-size: 0.95rem;
+  font-weight: 760;
+}
+
+.adh-account-panel-head p {
+  margin: 3px 0 0;
+  color: var(--adh-text-3);
+  font-size: 0.78rem;
+}
+
+.adh-account-panel-copy {
+  margin: 0 0 13px;
+  color: var(--adh-text-2);
+  font-size: 0.84rem;
+  line-height: 1.55;
+}
+
+.adh-profile-contact-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.adh-profile-contact-row a:hover {
+  border-color: rgba(37, 99, 235, 0.35);
+  color: var(--adh-accent);
+}
+
+.adh-membership-skeleton {
+  height: 260px;
+  border-radius: 14px;
+}
+
+.adh-membership-card,
+.adh-loan-active-card,
+.adh-account-section-card {
+  border: 1px solid var(--adh-border);
+  border-radius: 14px;
+  background: var(--adh-surface);
+  box-shadow: var(--adh-shadow-xs);
+}
+
+.adh-membership-card,
+.adh-loan-active-card {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 18px;
+}
+
+.adh-membership-head,
+.adh-loan-active-head,
+.adh-account-section-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.adh-membership-title {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+
+.adh-membership-icon {
+  width: 54px;
+  height: 54px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border-radius: 14px;
+  background: #f0fdf4;
+  color: #15803d;
+}
+
+.adh-membership-title h2,
+.adh-loan-active-head h2 {
+  margin: 0;
+  color: var(--adh-text-1);
+  font-size: 1.26rem;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.adh-membership-title p,
+.adh-loan-active-head p {
+  margin: 5px 0 0;
+  color: var(--adh-text-2);
+  font-size: 0.86rem;
+}
+
+.adh-membership-alert {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 34px;
+  padding: 0 11px;
+  border-radius: 10px;
+  font-size: 0.78rem;
+  font-weight: 730;
+  white-space: nowrap;
+}
+
+.adh-membership-alert.is-warning {
+  border: 1px solid #fde68a;
+  background: #fffbeb;
+  color: #92400e;
+}
+
+.adh-membership-alert.is-danger {
+  border: 1px solid #fecaca;
+  background: #fef2f2;
+  color: #7f1d1d;
+}
+
+.adh-membership-detail-grid,
+.adh-loan-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.adh-membership-detail,
+.adh-loan-detail {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-width: 0;
+  padding: 13px;
+  border: 1px solid var(--adh-border);
+  border-radius: 12px;
+  background: var(--adh-surface-2);
+}
+
+.adh-membership-detail > span,
+.adh-loan-detail > span {
+  width: 34px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border-radius: 9px;
+  background: #ffffff;
+  color: var(--adh-accent);
+}
+
+.adh-membership-detail div,
+.adh-loan-detail div {
+  min-width: 0;
+}
+
+.adh-membership-detail small,
+.adh-loan-detail small {
+  display: block;
+  color: var(--adh-text-3);
+  font-size: 0.7rem;
+  font-weight: 730;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.adh-membership-detail strong,
+.adh-loan-detail strong {
+  display: block;
+  margin-top: 4px;
+  color: var(--adh-text-1);
+  font-size: 0.86rem;
+  font-weight: 740;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.adh-membership-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid #dbeafe;
+  border-radius: 12px;
+  background: #eff6ff;
+  color: #1e3a8a;
+}
+
+.adh-membership-note svg {
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+.adh-membership-note strong,
+.adh-membership-note span {
+  display: block;
+  font-size: 0.84rem;
+  line-height: 1.5;
+}
+
+.adh-membership-note span {
+  color: #1e40af;
+}
+
+.adh-membership-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.adh-account-empty {
+  gap: 10px;
+}
+
+.adh-account-section-card {
+  overflow: hidden;
+}
+
+.adh-account-section-head {
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--adh-border);
+}
+
+.adh-account-section-head h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  color: var(--adh-text-1);
+  font-size: 0.98rem;
+  font-weight: 770;
+}
+
+.adh-account-section-head p {
+  margin: 5px 0 0;
+  color: var(--adh-text-3);
+  font-size: 0.8rem;
+}
+
+.adh-account-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  width: 100%;
+  flex-wrap: wrap;
+}
+
+.adh-account-confirm {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.adh-account-confirm p,
+.adh-account-confirm span {
+  margin: 0;
+  color: var(--adh-text-2);
+  font-size: 0.86rem;
+  line-height: 1.55;
+}
+
+.adh-account-confirm strong {
+  color: var(--adh-text-1);
+}
+
+.adh-account-confirm span {
+  color: #dc2626;
+}
+
+.adh-loan-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.adh-account-metric-skeleton {
+  height: 86px;
+  border-radius: 12px;
+}
+
+.adh-account-table-skeleton {
+  height: 310px;
+  border-radius: 14px;
+}
+
+.adh-loan-metric {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  min-height: 84px;
+  padding: 15px;
+  border: 1px solid var(--adh-border);
+  border-radius: 12px;
+  background: var(--adh-surface);
+  box-shadow: var(--adh-shadow-xs);
+}
+
+.adh-loan-metric-icon {
+  width: 42px;
+  height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border-radius: 11px;
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.adh-loan-metric.is-success .adh-loan-metric-icon {
+  background: #f0fdf4;
+  color: #15803d;
+}
+
+.adh-loan-metric.is-warning .adh-loan-metric-icon {
+  background: #fffbeb;
+  color: #b45309;
+}
+
+.adh-loan-metric strong {
+  display: block;
+  color: var(--adh-text-1);
+  font-size: 1.22rem;
+  line-height: 1.15;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.adh-loan-metric span:last-child {
+  display: block;
+  margin-top: 5px;
+  color: var(--adh-text-2);
+  font-size: 0.78rem;
+  font-weight: 650;
+}
+
+.adh-loan-active-card {
+  background:
+    linear-gradient(135deg, rgba(239, 246, 255, 0.72), rgba(255, 255, 255, 0.96) 42%, rgba(240, 253, 244, 0.62)),
+    var(--adh-surface);
+}
+
+.adh-loan-active-head > div {
+  min-width: 0;
+}
+
+.adh-loan-schedule-modal {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.adh-loan-schedule-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.adh-loan-schedule-table {
+  overflow-x: auto;
+  border: 1px solid var(--adh-border);
+  border-radius: 12px;
+}
+
+.adh-loan-schedule-table .adh-schedule th,
+.adh-loan-schedule-table .adh-schedule td {
+  white-space: nowrap;
+}
+
+.adh-loan-schedule-table .adh-schedule th:nth-child(n + 3),
+.adh-loan-schedule-table .adh-schedule td:nth-child(n + 3):not(:last-child) {
+  text-align: right;
+}
+
+@media (max-width: 1180px) {
+  .adh-profile-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .adh-membership-detail-grid,
+  .adh-loan-detail-grid,
+  .adh-loan-schedule-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .adh-account-page {
+    gap: 14px;
+  }
+
+  .adh-profile-identity,
+  .adh-membership-head,
+  .adh-loan-active-head,
+  .adh-account-section-head {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .adh-profile-info-grid,
+  .adh-membership-detail-grid,
+  .adh-loan-detail-grid,
+  .adh-loan-metrics,
+  .adh-loan-schedule-metrics {
+    grid-template-columns: 1fr;
+  }
+
+  .adh-profile-info-item,
+  .adh-profile-info-item:nth-child(2n),
+  .adh-profile-info-item:nth-last-child(-n + 2) {
+    border-right: 0;
+    border-bottom: 1px solid var(--adh-border);
+  }
+
+  .adh-profile-info-item:last-child {
+    border-bottom: 0;
+  }
+
+  .adh-membership-actions,
+  .adh-account-modal-actions {
+    justify-content: stretch;
+  }
+
+  .adh-membership-actions .btn,
+  .adh-account-modal-actions .btn {
+    width: 100%;
+  }
+}

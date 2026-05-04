@@ -5,17 +5,17 @@
    (1 row per RetenueLigne).
    ============================================ */
 
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Receipt, RefreshCw, Wallet, CheckCircle2, Eye, Download, Layers, ListChecks,
   HandCoins, Banknote, Building2, Clock, AlertTriangle, Calendar,
+  Ticket,
 } from 'lucide-react';
 import { PageHeader } from '../../../components/layout/PageHeader';
 import { DataTable, type Column } from '../../../components/data/DataTable';
 import { StatusBadge } from '../../../components/data/StatusBadge';
-import { StatCard } from '../../../components/charts/StatCard';
 import { Button } from '../../../components/ui/Button';
 import { SearchInput } from '../../../components/data/SearchInput';
 import { FilterBar, SelectFilter } from '../../../components/data/FilterBar';
@@ -30,7 +30,7 @@ import {
   type RetenueLigneType,
 } from '../api/treasurerListApi';
 import '../../../components/layout/CrudPage.css';
-import '../../dashboard/pages/OverviewPage.css';
+import './TreasurerRetenuesPage.css';
 
 // ---- Master statut visuals ----
 
@@ -64,12 +64,14 @@ const TYPE_LABEL: Record<RetenueLigneType, string> = {
   COTISATION: 'Cotisation',
   PRET: 'Prêt',
   CONVENTION: 'Convention',
+  TICKET_RESTAURANT: 'Ticket restaurant',
 };
 
-const TYPE_ICON: Record<RetenueLigneType, React.ReactNode> = {
+const TYPE_ICON: Record<RetenueLigneType, ReactNode> = {
   COTISATION: <HandCoins size={14} />,
   PRET: <Banknote size={14} />,
   CONVENTION: <Building2 size={14} />,
+  TICKET_RESTAURANT: <Ticket size={14} />,
 };
 
 function formatMonth(mois: number, annee: number): string {
@@ -202,7 +204,9 @@ export function TreasurerRetenuesPage() {
   });
 
   // ---- Navigation to the detail page ----
-  const openDetail = (id: string) => navigate(`/treasurer/retenues/${id}`);
+  const openDetail = useCallback((id: string) => {
+    navigate(`/treasurer/retenues/${id}`);
+  }, [navigate]);
 
   // ---- Columns: aggregated view ----
   const groupColumns: Column<RetenueMensuelle>[] = useMemo(() => [
@@ -213,7 +217,7 @@ export function TreasurerRetenuesPage() {
         <div>
           <strong className="cell-strong">{r.adherentNom}</strong>
           {r.adherentMatricule && (
-            <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)' }}>
+            <div className="retenue-member-meta">
               {r.adherentMatricule}
             </div>
           )}
@@ -232,22 +236,11 @@ export function TreasurerRetenuesPage() {
       align: 'right',
       width: '140px',
       cell: (r) => r.totalCotisation > 0 ? (
-        <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatCurrency(r.totalCotisation)}</span>
+        <span className="retenue-money">{formatCurrency(r.totalCotisation)}</span>
       ) : (
         <span
           title="Aucune ligne de cotisation pour cet adhérent — l'adhésion n'est peut-être pas active ce mois-ci. Cliquez sur « Régénérer » pour recalculer."
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 4,
-            padding: '2px 8px',
-            borderRadius: 999,
-            background: '#fff7ed',
-            color: '#c2410c',
-            border: '1px solid #fed7aa',
-            fontSize: 'var(--font-size-xs)',
-            fontWeight: 600,
-          }}
+          className="retenue-missing-badge"
         >
           <AlertTriangle size={12} /> Manquante
         </span>
@@ -258,14 +251,14 @@ export function TreasurerRetenuesPage() {
       header: 'Prêt',
       align: 'right',
       width: '120px',
-      cell: (r) => r.totalPret > 0 ? formatCurrency(r.totalPret) : <span style={{ color: 'var(--color-text-tertiary)' }}>—</span>,
+      cell: (r) => r.totalPret > 0 ? formatCurrency(r.totalPret) : <span className="retenue-empty-value">—</span>,
     },
     {
       key: 'totalConvention',
       header: 'Convention',
       align: 'right',
       width: '120px',
-      cell: (r) => r.totalConvention > 0 ? formatCurrency(r.totalConvention) : <span style={{ color: 'var(--color-text-tertiary)' }}>—</span>,
+      cell: (r) => r.totalConvention > 0 ? formatCurrency(r.totalConvention) : <span className="retenue-empty-value">—</span>,
     },
     {
       key: 'totalRetenu',
@@ -288,7 +281,7 @@ export function TreasurerRetenuesPage() {
       align: 'right',
       width: '170px',
       cell: (r) => (
-        <div style={{ display: 'inline-flex', gap: 4, justifyContent: 'flex-end' }}>
+        <div className="retenue-row-actions">
           <Button
             variant="ghost"
             size="sm"
@@ -321,7 +314,6 @@ export function TreasurerRetenuesPage() {
         </div>
       ),
     },
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   ], [openDetail, regenerateRow, exportRow]);
 
   // ---- Columns: flat view ----
@@ -342,7 +334,7 @@ export function TreasurerRetenuesPage() {
       header: 'Type',
       width: '130px',
       cell: (r) => (
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+        <span className="retenue-type-pill">
           {TYPE_ICON[r.typeSource]}
           {TYPE_LABEL[r.typeSource]}
         </span>
@@ -389,7 +381,6 @@ export function TreasurerRetenuesPage() {
         </Button>
       ),
     },
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   ], [openDetail]);
 
   // ---- Filters ----
@@ -399,15 +390,15 @@ export function TreasurerRetenuesPage() {
     .map(([value, label]) => ({ value, label }));
 
   return (
-    <div className="overview-page">
+    <div className="treasurer-retenues-page">
       <PageHeader
         title="Retenues mensuelles"
         description={`Générer et exporter les retenues sur paie — Période sélectionnée : ${MOIS_LABELS[periodMois - 1]} ${periodAnnee}`}
         breadcrumb={['Trésorerie', 'Finance', 'Retenues']}
         actions={(
-          <div style={{ display: 'flex', gap: 8 }}>
+          <div className="retenue-header-actions">
             <Button onClick={() => generate.mutate()} isLoading={generate.isPending}>
-              <RefreshCw size={16} style={{ marginRight: 6 }} />
+              <RefreshCw size={16} />
               Générer la période
             </Button>
             <Button
@@ -417,136 +408,109 @@ export function TreasurerRetenuesPage() {
               disabled={stats.total === 0}
               title={stats.total === 0 ? "Aucune retenue à exporter sur cette période — cliquez d'abord sur « Générer la période »" : undefined}
             >
-              <Download size={16} style={{ marginRight: 6 }} />
+              <Download size={16} />
               Exporter la période (CSV)
             </Button>
           </div>
         )}
       />
 
-      <div className="overview-stats">
-        <StatCard
+      <section className="retenue-stats-grid">
+        <RetenueMetric
           label="Adhérents avec retenue"
           value={formatNumber(stats.total)}
           icon={<Receipt size={22} />}
           tone="primary"
           loading={all.isLoading}
         />
-        <StatCard
+        <RetenueMetric
           label="Exportées"
           value={formatNumber(stats.exportees)}
           icon={<CheckCircle2 size={22} />}
           tone="success"
           loading={all.isLoading}
         />
-        <StatCard
+        <RetenueMetric
           label="À exporter"
           value={formatNumber(stats.aExporter)}
           icon={<Clock size={22} />}
           tone="warning"
           loading={all.isLoading}
         />
-        <StatCard
+        <RetenueMetric
           label="Cotisations manquantes"
           value={formatNumber(stats.sansCotisation)}
           icon={<AlertTriangle size={22} />}
           tone={stats.sansCotisation > 0 ? 'error' : 'info'}
           loading={all.isLoading}
         />
-        <StatCard
+        <RetenueMetric
           label="Montant total"
           value={formatCurrency(stats.montantTotal)}
           icon={<Wallet size={22} />}
           tone="success"
           loading={all.isLoading}
         />
-      </div>
+      </section>
 
-      <div className="crud-toolbar" style={{ flexWrap: 'wrap' }}>
-        <div style={{ display: 'inline-flex', borderRadius: 'var(--radius-md)', overflow: 'hidden', border: '1px solid var(--color-border)' }}>
-          <button
-            type="button"
-            onClick={() => { setMode('group'); setPage(1); setStatut(''); }}
-            style={{
-              padding: '8px 12px',
-              border: 'none',
-              cursor: 'pointer',
-              background: mode === 'group' ? 'var(--color-primary-600)' : 'var(--color-surface)',
-              color: mode === 'group' ? 'white' : 'var(--color-text-secondary)',
-              fontWeight: 600,
-              fontSize: 'var(--font-size-sm)',
-              display: 'inline-flex', alignItems: 'center', gap: 6,
-            }}
-          >
-            <Layers size={14} /> Vue agrégée
-          </button>
-          <button
-            type="button"
-            onClick={() => { setMode('flat'); setPage(1); setStatut(''); }}
-            style={{
-              padding: '8px 12px',
-              border: 'none',
-              cursor: 'pointer',
-              background: mode === 'flat' ? 'var(--color-primary-600)' : 'var(--color-surface)',
-              color: mode === 'flat' ? 'white' : 'var(--color-text-secondary)',
-              fontWeight: 600,
-              fontSize: 'var(--font-size-sm)',
-              display: 'inline-flex', alignItems: 'center', gap: 6,
-              borderLeft: '1px solid var(--color-border)',
-            }}
-          >
-            <ListChecks size={14} /> Vue détaillée
-          </button>
-        </div>
-        <FilterBar>
-          <SearchInput
-            value={search}
-            onChange={(v) => { setSearch(v); setPage(1); }}
-            placeholder={mode === 'group' ? 'Adhérent, mois…' : 'Adhérent, motif, type…'}
-          />
-          <SelectFilter
-            label="Statut"
-            value={statut}
-            onChange={(v) => { setStatut(v); setPage(1); }}
-            options={mode === 'group' ? masterStatutOptions : ligneStatutOptions}
-          />
-          <div
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 6,
-              padding: '0 8px',
-              border: '1px solid var(--color-border)',
-              borderRadius: 'var(--radius-md)',
-              background: 'var(--color-surface)',
-              height: 36,
-            }}
-            title="Période affichée"
-          >
-            <Calendar size={14} style={{ color: 'var(--color-text-tertiary)' }} />
-            <select
-              value={periodMois}
-              onChange={(e) => { setPeriodMois(Number(e.target.value)); setPage(1); }}
-              style={{ border: 'none', background: 'transparent', padding: '4px 4px', fontSize: 'var(--font-size-sm)', cursor: 'pointer' }}
-              aria-label="Mois"
+      <section className="retenue-workspace">
+        <div className="crud-toolbar retenue-toolbar">
+          <div className="retenue-view-switch" role="group" aria-label="Mode d'affichage">
+            <button
+              type="button"
+              onClick={() => { setMode('group'); setPage(1); setStatut(''); }}
+              className={mode === 'group' ? 'is-active' : undefined}
             >
-              {MOIS_LABELS.map((label, i) => (
-                <option key={i + 1} value={i + 1}>{label}</option>
-              ))}
-            </select>
-            <select
-              value={periodAnnee}
-              onChange={(e) => { setPeriodAnnee(Number(e.target.value)); setPage(1); }}
-              style={{ border: 'none', background: 'transparent', padding: '4px 4px', fontSize: 'var(--font-size-sm)', cursor: 'pointer' }}
-              aria-label="Année"
+              <Layers size={14} />
+              <span>Vue agrégée</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => { setMode('flat'); setPage(1); setStatut(''); }}
+              className={mode === 'flat' ? 'is-active' : undefined}
             >
-              {anneeOptions.map((y) => (
-                <option key={y} value={y}>{y}</option>
-              ))}
-            </select>
+              <ListChecks size={14} />
+              <span>Vue détaillée</span>
+            </button>
           </div>
-        </FilterBar>
-      </div>
+          <FilterBar>
+            <SearchInput
+              value={search}
+              onChange={(v) => { setSearch(v); setPage(1); }}
+              placeholder={mode === 'group' ? 'Adhérent, mois…' : 'Adhérent, motif, type…'}
+            />
+            <SelectFilter
+              label="Statut"
+              value={statut}
+              onChange={(v) => { setStatut(v); setPage(1); }}
+              options={mode === 'group' ? masterStatutOptions : ligneStatutOptions}
+            />
+            <div
+              className="retenue-period-picker"
+              title="Période affichée"
+            >
+              <Calendar size={14} />
+              <select
+                value={periodMois}
+                onChange={(e) => { setPeriodMois(Number(e.target.value)); setPage(1); }}
+                aria-label="Mois"
+              >
+                {MOIS_LABELS.map((label, i) => (
+                  <option key={i + 1} value={i + 1}>{label}</option>
+                ))}
+              </select>
+              <select
+                value={periodAnnee}
+                onChange={(e) => { setPeriodAnnee(Number(e.target.value)); setPage(1); }}
+                aria-label="Année"
+              >
+                {anneeOptions.map((y) => (
+                  <option key={y} value={y}>{y}</option>
+                ))}
+              </select>
+            </div>
+          </FilterBar>
+        </div>
 
       {mode === 'group' ? (
         <>
@@ -559,7 +523,7 @@ export function TreasurerRetenuesPage() {
             emptyDescription="Cliquez sur « Générer la période » pour créer les retenues mensuelles."
           />
           {groupQuery.data && groupQuery.data.total > 0 && (
-            <div className="data-table-card" style={{ marginTop: 'var(--space-3)' }}>
+            <div className="data-table-card retenue-pagination">
               <Pagination page={page} size={10} total={groupQuery.data.total} onPageChange={setPage} />
             </div>
           )}
@@ -575,26 +539,43 @@ export function TreasurerRetenuesPage() {
             emptyDescription="Aucune ligne correspondante. Essayez d'autres filtres."
           />
           {flatQuery.data && flatQuery.data.total > 0 && (
-            <div className="data-table-card" style={{ marginTop: 'var(--space-3)' }}>
+            <div className="data-table-card retenue-pagination">
               <Pagination page={page} size={10} total={flatQuery.data.total} onPageChange={setPage} />
             </div>
           )}
         </>
       )}
+      </section>
 
       {toast && (
-        <div
-          style={{
-            position: 'fixed', bottom: 24, right: 24, padding: '10px 14px',
-            background: 'var(--color-primary-700)', color: 'white',
-            borderRadius: 'var(--radius-md)', fontSize: 'var(--font-size-sm)',
-            fontWeight: 600, boxShadow: 'var(--shadow-md)', zIndex: 1000,
-            maxWidth: 360,
-          }}
-        >
+        <div className="retenue-toast">
           {toast}
         </div>
       )}
     </div>
+  );
+}
+
+function RetenueMetric({
+  icon,
+  label,
+  value,
+  tone,
+  loading,
+}: {
+  icon: ReactNode;
+  label: string;
+  value: string;
+  tone: 'primary' | 'success' | 'warning' | 'error' | 'info';
+  loading?: boolean;
+}) {
+  return (
+    <article className={`retenue-metric retenue-metric--${tone}`}>
+      <span className="retenue-metric-icon">{icon}</span>
+      <div>
+        <p>{label}</p>
+        <strong>{loading ? '...' : value}</strong>
+      </div>
+    </article>
   );
 }

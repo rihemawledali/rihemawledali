@@ -3,16 +3,13 @@
    ============================================ */
 
 import { useQuery } from '@tanstack/react-query';
-import { BadgeCheck, Banknote, HeartHandshake, Tag, Handshake, Wallet } from 'lucide-react';
+import { BadgeCheck, Banknote, HeartHandshake, Tag, Wallet } from 'lucide-react';
 import { dashboardApi } from '../api/dashboardApi';
-import { conventionsApi } from '../api/conventionsApi';
 import { formatCurrency, formatNumber } from '../../../lib/formatters';
 import '../layout/AdherentLayout.css';
 
 export function AdherentDashboardPage() {
   const dashboard = useQuery({ queryKey: ['adherent', 'dashboard'], queryFn: dashboardApi.getDashboard });
-  const conventions = useQuery({ queryKey: ['adherent', 'conventions'], queryFn: conventionsApi.getConventions });
-  const activeConventionsCount = conventions.data?.filter((c) => c.joined && c.statut === 'active').length ?? 0;
 
   const data = dashboard.data;
   const loading = dashboard.isLoading;
@@ -22,7 +19,6 @@ export function AdherentDashboardPage() {
   const pretMontant = data?.activeLoan ? formatCurrency(data.activeLoan.montant) : '—';
   const indemnitesEnAttente = data ? formatNumber(data.pendingIndemnities) : '—';
   const ticketsDispo = data ? formatNumber(data.availableOffers) : '—';
-  const conventionsActives = conventions.isLoading ? '—' : formatNumber(activeConventionsCount);
   const solde = data?.financialChart?.length
     ? formatCurrency(data.financialChart[data.financialChart.length - 1].solde)
     : '—';
@@ -32,7 +28,6 @@ export function AdherentDashboardPage() {
     { label: 'Prêt en cours', value: pretMontant, meta: data?.activeLoan ? `${data.activeLoan.duree} mois` : 'Aucun prêt actif', icon: Banknote, tone: 'primary' as const },
     { label: 'Indemnités en attente', value: indemnitesEnAttente, icon: HeartHandshake, tone: 'warning' as const },
     { label: 'Tickets restaurant', value: ticketsDispo, meta: 'Disponibles', icon: Tag, tone: 'info' as const },
-    { label: 'Conventions actives', value: conventionsActives, icon: Handshake, tone: 'violet' as const },
     { label: 'Solde estimé', value: solde, icon: Wallet, tone: 'success' as const },
   ];
 

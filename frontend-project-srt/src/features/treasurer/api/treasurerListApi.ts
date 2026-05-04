@@ -8,10 +8,10 @@
    ============================================ */
 
 import { paginate } from '../../../lib/paginate';
-import { get, post, put, downloadBlob, triggerBlobDownload } from '../../../lib/apiClient';
+import { get, post, put, del, downloadBlob, triggerBlobDownload } from '../../../lib/apiClient';
 import type {
   Adhesion, PretSocial, CompteBancaire, PageQuery,
-  ConventionDemande, HistoriqueFinanciere, PaiementMode,
+  HistoriqueFinanciere, PaiementMode,
   Indemnite, IndemniteType, IndemniteStatus,
   PretStatus, AdhesionStatus,
   HistoriqueSourceType, PaiementStatus,
@@ -226,7 +226,7 @@ export const treasurerIndemnitesApi = {
 // Retenues mensuelles — master / detail
 // =============================================================
 
-export type RetenueLigneType = 'COTISATION' | 'PRET' | 'CONVENTION';
+export type RetenueLigneType = 'COTISATION' | 'PRET' | 'CONVENTION' | 'TICKET_RESTAURANT';
 export type RetenueLigneStatut = 'GENEREE' | 'PRELEVEE' | 'EN_ATTENTE' | 'ANNULEE';
 export type RetenueMensuelleStatut = 'GENEREE' | 'EXPORTEE';
 
@@ -274,7 +274,7 @@ export interface RetenueLigneRow extends RetenueLigne {
 
 interface RetenueLigneDtoBE {
   id: string;
-  type: 'COTISATION' | 'PRET' | 'CONVENTION';
+  type: 'COTISATION' | 'PRET' | 'CONVENTION' | 'TICKET_RESTAURANT';
   montant: number;
   libelle?: string | null;
   sourceRefId?: string | null;
@@ -319,7 +319,7 @@ function mapMaster(r: RetenueMensuelleDtoBE): RetenueMensuelle {
     if (l.statut === 'ANNULEE') continue;
     if (l.typeSource === 'COTISATION') cot += l.montant;
     else if (l.typeSource === 'PRET') pret += l.montant;
-    else if (l.typeSource === 'CONVENTION') conv += l.montant;
+    else if (l.typeSource === 'CONVENTION' || l.typeSource === 'TICKET_RESTAURANT') conv += l.montant;
   }
   return {
     id: r.id,
@@ -348,7 +348,11 @@ export const treasurerRetenuesApi = {
     const page = await paginate<Row>(enriched, q, ['adherentNom', '_moisKey', 'statut']);
     return {
       ...page,
-      items: page.items.map(({ _moisKey: _, ...rest }) => rest as RetenueMensuelle),
+      items: page.items.map((row) => {
+        const { _moisKey, ...rest } = row;
+        void _moisKey;
+        return rest as RetenueMensuelle;
+      }),
     };
   },
 
@@ -475,7 +479,7 @@ export const treasurerRetenuesApi = {
   },
 
   /** Reference for the demande snapshot (used by the adhérent UI). */
-  trancheInfoForDemande(_demande: ConventionDemande): { offre: number; total: number; mensualite: number } | null {
+  trancheInfoForDemande(): { offre: number; total: number; mensualite: number } | null {
     // Convention tranches are not modeled in the backend yet — return null
     // so the calling UI hides the tranche-specific block.
     return null;
@@ -566,6 +570,44 @@ export const treasurerTresorerieApi = {
       decaissementsMois,
       derniereOperation,
     };
+  },
+
+  /** List comptes only (no historique). */
+  async listComptes(): Promise<CompteBancaire[]> {
+    const res = await get<CompteBancaireDtoBE[]>('/api/treasurer/comptes');
+    return res.data.map((c) => ({
+      id: c.id,
+      banque: c.banque,
+      iban: c.iban,
+      solde: c.solde,
+      devise: c.devise,
+    }));
+  },
+
+  async createCompte(payload: Omit<CompteBancaire, 'id'>): Promise<CompteBancaire> {
+    const res = await post<CompteBancaireDtoBE>('/api/treasurer/comptes', {
+      banque: payload.banque,
+      iban: payload.iban.trim(),
+      solde: payload.solde,
+      devise: payload.devise,
+    });
+    const c = res.data;
+    return { id: c.id, banque: c.banque, iban: c.iban, solde: c.solde, devise: c.devise };
+  },
+
+  async updateCompte(id: string, payload: Partial<Omit<CompteBancaire, 'id'>>): Promise<CompteBancaire> {
+    const body: Record<string, unknown> = {};
+    if (payload.banque !== undefined) body.banque = payload.banque;
+    if (payload.iban !== undefined) body.iban = payload.iban.trim();
+    if (payload.solde !== undefined) body.solde = payload.solde;
+    if (payload.devise !== undefined) body.devise = payload.devise;
+    const res = await put<CompteBancaireDtoBE>(`/api/treasurer/comptes/${id}`, body);
+    const c = res.data;
+    return { id: c.id, banque: c.banque, iban: c.iban, solde: c.solde, devise: c.devise };
+  },
+
+  async deleteCompte(id: string): Promise<void> {
+    await del(`/api/treasurer/comptes/${id}`);
   },
 };
 

@@ -30,6 +30,13 @@ public class ConventionAdherentDto {
     private String fournisseurTelephone;
     private String fournisseurEmail;
 
+    // ----- Mode d'avantage -----
+    private String typeConvention;
+    private String modeAvantage;
+    private Double tauxReduction;
+    private Double montantReduction;
+    private String descriptionAvantage;
+
     public static ConventionAdherentDto from(Convention c, String adherentStatus) {
         if (c == null) return null;
         var f = c.getFournisseur();
@@ -48,6 +55,11 @@ public class ConventionAdherentDto {
                 .fournisseurAdresse(f == null ? null : f.getAdresse())
                 .fournisseurTelephone(f == null ? null : f.getTelephone())
                 .fournisseurEmail(f == null ? null : f.getEmail())
+                .typeConvention(c.getTypeConvention())
+                .modeAvantage(c.getModeAvantage() == null ? null : c.getModeAvantage().name())
+                .tauxReduction(c.getTauxReduction())
+                .montantReduction(c.getMontantReduction())
+                .descriptionAvantage(c.getDescriptionAvantage())
                 .build();
     }
 }

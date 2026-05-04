@@ -33,7 +33,6 @@ import { AdherentHistoriquePage } from '../features/adherent/pages/AdherentHisto
 import { AdherentConventionsListPage } from '../features/adherent/pages/AdherentConventionsListPage';
 import { AdherentConventionDetailsPage } from '../features/adherent/pages/AdherentConventionDetailsPage';
 import { AdherentMesDemandesConventionsPage } from '../features/adherent/pages/AdherentMesDemandesConventionsPage';
-import { AdherentMesConventionsActivesPage } from '../features/adherent/pages/AdherentMesConventionsActivesPage';
 import { OverviewPage } from '../features/dashboard/pages/OverviewPage';
 import { UsersPage } from '../features/users/UsersPage';
 import { SuppliersPage } from '../features/suppliers/SuppliersPage';
@@ -42,6 +41,7 @@ import { PaiementsPage } from '../features/finance/PaiementsPage';
 import { FacturesPage } from '../features/finance/FacturesPage';
 import { HistoriquePage } from '../features/finance/HistoriquePage';
 import { BonsCommandePage } from '../features/offers/BonsCommandePage';
+import { BonCommandeDetailPage } from '../features/offers/BonCommandeDetailPage';
 import { TicketsPage } from '../features/offers/TicketsPage';
 
 export function AppRouter() {
@@ -68,6 +68,7 @@ export function AppRouter() {
           <Route path="finance/factures" element={<FacturesPage />} />
           <Route path="finance/historique" element={<HistoriquePage />} />
           <Route path="offres/bons-commande" element={<BonsCommandePage />} />
+          <Route path="offres/bons-commande/:id" element={<BonCommandeDetailPage />} />
           <Route path="offres/tickets" element={<TicketsPage />} />
         </Route>
       </Route>
@@ -87,6 +88,7 @@ export function AppRouter() {
           <Route path="factures"           element={<FacturesPage />} />
           <Route path="tickets"            element={<TicketsPage />} />
           <Route path="bons-commande"      element={<BonsCommandePage />} />
+          <Route path="bons-commande/:id"  element={<BonCommandeDetailPage />} />
           <Route path="tresorerie"         element={<TreasurerTresoreriePage />} />
           <Route path="historique"         element={<HistoriquePage />} />
           <Route path="profil"             element={<TreasurerProfilPage />} />
@@ -110,7 +112,6 @@ export function AppRouter() {
           <Route path="offres" element={<AdherentOffresPage />} />
           <Route path="conventions" element={<AdherentConventionsListPage />} />
           <Route path="conventions/mes-demandes" element={<AdherentMesDemandesConventionsPage />} />
-          <Route path="conventions/actives" element={<AdherentMesConventionsActivesPage />} />
           <Route path="conventions/historique" element={<Navigate to="/adherent/conventions/mes-demandes" replace />} />
           <Route path="conventions/:id" element={<AdherentConventionDetailsPage />} />
           <Route path="historique" element={<AdherentHistoriquePage />} />
