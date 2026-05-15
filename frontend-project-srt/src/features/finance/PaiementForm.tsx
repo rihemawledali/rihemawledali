@@ -1,10 +1,12 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { paiementSchema, type PaiementFormValues } from '../../lib/validators';
-import { FormInput } from '../../components/ui/FormInput';
-import { FormSelect } from '../../components/ui/FormSelect';
-import { Button } from '../../components/ui/Button';
-import type { Paiement } from '../../types/domain';
+import { useEffect, useState } from 'react';
+import { paiementSchema, type PaiementFormValues } from '../../shared/validators';
+import { FormInput } from '../../shared/ui/FormInput';
+import { FormSelect } from '../../shared/ui/FormSelect';
+import { Button } from '../../shared/ui/Button';
+import { treasurerTresorerieApi } from '../../features/treasurer/api/treasurerListApi';
+import type { Paiement, CompteBancaire } from '../../shared/types/domain';
 
 interface Props {
   initial?: Paiement;
@@ -13,42 +15,73 @@ interface Props {
   submitting?: boolean;
 }
 
+function createPaymentReference() {
+  return `PAY-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 9999)).padStart(4, '0')}`;
+}
+
+function createPaiementDefaults(initial?: Paiement): PaiementFormValues {
+  if (initial) {
+    return {
+      reference: initial.reference,
+      typePaiement: initial.typePaiement ?? 'AUTRE_SORTIE',
+      beneficiaireType: initial.beneficiaireType ?? 'AUTRE',
+      beneficiaireId: initial.beneficiaireId ?? '',
+      beneficiaire: initial.beneficiaire,
+      montant: initial.montant,
+      mode: initial.mode,
+      statut: initial.statut,
+      factureId: initial.factureId ?? '',
+      factureNumero: initial.factureNumero ?? '',
+      indemniteId: initial.indemniteId ?? '',
+      description: initial.description ?? '',
+      compteBancaireId: initial.compteBancaireId ?? '',
+    };
+  }
+
+  return {
+    reference: createPaymentReference(),
+    typePaiement: 'AUTRE_SORTIE',
+    beneficiaireType: 'AUTRE',
+    beneficiaireId: '',
+    beneficiaire: '',
+    montant: 0,
+    mode: 'virement',
+    statut: 'reussi',
+    factureId: '',
+    factureNumero: '',
+    indemniteId: '',
+    description: '',
+    compteBancaireId: '',
+  };
+}
+
 export function PaiementForm({ initial, onSubmit, onCancel, submitting }: Props) {
+  const [defaultValues] = useState(() => createPaiementDefaults(initial));
+  const [comptes, setComptes] = useState<CompteBancaire[]>([]);
+  const [comptesLoading, setComptesLoading] = useState(true);
+
+  useEffect(() => {
+    treasurerTresorerieApi.listComptes()
+      .then(setComptes)
+      .finally(() => setComptesLoading(false));
+  }, []);
+
   const { register, handleSubmit, formState: { errors } } = useForm<PaiementFormValues>({
     resolver: zodResolver(paiementSchema),
-    defaultValues: initial
-      ? {
-          reference: initial.reference,
-          typePaiement: initial.typePaiement ?? 'AUTRE_SORTIE',
-          beneficiaireType: initial.beneficiaireType ?? 'AUTRE',
-          beneficiaireId: initial.beneficiaireId ?? '',
-          beneficiaire: initial.beneficiaire,
-          montant: initial.montant,
-          mode: initial.mode,
-          statut: initial.statut,
-          factureId: initial.factureId ?? '',
-          factureNumero: initial.factureNumero ?? '',
-          indemniteId: initial.indemniteId ?? '',
-          description: initial.description ?? '',
-        }
-      : {
-          reference: `PAY-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 9999)).padStart(4, '0')}`,
-          typePaiement: 'AUTRE_SORTIE',
-          beneficiaireType: 'AUTRE',
-          beneficiaireId: '',
-          beneficiaire: '',
-          montant: 0,
-          mode: 'virement',
-          statut: 'reussi',
-          factureId: '',
-          factureNumero: '',
-          indemniteId: '',
-          description: '',
-        },
+    defaultValues,
   });
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="form-grid">
+      <FormSelect
+        label="Compte bancaire"
+        {...register('compteBancaireId')}
+        options={comptesLoading ? [{ value: '', label: 'Chargement...' }] : [
+          { value: '', label: 'Sélectionner un compte' },
+          ...comptes.map((c) => ({ value: c.id, label: `${c.banque} — ${c.iban} (${c.solde.toFixed(2)} ${c.devise})` })),
+        ]}
+        error={errors.compteBancaireId?.message}
+      />
       <FormInput label="Référence" {...register('reference')} error={errors.reference?.message} />
       <FormSelect
         label="Type de paiement"
@@ -79,8 +112,8 @@ export function PaiementForm({ initial, onSubmit, onCancel, submitting }: Props)
         <FormInput label="Description (optionnel)" {...register('description')} error={errors.description?.message} />
       </div>
       <div className="form-grid-full" style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-3)' }}>
-        <Button type="button" variant="secondary" onClick={onCancel} disabled={submitting}>Annuler</Button>
-        <Button type="submit" isLoading={submitting}>{initial ? 'Mettre à jour' : 'Créer'}</Button>
+        <Button type="button" variant="secondary" onClick={onCancel} disabled={submitting || comptesLoading}>Annuler</Button>
+        <Button type="submit" isLoading={submitting || comptesLoading} disabled={comptes.length === 0}>{initial ? 'Mettre à jour' : 'Créer'}</Button>
       </div>
     </form>
   );

@@ -1,0 +1,30 @@
+spring:
+  application:
+    name: project-srt
+
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3306/srt_db?createDatabaseIfNotExist=true}
+    username: ${SPRING_DATASOURCE_USERNAME:root}
+    password: ${SPRING_DATASOURCE_PASSWORD:}
+
+  jpa:
+    hibernate:
+      ddl-auto: ${SPRING_JPA_HIBERNATE_DDL_AUTO:update}
+    show-sql: ${SPRING_JPA_SHOW_SQL:false}
+
+  servlet:
+    multipart:
+      max-file-size: ${SPRING_SERVLET_MULTIPART_MAX_FILE_SIZE:10MB}
+      max-request-size: ${SPRING_SERVLET_MULTIPART_MAX_REQUEST_SIZE:12MB}
+
+server:
+  port: ${SERVER_PORT:8081}
+
+app:
+  jwt:
+    secret: ${APP_JWT_SECRET:change-me-please-at-least-32-bytes-long-secret-key-1234567890}
+    expiration-ms: ${APP_JWT_EXPIRATION_MS:86400000}
+  upload-dir: ${APP_UPLOAD_DIR:./uploads}
+  upload:
+    max-size-bytes: ${APP_UPLOAD_MAX_SIZE_BYTES:10485760}
+    allowed-content-types: ${APP_UPLOAD_ALLOWED_CONTENT_TYPES:application/pdf,image/jpeg,image/png}

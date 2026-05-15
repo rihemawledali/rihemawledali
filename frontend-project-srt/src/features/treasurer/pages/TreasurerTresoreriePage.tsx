@@ -4,25 +4,27 @@
 
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Wallet, ArrowDownToLine, ArrowUpFromLine, Building2, Plus, Pencil, Trash2 } from 'lucide-react';
-import { PageHeader } from '../../../components/layout/PageHeader';
-import { StatCard } from '../../../components/charts/StatCard';
-import { ChartCard } from '../../../components/charts/ChartCard';
-import { DataTable, type Column } from '../../../components/data/DataTable';
-import { Modal } from '../../../components/data/Modal';
-import { ConfirmDialog } from '../../../components/data/ConfirmDialog';
-import { Button } from '../../../components/ui/Button';
-import { useToast } from '../../../components/feedback/useToast';
-import { formatCurrency, formatDate } from '../../../lib/formatters';
-import { treasurerTresorerieApi } from '../api/treasurerListApi';
+import { Wallet, ArrowDownToLine, ArrowUpFromLine, Building2, Plus, Pencil, Trash2, PiggyBank } from 'lucide-react';
+import { PageHeader } from '../../../shared/layout/PageHeader';
+import { StatCard } from '../../../shared/charts/StatCard';
+import { ChartCard } from '../../../shared/charts/ChartCard';
+import { DataTable, type Column } from '../../../shared/data/DataTable';
+import { Modal } from '../../../shared/data/Modal';
+import { ConfirmDialog } from '../../../shared/data/ConfirmDialog';
+import { Button } from '../../../shared/ui/Button';
+import { useToast } from '../../../shared/feedback/useToast';
+import { formatCurrency, formatDate } from '../../../shared/lib/formatters';
+import { treasurerTresorerieApi } from '../tresorerie/api';
 import { treasurerApi } from '../api/treasurerApi';
 import { CompteBancaireForm } from '../forms/CompteBancaireForm';
-import type { CompteBancaire } from '../../../types/domain';
-import type { CompteBancaireFormValues } from '../../../lib/validators';
+import { DepotManuelForm } from '../forms/DepotManuelForm';
+import type { CompteBancaire } from '../../../shared/types/domain';
+import type { CompteBancaireFormValues } from '../../../shared/validators';
+import type { DepotFormValues } from '../forms/DepotManuelForm';
 import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
 } from 'recharts';
-import '../../dashboard/pages/OverviewPage.css';
+import './TreasurerTresoreriePage.css';
 
 export function TreasurerTresoreriePage() {
   const qc = useQueryClient();
@@ -33,6 +35,7 @@ export function TreasurerTresoreriePage() {
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<CompteBancaire | null>(null);
   const [deleting, setDeleting] = useState<CompteBancaire | null>(null);
+  const [depositing, setDepositing] = useState<CompteBancaire | null>(null);
 
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ['treasurer', 'tresorerie'] });
@@ -77,6 +80,18 @@ export function TreasurerTresoreriePage() {
     onError: toastError('Suppression impossible.'),
   });
 
+  const depositMut = useMutation({
+    mutationFn: ({ id, v }: { id: string; v: DepotFormValues }) =>
+      treasurerTresorerieApi.deposerManuellement(id, { montant: v.montant, description: v.description }),
+    onSuccess: () => {
+      setDepositing(null);
+      invalidate();
+      qc.invalidateQueries({ queryKey: ['historique'] });
+      toast.push({ title: 'Versement enregistré', variant: 'success' });
+    },
+    onError: toastError('Versement impossible.'),
+  });
+
   const compteColumns: Column<CompteBancaire>[] = [
     {
       key: 'banque',
@@ -108,7 +123,7 @@ export function TreasurerTresoreriePage() {
   ];
 
   return (
-    <div className="overview-page">
+    <div className="treasurer-tresorerie-page">
       <PageHeader
         title="Trésorerie"
         description="État de la trésorerie en temps réel"
@@ -120,7 +135,7 @@ export function TreasurerTresoreriePage() {
         )}
       />
 
-      <div className="overview-stats">
+      <div className="treasurer-tresorerie-stats">
         <StatCard
           label="Solde global"
           value={snap.data ? formatCurrency(snap.data.totalSolde) : '—'}
@@ -166,7 +181,7 @@ export function TreasurerTresoreriePage() {
               tickFormatter={(v) => `${Math.round(v / 1000)}k`}
             />
             <Tooltip
-              formatter={(v: number) => formatCurrency(v)}
+              formatter={(v) => formatCurrency(Number(v ?? 0))}
               contentStyle={{ borderRadius: 8, border: '1px solid var(--color-border)' }}
             />
             <Legend wrapperStyle={{ fontSize: 12 }} />
@@ -196,6 +211,9 @@ export function TreasurerTresoreriePage() {
           emptyDescription="Créez un compte bancaire pour alimenter la trésorerie."
           rowActions={(c) => (
             <div style={{ display: 'inline-flex', gap: 'var(--space-2)', justifyContent: 'flex-end' }}>
+              <Button variant="primary" size="sm" onClick={() => setDepositing(c)} aria-label="Déposer" title="Déposer de l'argent">
+                <PiggyBank size={14} />
+              </Button>
               <Button variant="secondary" size="sm" onClick={() => setEditing(c)} aria-label="Modifier">
                 <Pencil size={14} />
               </Button>
@@ -204,7 +222,7 @@ export function TreasurerTresoreriePage() {
               </Button>
             </div>
           )}
-          actionsWidth="110px"
+          actionsWidth="150px"
         />
       </section>
 
@@ -225,6 +243,18 @@ export function TreasurerTresoreriePage() {
             onSubmit={(v) => updateMut.mutateAsync({ id: editing.id, v })}
             onCancel={() => setEditing(null)}
             submitting={updateMut.isPending}
+          />
+        )}
+      </Modal>
+
+      {/* Deposit */}
+      <Modal open={!!depositing} onClose={() => setDepositing(null)} title="Déposer de l'argent">
+        {depositing && (
+          <DepotManuelForm
+            compte={depositing}
+            onSubmit={(v) => depositMut.mutateAsync({ id: depositing.id, v })}
+            onCancel={() => setDepositing(null)}
+            submitting={depositMut.isPending}
           />
         )}
       </Modal>

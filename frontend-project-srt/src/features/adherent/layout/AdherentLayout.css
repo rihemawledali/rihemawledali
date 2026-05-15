@@ -1171,6 +1171,8 @@
 }
 .adh-schedule-status.paid    { background: #f0fdf4; color: #15803d; }
 .adh-schedule-status.pending { background: #fffbeb; color: #b45309; }
+.adh-schedule-status.generated { background: #eff6ff; color: #1d4ed8; }
+.adh-schedule-status.cancelled { background: #f8fafc; color: #64748b; }
 
 /* ---- Timeline ---- */
 .adh-timeline { position: relative; padding-left: 24px; margin-top: 12px; }

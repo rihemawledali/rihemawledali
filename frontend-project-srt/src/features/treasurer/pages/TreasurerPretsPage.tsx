@@ -19,21 +19,21 @@ import {
   WalletCards,
   X,
 } from 'lucide-react';
-import { PageHeader } from '../../../components/layout/PageHeader';
-import { DataTable, type Column } from '../../../components/data/DataTable';
-import { StatusBadge } from '../../../components/data/StatusBadge';
-import { Button } from '../../../components/ui/Button';
-import { SearchInput } from '../../../components/data/SearchInput';
-import { FilterBar, SelectFilter } from '../../../components/data/FilterBar';
-import { Pagination } from '../../../components/data/Pagination';
-import { ConfirmDialog } from '../../../components/data/ConfirmDialog';
-import { Modal } from '../../../components/data/Modal';
-import { useToast } from '../../../components/feedback/useToast';
-import { formatCurrency, formatDate, formatNumber } from '../../../lib/formatters';
-import { treasurerPretsApi } from '../api/treasurerListApi';
-import { pretsApi } from '../../adherent/api/pretsApi';
-import type { PretSocial } from '../../../types/domain';
-import '../../../components/layout/CrudPage.css';
+import { PageHeader } from '../../../shared/layout/PageHeader';
+import { DataTable, type Column } from '../../../shared/data/DataTable';
+import { StatusBadge } from '../../../shared/data/StatusBadge';
+import { Button } from '../../../shared/ui/Button';
+import { SearchInput } from '../../../shared/data/SearchInput';
+import { FilterBar, SelectFilter } from '../../../shared/data/FilterBar';
+import { Pagination } from '../../../shared/data/Pagination';
+import { ConfirmDialog } from '../../../shared/data/ConfirmDialog';
+import { Modal } from '../../../shared/data/Modal';
+import { useToast } from '../../../shared/feedback/useToast';
+import { formatCurrency, formatDate, formatNumber } from '../../../shared/lib/formatters';
+import { treasurerPretsApi } from '../prets/api';
+import { pretsApi } from '../../adherent/prets/api';
+import type { PretSocial } from '../../../shared/types/domain';
+import '../../../shared/layout/CrudPage.css';
 import './TreasurerPretsPage.css';
 
 const STATUS_OPTIONS = [

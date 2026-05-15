@@ -4,7 +4,7 @@
    Connects to Spring Boot backend at port 8081
    ============================================ */
 
-import { post } from '../../../lib/apiClient';
+import { post } from '../../../shared/lib/apiClient';
 import type { User, SignupPayload } from '../types/auth.types';
 
 const USER_STORAGE_KEY = 'srt_auth_user';
@@ -104,6 +104,18 @@ export function getToken(): string | null {
     localStorage.getItem(TOKEN_STORAGE_KEY) ||
     sessionStorage.getItem(TOKEN_STORAGE_KEY)
   );
+}
+
+export function updateStoredUser(user: User, token?: string): void {
+  const serialized = JSON.stringify(user);
+  if (localStorage.getItem(USER_STORAGE_KEY)) {
+    localStorage.setItem(USER_STORAGE_KEY, serialized);
+    if (token) localStorage.setItem(TOKEN_STORAGE_KEY, token);
+  }
+  if (sessionStorage.getItem(USER_STORAGE_KEY)) {
+    sessionStorage.setItem(USER_STORAGE_KEY, serialized);
+    if (token) sessionStorage.setItem(TOKEN_STORAGE_KEY, token);
+  }
 }
 
 export function logoutService(): void {

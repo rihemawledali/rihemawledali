@@ -1,31 +1,27 @@
 /* ============================================
-   Treasurer — Retenue mensuelle (master) — full detail page
-   Route: /treasurer/retenues/:id
-   Replaces the previous modal-based aggregated detail.
+   Treasurer — Retenue mensuelle detail
    ============================================ */
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ChangeEvent, type ReactNode } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-  ArrowLeft, Hash, User, Calendar, Wallet, ListChecks, FileText, BadgeCheck,
+  ArrowLeft, Hash, User, Calendar, ListChecks, BadgeCheck,
   CheckCircle2, ArrowRight, AlertTriangle, Building2, Banknote, HandCoins,
-  Download, Undo2, Ticket,
+  Download, Undo2, Ticket, Receipt,
 } from 'lucide-react';
-import { PageHeader } from '../../../components/layout/PageHeader';
-import { Button } from '../../../components/ui/Button';
-import { FormSelect } from '../../../components/ui/FormSelect';
-import { StatusBadge } from '../../../components/data/StatusBadge';
-import { formatCurrency, formatDate } from '../../../lib/formatters';
+import { PageHeader } from '../../../shared/layout/PageHeader';
+import { Button } from '../../../shared/ui/Button';
+import { StatusBadge } from '../../../shared/data/StatusBadge';
+import { formatCurrency, formatDate, formatNumber } from '../../../shared/lib/formatters';
 import {
   treasurerRetenuesApi,
   type RetenueMensuelleStatut,
   type RetenueLigne,
   type RetenueLigneStatut,
   type RetenueLigneType,
-} from '../api/treasurerListApi';
-
-// ----- Master statut visuals -----
+} from '../retenues/api';
+import './TreasurerRetenueDetailPage.css';
 
 const MASTER_ORDER: RetenueMensuelleStatut[] = ['GENEREE', 'EXPORTEE'];
 
@@ -38,8 +34,6 @@ const MASTER_TONE: Record<RetenueMensuelleStatut, 'info' | 'success'> = {
   GENEREE: 'info',
   EXPORTEE: 'success',
 };
-
-// ----- Ligne statut visuals -----
 
 const LIGNE_OPTIONS: { value: RetenueLigneStatut; label: string }[] = [
   { value: 'GENEREE', label: 'Générée' },
@@ -62,6 +56,8 @@ const LIGNE_TONE: Record<RetenueLigneStatut, 'info' | 'warning' | 'success' | 'e
   ANNULEE: 'error',
 };
 
+const LINE_STATUS_ORDER: RetenueLigneStatut[] = ['GENEREE', 'EN_ATTENTE', 'PRELEVEE', 'ANNULEE'];
+
 const TYPE_LABEL: Record<RetenueLigneType, string> = {
   COTISATION: 'Cotisation',
   PRET: 'Prêt',
@@ -69,16 +65,27 @@ const TYPE_LABEL: Record<RetenueLigneType, string> = {
   TICKET_RESTAURANT: 'Ticket restaurant',
 };
 
-const TYPE_ICON: Record<RetenueLigneType, React.ReactNode> = {
-  COTISATION: <HandCoins size={14} />,
-  PRET: <Banknote size={14} />,
-  CONVENTION: <Building2 size={14} />,
-  TICKET_RESTAURANT: <Ticket size={14} />,
+const TYPE_ICON: Record<RetenueLigneType, ReactNode> = {
+  COTISATION: <HandCoins size={15} />,
+  PRET: <Banknote size={15} />,
+  CONVENTION: <Building2 size={15} />,
+  TICKET_RESTAURANT: <Ticket size={15} />,
+};
+
+const TYPE_TONE: Record<RetenueLigneType, 'info' | 'warning' | 'primary' | 'success'> = {
+  COTISATION: 'info',
+  PRET: 'warning',
+  CONVENTION: 'primary',
+  TICKET_RESTAURANT: 'success',
 };
 
 function formatMonth(mois: number, annee: number): string {
   const d = new Date(annee, mois - 1, 1);
   return d.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+}
+
+function safeDate(value?: string): string {
+  return value ? formatDate(value) : '—';
 }
 
 export function TreasurerRetenueDetailPage() {
@@ -93,7 +100,6 @@ export function TreasurerRetenueDetailPage() {
     window.setTimeout(() => setToast(null), 2800);
   };
 
-  // ----- Queries -----
   const detail = useQuery({
     queryKey: ['treasurer', 'retenues', 'detail', id],
     queryFn: () => treasurerRetenuesApi.getById(id),
@@ -102,13 +108,6 @@ export function TreasurerRetenueDetailPage() {
 
   const retenue = detail.data;
 
-  const history = useQuery({
-    queryKey: ['treasurer', 'retenues', 'history', retenue?.adherentId],
-    queryFn: () => treasurerRetenuesApi.historyForAdherent(retenue!.adherentId),
-    enabled: !!retenue,
-  });
-
-  // ----- Mutations -----
   const exportMutation = useMutation({
     mutationFn: () => treasurerRetenuesApi.exportOne(id),
     onSuccess: (res) => {
@@ -123,7 +122,7 @@ export function TreasurerRetenueDetailPage() {
     onSuccess: (next) => {
       qc.invalidateQueries({ queryKey: ['treasurer', 'retenues'] });
       qc.setQueryData(['treasurer', 'retenues', 'detail', id], next);
-      fire('Export annulé — retour au statut « À exporter »');
+      fire('Export annulé — retour au statut « À exporter »');
     },
     onError: (e) => setError(e instanceof Error ? e.message : 'Erreur inattendue'),
   });
@@ -134,81 +133,68 @@ export function TreasurerRetenueDetailPage() {
     onSuccess: (next) => {
       qc.invalidateQueries({ queryKey: ['treasurer', 'retenues'] });
       qc.setQueryData(['treasurer', 'retenues', 'detail', id], next);
+      fire('Ligne mise à jour.');
     },
     onError: (e) => setError(e instanceof Error ? e.message : 'Échec de la mise à jour de la ligne'),
   });
 
-  // ----- Workflow controls -----
   const idx = useMemo(() => (retenue ? MASTER_ORDER.indexOf(retenue.statut) : -1), [retenue]);
+  const lineStats = useMemo(() => createLineStats(retenue?.lignes ?? []), [retenue]);
   const isExported = retenue?.statut === 'EXPORTEE';
+  const periodLabel = retenue ? formatMonth(retenue.mois, retenue.annee) : '';
+  const saving = exportMutation.isPending || rollbackMutation.isPending || setLigneStatutMutation.isPending;
 
   const handleExport = async () => {
     setError(null);
     try { await exportMutation.mutateAsync(); } catch { /* surfaced via mutation onError */ }
   };
+
   const handleRollback = async () => {
     setError(null);
     try { await rollbackMutation.mutateAsync(); } catch { /* surfaced via mutation onError */ }
   };
 
-  const saving = exportMutation.isPending || rollbackMutation.isPending || setLigneStatutMutation.isPending;
-
-  // ----- Render -----
   if (detail.isLoading) {
     return (
-      <div className="overview-page">
-        <Button variant="ghost" size="sm" onClick={() => navigate('/treasurer/retenues')}>
-          <ArrowLeft size={14} style={{ marginRight: 6 }} /> Retour
-        </Button>
-        <div className="skeleton" style={{ height: 200, borderRadius: 'var(--radius-md)', marginTop: 12 }} />
+      <div className="treasurer-retenue-detail">
+        <BackButton onBack={() => navigate('/treasurer/retenues')} label="Retour aux retenues" />
+        <div className="trd-skeleton" />
       </div>
     );
   }
 
   if (!retenue) {
     return (
-      <div className="overview-page">
-        <Button variant="ghost" size="sm" onClick={() => navigate('/treasurer/retenues')}>
-          <ArrowLeft size={14} style={{ marginRight: 6 }} /> Retour
-        </Button>
-        <div
-          style={{
-            marginTop: 24,
-            padding: 24,
-            background: 'var(--color-surface-secondary)',
-            border: '1px solid var(--color-border-light)',
-            borderRadius: 'var(--radius-md)',
-            textAlign: 'center',
-            color: 'var(--color-text-secondary)',
-          }}
-        >
-          Retenue introuvable.
+      <div className="treasurer-retenue-detail">
+        <BackButton onBack={() => navigate('/treasurer/retenues')} label="Retour aux retenues" />
+        <div className="trd-empty-page">
+          <Receipt size={28} />
+          <strong>Retenue introuvable</strong>
+          <span>La retenue demandée n'est plus disponible ou n'a pas encore été générée.</span>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="overview-page">
-      <Button variant="ghost" size="sm" onClick={() => navigate('/treasurer/retenues')}>
-        <ArrowLeft size={14} style={{ marginRight: 6 }} /> Retour aux retenues
-      </Button>
+    <div className="treasurer-retenue-detail">
+      <BackButton onBack={() => navigate('/treasurer/retenues')} label="Retour aux retenues" />
 
       <PageHeader
-        title={`Retenue ${formatMonth(retenue.mois, retenue.annee)} — ${retenue.adherentNom}`}
+        title={`Retenue ${periodLabel} — ${retenue.adherentNom}`}
         description={`Référence ${retenue.id}`}
         breadcrumb={['Trésorerie', 'Finance', 'Retenues', retenue.id]}
         actions={(
-          <div style={{ display: 'flex', gap: 8 }}>
+          <div className="trd-header-actions">
             {isExported && (
               <Button
                 variant="secondary"
                 size="sm"
                 onClick={handleRollback}
                 disabled={saving}
-                title="Annuler l'export — retour à « À exporter »"
+                title="Annuler l'export — retour à « À exporter »"
               >
-                <Undo2 size={14} style={{ marginRight: 6 }} />
+                <Undo2 size={14} />
                 Annuler l'export
               </Button>
             )}
@@ -219,178 +205,102 @@ export function TreasurerRetenueDetailPage() {
               disabled={saving}
               title={isExported ? 'Télécharger à nouveau le CSV' : 'Générer le CSV et marquer comme exportée'}
             >
-              <Download size={14} style={{ marginRight: 6 }} />
-              {isExported ? 'Télécharger à nouveau (CSV)' : 'Exporter (CSV)'}
+              <Download size={14} />
+              {isExported ? 'Télécharger à nouveau' : 'Exporter CSV'}
             </Button>
           </div>
         )}
       />
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
-        {/* ---- Header summary ---- */}
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-            gap: 'var(--space-3)',
-            padding: 'var(--space-4)',
-            background: 'white',
-            border: '1px solid var(--color-border-light)',
-            borderRadius: 'var(--radius-lg)',
-          }}
-        >
-          <DetailField
-            icon={<Hash size={14} />}
-            label="Référence"
-            value={<span style={{ fontFamily: 'var(--font-family-mono, monospace)' }}>{retenue.id}</span>}
-          />
-          <DetailField
-            icon={<User size={14} />}
-            label="Adhérent"
-            value={(
-              <strong>
-                {retenue.adherentNom}
-                {retenue.adherentMatricule && (
-                  <span style={{ marginLeft: 6, color: 'var(--color-text-tertiary)', fontWeight: 400, fontSize: 12 }}>
-                    · {retenue.adherentMatricule}
-                  </span>
-                )}
-              </strong>
-            )}
-          />
-          <DetailField
-            icon={<Calendar size={14} />}
-            label="Mois"
-            value={formatMonth(retenue.mois, retenue.annee)}
-          />
-          <DetailField
-            icon={<Wallet size={14} />}
-            label="Total retenu"
-            value={<strong style={{ fontSize: 18 }}>{formatCurrency(retenue.totalRetenu)}</strong>}
-          />
-          <DetailField
-            icon={<BadgeCheck size={14} />}
-            label="Statut"
-            value={(
-              <StatusBadge
-                status={retenue.statut}
-                tone={MASTER_TONE[retenue.statut]}
-                label={MASTER_LABEL[retenue.statut]}
-              />
-            )}
-          />
-          <DetailField icon={<Calendar size={14} />} label="Génération" value={formatDate(retenue.dateGeneration)} />
-          <DetailField
-            icon={<Calendar size={14} />}
-            label="Export"
-            value={retenue.dateExport ? formatDate(retenue.dateExport) : '—'}
-          />
+      {error && (
+        <div className="trd-alert" role="alert">
+          <AlertTriangle size={16} />
+          {error}
         </div>
+      )}
 
-        {/* ---- Workflow stepper ---- */}
-        <section
-          style={{
-            background: 'white',
-            border: '1px solid var(--color-border-light)',
-            borderRadius: 'var(--radius-lg)',
-            padding: 'var(--space-4)',
-          }}
-        >
-          <SectionTitle>Workflow</SectionTitle>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-            {MASTER_ORDER.map((s, i) => {
-              const done = i < idx;
-              const current = i === idx;
-              return (
-                <div key={s} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <span
-                    style={{
-                      display: 'inline-flex', alignItems: 'center', gap: 6,
-                      padding: '8px 14px',
-                      borderRadius: 999,
-                      fontSize: 'var(--font-size-sm)',
-                      fontWeight: current ? 700 : 500,
-                      background: current
-                        ? 'var(--color-primary-100)'
-                        : done
-                          ? 'var(--color-success-50, #ecfdf5)'
-                          : 'var(--color-surface-secondary)',
-                      color: current
-                        ? 'var(--color-primary-800)'
-                        : done
-                          ? 'var(--color-success-700, #047857)'
-                          : 'var(--color-text-tertiary)',
-                      border: `1px solid ${current ? 'var(--color-primary-300)' : 'transparent'}`,
-                    }}
-                  >
-                    {done ? <CheckCircle2 size={14} /> : <BadgeCheck size={14} />}
-                    {MASTER_LABEL[s]}
-                  </span>
-                  {i < MASTER_ORDER.length - 1 && (
-                    <ArrowRight size={14} style={{ color: 'var(--color-text-tertiary)' }} />
-                  )}
-                </div>
-              );
-            })}
+      <section className="trd-hero" aria-label="Résumé de la retenue">
+        <div className="trd-hero-main">
+          <span className="trd-kicker">Retenue mensuelle</span>
+          <div className="trd-hero-title">
+            <h2>{retenue.adherentNom}</h2>
+            <StatusBadge
+              status={retenue.statut}
+              tone={MASTER_TONE[retenue.statut]}
+              label={MASTER_LABEL[retenue.statut]}
+            />
           </div>
+          <p>
+            Contrôle détaillé des retenues à prélever sur la paie de {periodLabel}, avec statut par source et ventilation claire des lignes.
+          </p>
+        </div>
+        <div className="trd-total-panel">
+          <span>Total retenu</span>
+          <strong>{formatCurrency(retenue.totalRetenu)}</strong>
+          <small>{formatNumber(lineStats.activeCount)} ligne{lineStats.activeCount > 1 ? 's' : ''} active{lineStats.activeCount > 1 ? 's' : ''}</small>
+        </div>
+      </section>
+
+      <section className="trd-detail-grid" aria-label="Informations principales">
+        <DetailTile icon={<Hash size={15} />} label="Référence" value={retenue.id} mono />
+        <DetailTile
+          icon={<User size={15} />}
+          label="Adhérent"
+          value={retenue.adherentNom}
+          meta={retenue.adherentMatricule || 'Sans matricule'}
+        />
+        <DetailTile icon={<Calendar size={15} />} label="Période" value={periodLabel} />
+        <DetailTile icon={<Calendar size={15} />} label="Génération" value={safeDate(retenue.dateGeneration)} />
+        <DetailTile icon={<Download size={15} />} label="Export" value={safeDate(retenue.dateExport)} />
+      </section>
+
+      <div className="trd-main-grid">
+        <section className="trd-card trd-card--workflow">
+          <SectionHeader
+            title="Workflow"
+            subtitle="Statut global de la retenue avant transmission au fichier paie."
+          />
+          <WorkflowStepper currentIndex={idx} />
         </section>
 
-        {/* ---- Breakdown chips ---- */}
-        <section
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-            gap: 'var(--space-3)',
-          }}
-        >
-          <BreakdownChip label="Cotisation" total={retenue.totalCotisation} icon={<HandCoins size={16} />} tone="info" />
-          <BreakdownChip label="Prêt" total={retenue.totalPret} icon={<Banknote size={16} />} tone="warning" />
-          <BreakdownChip label="Convention" total={retenue.totalConvention} icon={<Building2 size={16} />} tone="primary" />
+        <section className="trd-breakdown-grid" aria-label="Ventilation par source">
+          <BreakdownCard icon={<HandCoins size={17} />} label="Cotisation" count={lineStats.byType.COTISATION.count} total={lineStats.byType.COTISATION.total} tone="info" />
+          <BreakdownCard icon={<Banknote size={17} />} label="Prêt" count={lineStats.byType.PRET.count} total={lineStats.byType.PRET.total} tone="warning" />
+          <BreakdownCard icon={<Building2 size={17} />} label="Convention" count={lineStats.byType.CONVENTION.count} total={lineStats.byType.CONVENTION.total} tone="primary" />
+          <BreakdownCard icon={<Ticket size={17} />} label="Ticket restaurant" count={lineStats.byType.TICKET_RESTAURANT.count} total={lineStats.byType.TICKET_RESTAURANT.total} tone="success" />
         </section>
 
-        {/* ---- Lignes table ---- */}
-        <section
-          style={{
-            background: 'white',
-            border: '1px solid var(--color-border-light)',
-            borderRadius: 'var(--radius-lg)',
-            padding: 'var(--space-4)',
-          }}
-        >
-          <SectionTitle>
-            <ListChecks size={14} style={{ verticalAlign: 'middle', marginRight: 4 }} />
-            Lignes ({retenue.lignes.length})
-          </SectionTitle>
+        <section className="trd-card trd-lines-card">
+          <SectionHeader
+            title={`Lignes de retenue (${formatNumber(retenue.lignes.length)})`}
+            subtitle="Chaque ligne peut être suivie et ajustée selon son état de prélèvement."
+          />
+          <LineStatusStrip stats={lineStats} />
           {retenue.lignes.length === 0 ? (
-            <p style={{ margin: 0, fontSize: 'var(--font-size-sm)', color: 'var(--color-text-tertiary)' }}>
-              Aucune ligne pour ce mois.
-            </p>
+            <div className="trd-empty-state">
+              <ListChecks size={22} />
+              <strong>Aucune ligne pour ce mois</strong>
+              <span>Régénérez la période si une cotisation ou un prêt devrait apparaître.</span>
+            </div>
           ) : (
-            <div style={{ overflowX: 'auto' }}>
-              <table
-                style={{
-                  width: '100%',
-                  borderCollapse: 'collapse',
-                  fontSize: 'var(--font-size-sm)',
-                  minWidth: 720,
-                }}
-              >
+            <div className="trd-table-scroll">
+              <table className="trd-lines-table">
                 <thead>
-                  <tr style={{ textAlign: 'left', color: 'var(--color-text-tertiary)' }}>
-                    <th style={th}>Type</th>
-                    <th style={th}>Motif</th>
-                    <th style={{ ...th, textAlign: 'right' }}>Montant</th>
-                    <th style={th}>Statut</th>
-                    <th style={th}>Modifier</th>
+                  <tr>
+                    <th>Type</th>
+                    <th>Motif et source</th>
+                    <th>Montant</th>
+                    <th>Statut</th>
+                    <th>Modifier</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {retenue.lignes.map((l) => (
+                  {retenue.lignes.map((ligne) => (
                     <LigneRow
-                      key={l.id}
-                      ligne={l}
+                      key={ligne.id}
+                      ligne={ligne}
                       saving={saving}
-                      onChange={(next) => setLigneStatutMutation.mutateAsync({ ligneId: l.id, statut: next })}
+                      onChange={(next) => setLigneStatutMutation.mutateAsync({ ligneId: ligne.id, statut: next })}
                     />
                   ))}
                 </tbody>
@@ -398,260 +308,199 @@ export function TreasurerRetenueDetailPage() {
             </div>
           )}
         </section>
-
-        {error && (
-          <div
-            style={{
-              padding: '10px 14px',
-              background: 'var(--color-danger-50, #fef2f2)',
-              border: '1px solid var(--color-danger-200, #fecaca)',
-              borderRadius: 'var(--radius-md)',
-              color: 'var(--color-danger-700, #b91c1c)',
-              fontSize: 'var(--font-size-sm)',
-              display: 'flex', alignItems: 'center', gap: 8,
-            }}
-          >
-            <AlertTriangle size={14} />
-            {error}
-          </div>
-        )}
-
-        {/* ---- Adherent recent history ---- */}
-        <section
-          style={{
-            background: 'white',
-            border: '1px solid var(--color-border-light)',
-            borderRadius: 'var(--radius-lg)',
-            padding: 'var(--space-4)',
-          }}
-        >
-          <SectionTitle>
-            <ListChecks size={14} style={{ verticalAlign: 'middle', marginRight: 4 }} />
-            Historique récent — {retenue.adherentNom}
-          </SectionTitle>
-          {history.isLoading ? (
-            <div className="skeleton" style={{ height: 60, borderRadius: 'var(--radius-md)' }} />
-          ) : (history.data?.length ?? 0) === 0 ? (
-            <p style={{ margin: 0, fontSize: 'var(--font-size-sm)', color: 'var(--color-text-tertiary)' }}>
-              Aucun autre mois pour cet adhérent.
-            </p>
-          ) : (
-            <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {history.data!.slice(0, 8).map((r) => {
-                const isCurrent = r.id === retenue.id;
-                return (
-                  <li key={r.id}>
-                    <button
-                      type="button"
-                      onClick={() => !isCurrent && navigate(`/treasurer/retenues/${r.id}`)}
-                      disabled={isCurrent}
-                      style={{
-                        width: '100%', textAlign: 'left',
-                        display: 'flex', alignItems: 'center', gap: 8,
-                        padding: '10px 12px',
-                        background: isCurrent ? 'var(--color-primary-50)' : 'var(--color-surface-secondary)',
-                        border: `1px solid ${isCurrent ? 'var(--color-primary-200)' : 'var(--color-border-light)'}`,
-                        borderRadius: 'var(--radius-md)',
-                        fontSize: 'var(--font-size-sm)',
-                        cursor: isCurrent ? 'default' : 'pointer',
-                      }}
-                    >
-                      <span style={{ minWidth: 130, color: 'var(--color-text-tertiary)', fontVariantNumeric: 'tabular-nums' }}>
-                        {formatMonth(r.mois, r.annee)}
-                      </span>
-                      <span style={{ flex: 1, color: 'var(--color-text-primary)' }}>
-                        Cot. {formatCurrency(r.totalCotisation)} · Prêt {formatCurrency(r.totalPret)} · Conv. {formatCurrency(r.totalConvention)}
-                      </span>
-                      <strong style={{ minWidth: 100, textAlign: 'right' }}>{formatCurrency(r.totalRetenu)}</strong>
-                      <StatusBadge
-                        status={r.statut}
-                        tone={MASTER_TONE[r.statut]}
-                        label={MASTER_LABEL[r.statut]}
-                      />
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </section>
       </div>
 
-      {toast && (
-        <div
-          style={{
-            position: 'fixed', bottom: 24, right: 24, padding: '10px 14px',
-            background: 'var(--color-primary-700)', color: 'white',
-            borderRadius: 'var(--radius-md)', fontSize: 'var(--font-size-sm)',
-            fontWeight: 600, boxShadow: 'var(--shadow-md)', zIndex: 1000,
-            maxWidth: 360,
-          }}
-        >
-          {toast}
-        </div>
-      )}
+      {toast && <div className="trd-toast">{toast}</div>}
     </div>
   );
 }
 
-// ----- Sub-components -----
+function BackButton({ onBack, label }: { onBack: () => void; label: string }) {
+  return (
+    <div className="trd-back-row">
+      <Button variant="ghost" size="sm" onClick={onBack}>
+        <ArrowLeft size={14} />
+        {label}
+      </Button>
+    </div>
+  );
+}
 
-function LigneRow({
-  ligne, onChange, saving,
-}: {
+function WorkflowStepper({ currentIndex }: { currentIndex: number }) {
+  return (
+    <div className="trd-workflow" aria-label="Workflow de la retenue">
+      {MASTER_ORDER.map((statut, index) => {
+        const done = index < currentIndex;
+        const current = index === currentIndex;
+        return (
+          <div key={statut} className="trd-workflow-step">
+            <span className={current ? 'is-current' : done ? 'is-done' : undefined}>
+              {done ? <CheckCircle2 size={15} /> : <BadgeCheck size={15} />}
+              {MASTER_LABEL[statut]}
+            </span>
+            {index < MASTER_ORDER.length - 1 && <ArrowRight size={15} />}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function LigneRow({ ligne, onChange, saving }: {
   ligne: RetenueLigne;
   onChange: (next: RetenueLigneStatut) => Promise<unknown>;
   saving: boolean;
 }) {
   const [pending, setPending] = useState(false);
-  const handle = async (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const next = e.target.value as RetenueLigneStatut;
+
+  const handle = async (event: ChangeEvent<HTMLSelectElement>) => {
+    const next = event.target.value as RetenueLigneStatut;
     if (next === ligne.statut) return;
     setPending(true);
     try { await onChange(next); }
     finally { setPending(false); }
   };
+
   return (
-    <tr style={{ borderTop: '1px solid var(--color-border-light)' }}>
-      <td style={td}>
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+    <tr className={ligne.statut === 'ANNULEE' ? 'is-muted' : undefined}>
+      <td>
+        <span className={`trd-type-pill trd-type-pill--${TYPE_TONE[ligne.typeSource]}`}>
           {TYPE_ICON[ligne.typeSource]}
           {TYPE_LABEL[ligne.typeSource]}
         </span>
       </td>
-      <td style={td}>
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-          <FileText size={12} style={{ color: 'var(--color-text-tertiary)' }} />
-          {ligne.motif}
-        </span>
+      <td>
+        <div className="trd-line-desc">
+          <strong>{ligne.motif || 'Retenue sans motif'}</strong>
+          <span>
+            Réf. {ligne.sourceRefId || '—'}
+            {ligne.trancheNumero && ligne.trancheTotal ? ` · Tranche ${ligne.trancheNumero}/${ligne.trancheTotal}` : ''}
+          </span>
+          {ligne.commentaire && <em>{ligne.commentaire}</em>}
+        </div>
       </td>
-      <td style={{ ...td, textAlign: 'right', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
-        {formatCurrency(ligne.montant)}
+      <td className="trd-amount">{formatCurrency(ligne.montant)}</td>
+      <td>
+        <StatusBadge status={ligne.statut} tone={LIGNE_TONE[ligne.statut]} label={LIGNE_LABEL[ligne.statut]} />
       </td>
-      <td style={td}>
-        <StatusBadge
-          status={ligne.statut}
-          tone={LIGNE_TONE[ligne.statut]}
-          label={LIGNE_LABEL[ligne.statut]}
-        />
-      </td>
-      <td style={td}>
-        <FormSelect
-          label=""
+      <td>
+        <select
+          className="trd-status-select"
           value={ligne.statut}
           onChange={handle}
-          options={LIGNE_OPTIONS}
           disabled={saving || pending}
-        />
+          aria-label={`Modifier le statut de la ligne ${ligne.motif || ligne.id}`}
+        >
+          {LIGNE_OPTIONS.map((option) => (
+            <option key={option.value} value={option.value}>{option.label}</option>
+          ))}
+        </select>
       </td>
     </tr>
   );
 }
 
-function BreakdownChip({
-  label, total, icon, tone,
-}: {
+function BreakdownCard({ icon, label, count, total, tone }: {
+  icon: ReactNode;
   label: string;
+  count: number;
   total: number;
-  icon: React.ReactNode;
-  tone: 'info' | 'warning' | 'primary';
+  tone: 'info' | 'warning' | 'primary' | 'success';
 }) {
-  const bg = tone === 'info'
-    ? 'var(--color-primary-50)'
-    : tone === 'warning'
-      ? '#fff7ed'
-      : 'var(--color-surface-secondary)';
-  const fg = tone === 'info'
-    ? 'var(--color-primary-700)'
-    : tone === 'warning'
-      ? '#c2410c'
-      : 'var(--color-text-primary)';
   return (
-    <div
-      style={{
-        padding: 'var(--space-4)',
-        borderRadius: 'var(--radius-lg)',
-        background: bg,
-        border: '1px solid var(--color-border-light)',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 6,
-      }}
-    >
-      <span
-        style={{
-          fontSize: 'var(--font-size-xs)',
-          textTransform: 'uppercase',
-          letterSpacing: '0.04em',
-          color: 'var(--color-text-tertiary)',
-          fontWeight: 600,
-          display: 'inline-flex', alignItems: 'center', gap: 6,
-        }}
-      >
-        <span style={{ color: fg }}>{icon}</span>
-        {label}
-      </span>
-      <strong style={{ fontSize: 22, color: fg, fontVariantNumeric: 'tabular-nums' }}>
-        {formatCurrency(total)}
-      </strong>
+    <article className={`trd-breakdown-card trd-breakdown-card--${tone}`}>
+      <span>{icon}</span>
+      <div>
+        <p>{label}</p>
+        <strong>{formatCurrency(total)}</strong>
+        <small>{formatNumber(count)} ligne{count > 1 ? 's' : ''}</small>
+      </div>
+    </article>
+  );
+}
+
+function LineStatusStrip({ stats }: { stats: LineStats }) {
+  return (
+    <div className="trd-status-strip" aria-label="Statuts des lignes">
+      {LINE_STATUS_ORDER.map((statut) => (
+        <span key={statut}>
+          <StatusBadge status={statut} tone={LIGNE_TONE[statut]} label={LIGNE_LABEL[statut]} />
+          <strong>{formatNumber(stats.byStatus[statut])}</strong>
+        </span>
+      ))}
     </div>
   );
 }
 
-function SectionTitle({ children }: { children: React.ReactNode }) {
+function SectionHeader({ title, subtitle }: { title: string; subtitle?: string }) {
   return (
-    <h4
-      style={{
-        margin: '0 0 12px',
-        fontSize: 'var(--font-size-xs)',
-        textTransform: 'uppercase',
-        letterSpacing: '0.04em',
-        color: 'var(--color-text-tertiary)',
-        fontWeight: 600,
-      }}
-    >
-      {children}
-    </h4>
+    <header className="trd-section-header">
+      <div>
+        <h3>{title}</h3>
+        {subtitle && <p>{subtitle}</p>}
+      </div>
+    </header>
   );
 }
 
-function DetailField({
-  icon, label, value,
-}: { icon?: React.ReactNode; label: string; value: React.ReactNode }) {
+function DetailTile({ icon, label, value, meta, mono }: {
+  icon: ReactNode;
+  label: string;
+  value: ReactNode;
+  meta?: ReactNode;
+  mono?: boolean;
+}) {
   return (
-    <div>
-      <span
-        style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: 4,
-          fontSize: 'var(--font-size-xs)',
-          textTransform: 'uppercase',
-          letterSpacing: '0.04em',
-          color: 'var(--color-text-tertiary)',
-          fontWeight: 600,
-          marginBottom: 6,
-        }}
-      >
-        {icon}
-        {label}
-      </span>
-      <div style={{ color: 'var(--color-text-primary)', fontSize: 'var(--font-size-sm)' }}>
-        {value}
+    <div className="trd-detail-tile">
+      <span>{icon}</span>
+      <div>
+        <p>{label}</p>
+        <strong className={mono ? 'is-mono' : undefined}>{value}</strong>
+        {meta && <small>{meta}</small>}
       </div>
     </div>
   );
 }
 
-const th: React.CSSProperties = {
-  padding: '10px 12px',
-  fontSize: 'var(--font-size-xs)',
-  textTransform: 'uppercase',
-  letterSpacing: '0.04em',
-  fontWeight: 600,
-};
+interface LineStats {
+  byType: Record<RetenueLigneType, { total: number; count: number }>;
+  byStatus: Record<RetenueLigneStatut, number>;
+  activeTotal: number;
+  activeCount: number;
+  averageLine: number;
+}
 
-const td: React.CSSProperties = {
-  padding: '10px 12px',
-  verticalAlign: 'middle',
-};
+function createLineStats(lignes: RetenueLigne[]): LineStats {
+  const byType: LineStats['byType'] = {
+    COTISATION: { total: 0, count: 0 },
+    PRET: { total: 0, count: 0 },
+    CONVENTION: { total: 0, count: 0 },
+    TICKET_RESTAURANT: { total: 0, count: 0 },
+  };
+  const byStatus: LineStats['byStatus'] = {
+    GENEREE: 0,
+    EN_ATTENTE: 0,
+    PRELEVEE: 0,
+    ANNULEE: 0,
+  };
+
+  let activeTotal = 0;
+  let activeCount = 0;
+
+  for (const ligne of lignes) {
+    byStatus[ligne.statut] += 1;
+    if (ligne.statut === 'ANNULEE') continue;
+    byType[ligne.typeSource].count += 1;
+    byType[ligne.typeSource].total += ligne.montant;
+    activeTotal += ligne.montant;
+    activeCount += 1;
+  }
+
+  return {
+    byType,
+    byStatus,
+    activeTotal,
+    activeCount,
+    averageLine: activeCount ? activeTotal / activeCount : 0,
+  };
+}

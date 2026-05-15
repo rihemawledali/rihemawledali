@@ -26,9 +26,9 @@ import type {
   FactureStatus,
   IndemniteType,
   IndemniteStatus,
-} from '../../types/domain';
-import { get, post, put, del, downloadBlob, triggerBlobDownload } from '../../lib/apiClient';
-import { paginate } from '../../lib/paginate';
+} from '../../shared/types/domain';
+import { get, post, put, del, downloadBlob, triggerBlobDownload } from '../../shared/lib/apiClient';
+import { paginate } from '../../shared/lib/paginate';
 
 // ---------------- DTO shapes returned by the backend ----------------
 
@@ -47,6 +47,8 @@ interface PaiementDtoBE {
   statut: PaiementStatus;
   description?: string | null;
   date: string;
+  compteBancaireId?: string | null;
+  compteBancaireBanque?: string | null;
 }
 
 interface FactureDtoBE {
@@ -87,6 +89,9 @@ interface HistoriqueTresorerieDtoBE {
   modePaiement?: PaiementMode | null;
   statut?: PaiementStatus | null;
   utilisateur?: string | null;
+  typeOperation?: string | null;
+  compteBancaireId?: string | null;
+  compteBancaireBanque?: string | null;
 }
 
 // ---------------- mappers ----------------
@@ -109,6 +114,8 @@ function mapPaiement(p: PaiementDtoBE): Paiement {
     mode: p.mode,
     statut: p.statut,
     date: p.date,
+    compteBancaireId: nz(p.compteBancaireId),
+    compteBancaireBanque: nz(p.compteBancaireBanque),
   };
 }
 
@@ -155,6 +162,9 @@ function mapHistorique(h: HistoriqueTresorerieDtoBE): HistoriqueFinanciere {
     modePaiement: nz(h.modePaiement),
     statut: nz(h.statut),
     utilisateur: nz(h.utilisateur),
+    typeOperation: nz(h.typeOperation),
+    compteBancaireId: nz(h.compteBancaireId),
+    compteBancaireBanque: nz(h.compteBancaireBanque),
   };
 }
 
@@ -174,6 +184,7 @@ export interface CreatePaiementInput {
   indemniteId?: string;
   description?: string;
   date?: string;
+  compteBancaireId: string;
 }
 
 interface PayWorkflowPayload {
@@ -182,6 +193,7 @@ interface PayWorkflowPayload {
   mode: PaiementMode;
   description?: string;
   beneficiaire?: string;
+  compteBancaireId: string;
 }
 
 export const paiementsApi = {
@@ -215,6 +227,7 @@ export const paiementsApi = {
       statut: input.statut,
       description: input.description,
       date: input.date,
+      compteBancaireId: input.compteBancaireId ? Number(input.compteBancaireId) : undefined,
     };
     const { data } = await post<PaiementDtoBE>('/api/treasurer/paiements', body);
     return mapPaiement(data);

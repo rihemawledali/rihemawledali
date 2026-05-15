@@ -8,7 +8,6 @@ import {
   Handshake, FileClock,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import logoUrl from '../../../assets/amicalite-srt-logo-v1.png';
 import './AdherentSidebar.css';
 
 interface AdherentSidebarProps {
@@ -57,9 +56,6 @@ export function AdherentSidebar({ collapsed, onToggle, mobileOpen, onCloseMobile
       {mobileOpen && <div className="sidebar-backdrop" onClick={onCloseMobile} />}
       <aside className={`adherent-sidebar ${collapsed ? 'is-collapsed' : ''} ${mobileOpen ? 'is-mobile-open' : ''}`}>
         <div className="adherent-sidebar-brand">
-          <div className="adherent-sidebar-logo">
-            <img src={logoUrl} alt="Amicale SRT" className="adherent-sidebar-logo-img" draggable={false} />
-          </div>
           {!collapsed && (
             <div className="adherent-sidebar-brand-text">
               <span className="adherent-sidebar-brand-name">Amicale SRT</span>

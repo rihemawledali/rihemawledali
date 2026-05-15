@@ -7,7 +7,7 @@ import type {
   Utilisateur, Adherent, PretSocial, Adhesion, Indemnite,
   BonCommande, TicketRestaurant, Convention, Fournisseur,
   Facture, Paiement, CompteBancaire, HistoriqueFinanciere,
-} from '../types/domain';
+} from '../shared/types/domain';
 
 import {
   seedUtilisateurs, seedAdherents, seedFournisseurs, seedConventions,

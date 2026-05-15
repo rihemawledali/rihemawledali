@@ -1,10 +1,10 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { compteBancaireSchema, type CompteBancaireFormValues } from '../../../lib/validators';
-import { FormInput } from '../../../components/ui/FormInput';
-import { FormSelect } from '../../../components/ui/FormSelect';
-import { Button } from '../../../components/ui/Button';
-import type { CompteBancaire } from '../../../types/domain';
+import { compteBancaireSchema, type CompteBancaireFormValues } from '../../../shared/validators';
+import { FormInput } from '../../../shared/ui/FormInput';
+import { FormSelect } from '../../../shared/ui/FormSelect';
+import { Button } from '../../../shared/ui/Button';
+import type { CompteBancaire } from '../../../shared/types/domain';
 
 interface Props {
   initial?: CompteBancaire;

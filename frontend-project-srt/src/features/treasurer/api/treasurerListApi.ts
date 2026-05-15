@@ -7,90 +7,19 @@
    delivered by the backend.
    ============================================ */
 
-import { paginate } from '../../../lib/paginate';
-import { get, post, put, del, downloadBlob, triggerBlobDownload } from '../../../lib/apiClient';
+import { paginate } from '../../../shared/lib/paginate';
+import { get, post, put, del, downloadBlob, triggerBlobDownload } from '../../../shared/lib/apiClient';
 import type {
-  Adhesion, PretSocial, CompteBancaire, PageQuery,
+  PretSocial, CompteBancaire, PageQuery,
   HistoriqueFinanciere, PaiementMode,
   Indemnite, IndemniteType, IndemniteStatus,
-  PretStatus, AdhesionStatus,
+  PretStatus,
   HistoriqueSourceType, PaiementStatus,
-} from '../../../types/domain';
+} from '../../../shared/types/domain';
 import { paiementsApi as _paiementsApi } from '../../finance/financeApi';
 import { indemnitesWorkflow } from '../../finance/financeApi';
 
 void indemnitesWorkflow; // re-exported below for treasurerIndemnitesApi
-
-// =============================================================
-// Adhesion list (with adherent name)
-// =============================================================
-
-export interface AdhesionRow extends Adhesion {
-  adherentNom: string;
-  adherentEmail?: string;
-  adherentTelephone?: string;
-  adherentMatricule?: string;
-  adherentStatut?: string;
-  createdAt?: string;
-}
-
-interface AdhesionDtoBE {
-  id: string;
-  adherentId: string;
-  adherentNom: string;
-  adherentEmail?: string;
-  adherentTelephone?: string;
-  adherentMatricule?: string;
-  adherentStatut?: string;
-  dateDebut: string;
-  dateFin: string;
-  montantCotisation: number;
-  statut: AdhesionStatus | string;
-  createdAt?: string;
-}
-
-function mapAdhesion(a: AdhesionDtoBE): AdhesionRow {
-  return {
-    id: a.id,
-    adherentId: a.adherentId,
-    adherentNom: a.adherentNom,
-    adherentEmail: a.adherentEmail,
-    adherentTelephone: a.adherentTelephone,
-    adherentMatricule: a.adherentMatricule,
-    adherentStatut: a.adherentStatut,
-    dateDebut: a.dateDebut,
-    dateFin: a.dateFin,
-    montantCotisation: a.montantCotisation,
-    statut: a.statut as AdhesionStatus,
-    createdAt: a.createdAt,
-  };
-}
-
-export const treasurerAdhesionsApi = {
-  list: async (q?: PageQuery) => {
-    const { data } = await get<AdhesionDtoBE[]>('/api/treasurer/adhesions');
-    return paginate<AdhesionRow>(data.map(mapAdhesion), q, ['adherentNom', 'statut']);
-  },
-  getById: async (id: string): Promise<AdhesionRow | undefined> => {
-    try {
-      const { data } = await get<AdhesionDtoBE>(`/api/treasurer/adhesions/${id}`);
-      return mapAdhesion(data);
-    } catch {
-      return undefined;
-    }
-  },
-  valider: async (id: string): Promise<AdhesionRow> => {
-    const { data } = await put<AdhesionDtoBE>(`/api/treasurer/adhesions/${id}/valider`, {});
-    return mapAdhesion(data);
-  },
-  rejeter: async (id: string, motif?: string): Promise<AdhesionRow> => {
-    const { data } = await put<AdhesionDtoBE>(
-      `/api/treasurer/adhesions/${id}/rejeter`,
-      motif ? { motif } : {},
-    );
-    return mapAdhesion(data);
-  },
-};
 
 // =============================================================
 // Prêts list
@@ -518,6 +447,9 @@ interface HistoriqueTresorerieDtoBE {
   modePaiement?: PaiementMode | null;
   statut?: PaiementStatus | null;
   utilisateur?: string | null;
+  typeOperation?: string | null;
+  compteBancaireId?: string | null;
+  compteBancaireBanque?: string | null;
 }
 
 function mapHistorique(h: HistoriqueTresorerieDtoBE): HistoriqueFinanciere {
@@ -533,6 +465,9 @@ function mapHistorique(h: HistoriqueTresorerieDtoBE): HistoriqueFinanciere {
     modePaiement: h.modePaiement ?? undefined,
     statut: h.statut ?? undefined,
     utilisateur: h.utilisateur ?? undefined,
+    typeOperation: h.typeOperation ?? undefined,
+    compteBancaireId: h.compteBancaireId ?? undefined,
+    compteBancaireBanque: h.compteBancaireBanque ?? undefined,
   };
 }
 
@@ -608,6 +543,18 @@ export const treasurerTresorerieApi = {
 
   async deleteCompte(id: string): Promise<void> {
     await del(`/api/treasurer/comptes/${id}`);
+  },
+
+  /** Manual deposit (versement) into a specific bank account. */
+  async deposerManuellement(
+    compteId: string,
+    payload: { montant: number; description?: string },
+  ): Promise<HistoriqueFinanciere> {
+    const { data } = await post<HistoriqueTresorerieDtoBE>(
+      `/api/treasurer/comptes/${compteId}/depot`,
+      payload,
+    );
+    return mapHistorique(data);
   },
 };
 

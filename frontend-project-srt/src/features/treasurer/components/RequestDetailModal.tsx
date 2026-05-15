@@ -7,10 +7,10 @@ import type { ReactNode } from 'react';
 import {
   FileText, Download, Check, X, Hash, User, Calendar,
 } from 'lucide-react';
-import { Modal } from '../../../components/data/Modal';
-import { Button } from '../../../components/ui/Button';
-import { StatusBadge } from '../../../components/data/StatusBadge';
-import { formatDate } from '../../../lib/formatters';
+import { Modal } from '../../../shared/data/Modal';
+import { Button } from '../../../shared/ui/Button';
+import { StatusBadge } from '../../../shared/data/StatusBadge';
+import { formatDate } from '../../../shared/lib/formatters';
 
 export interface RequestDetailField {
   label: string;

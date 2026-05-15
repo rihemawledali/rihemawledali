@@ -53,6 +53,7 @@ export interface AuthContextType extends AuthState {
   logout: () => void;
   forgotPassword: (email: string) => Promise<void>;
   resetPassword: (token: string, password: string) => Promise<void>;
+  updateUser: (user: User, token?: string) => void;
 }
 
 /** Maps each role to its dashboard route */

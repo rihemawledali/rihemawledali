@@ -2,8 +2,8 @@ import { useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { AuthLayout } from '../components/AuthLayout';
-import { FormInput } from '../../../components/ui/FormInput';
-import { Alert } from '../../../components/ui/Alert';
+import { FormInput } from '../../../shared/ui/FormInput';
+import { Alert } from '../../../shared/ui/Alert';
 import { validateEmail } from '../utils/validation';
 
 export function ForgotPasswordPage() {

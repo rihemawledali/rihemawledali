@@ -2,9 +2,9 @@ import { useState, useEffect, type FormEvent } from 'react';
 import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { AuthLayout } from '../components/AuthLayout';
-import { PasswordInput } from '../../../components/ui/PasswordInput';
-import { PasswordStrength } from '../../../components/ui/PasswordStrength';
-import { Alert } from '../../../components/ui/Alert';
+import { PasswordInput } from '../../../shared/ui/PasswordInput';
+import { PasswordStrength } from '../../../shared/ui/PasswordStrength';
+import { Alert } from '../../../shared/ui/Alert';
 import { validatePassword, validateConfirmPassword } from '../utils/validation';
 import type { ValidationErrors } from '../types/auth.types';
 

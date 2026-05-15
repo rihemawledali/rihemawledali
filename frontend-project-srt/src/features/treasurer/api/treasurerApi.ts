@@ -8,17 +8,16 @@
      - stats        ← /api/treasurer/dashboard/stats
      - cashflow     ← derived from /api/treasurer/historique (last 12 months)
      - breakdown    ← derived from /api/treasurer/historique (current month)
-     - pending      ← merge of adhesions / prets / indemnites en_attente
+     - pending      ← merge of prets / indemnites en_attente
      - operations   ← /api/treasurer/historique (limited)
    ============================================ */
 
-import { get } from '../../../lib/apiClient';
+import { get } from '../../../shared/lib/apiClient';
 import type {
   TreasurerStats,
   MonthlyCashflowPoint,
   ExpenseSlice,
   PendingRequest,
-  PendingRequestType,
   FinancialOperation,
 } from './treasurerMockData';
 
@@ -32,7 +31,6 @@ interface TreasurerStatsDtoBE {
   indemnitesEnAttente: number;
   indemnitesValidees: number;
   pretsEnAttente: number;
-  adhesionsEnAttente: number;
   retenuesGenerees: number;
   retenuesConfirmees: number;
   comptes: Array<{ id: string; banque: string; iban: string; solde: number; devise: string }>;
@@ -50,16 +48,6 @@ interface HistoriqueTresorerieDtoBE {
   modePaiement?: string | null;
   statut?: string | null;
   utilisateur?: string | null;
-}
-
-interface AdhesionDtoBE {
-  id: string;
-  adherentId: string;
-  adherentNom: string;
-  dateDebut: string;
-  dateFin: string;
-  montantCotisation: number;
-  statut: string;
 }
 
 interface PretDtoBE {
@@ -146,7 +134,6 @@ export const treasurerApi = {
       soldeActuel: stats.soldeTotal,
       entreesMois,
       sortiesMois,
-      demandesAdhesion: stats.adhesionsEnAttente,
       pretsAValider: stats.pretsEnAttente,
       indemnitesATraiter: stats.indemnitesEnAttente,
       retenuesGenerees: stats.retenuesGenerees,
@@ -227,33 +214,20 @@ export const treasurerApi = {
   },
 
   async getPendingRequests(): Promise<PendingRequest[]> {
-    const [adhRes, pretRes, indRes] = await Promise.all([
-      get<AdhesionDtoBE[]>('/api/treasurer/adhesions'),
+    const [pretRes, indRes] = await Promise.all([
       get<PretDtoBE[]>('/api/treasurer/prets'),
       get<IndemniteDtoBE[]>('/api/treasurer/indemnites'),
     ]);
 
     const out: PendingRequest[] = [];
 
-    for (const a of adhRes.data) {
-      if (a.statut !== 'en_attente') continue;
-      out.push({
-        id: `adh-${a.id}`,
-        reference: `ADH-${a.id}`,
-        adherent: a.adherentNom,
-        type: 'adhesion' as PendingRequestType,
-        montant: a.montantCotisation,
-        dateDemande: a.dateDebut,
-        statut: 'en_attente',
-      });
-    }
     for (const p of pretRes.data) {
       if (p.statut !== 'en_attente') continue;
       out.push({
         id: `pret-${p.id}`,
         reference: `PRT-${p.id}`,
         adherent: p.adherentNom,
-        type: 'pret_social' as PendingRequestType,
+        type: 'pret_social',
         montant: p.montant,
         dateDemande: p.dateDemande,
         statut: 'a_valider',
@@ -265,7 +239,7 @@ export const treasurerApi = {
         id: `ind-${i.id}`,
         reference: `IND-${i.id}`,
         adherent: i.adherentNom,
-        type: 'indemnite' as PendingRequestType,
+        type: 'indemnite',
         montant: i.montant,
         dateDemande: i.dateDemande,
         statut: 'en_attente',

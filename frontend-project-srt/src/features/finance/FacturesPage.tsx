@@ -1,24 +1,24 @@
 import { useMemo, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, Pencil, Trash2, CreditCard, Ban, FileDown } from 'lucide-react';
-import { PageHeader } from '../../components/layout/PageHeader';
-import { Button } from '../../components/ui/Button';
-import { DataTable, type Column } from '../../components/data/DataTable';
-import { Modal } from '../../components/data/Modal';
-import { ConfirmDialog } from '../../components/data/ConfirmDialog';
-import { Pagination } from '../../components/data/Pagination';
-import { SearchInput } from '../../components/data/SearchInput';
-import { FilterBar, SelectFilter } from '../../components/data/FilterBar';
-import { StatusBadge } from '../../components/data/StatusBadge';
-import { useToast } from '../../components/feedback/useToast';
+import { PageHeader } from '../../shared/layout/PageHeader';
+import { Button } from '../../shared/ui/Button';
+import { DataTable, type Column } from '../../shared/data/DataTable';
+import { Modal } from '../../shared/data/Modal';
+import { ConfirmDialog } from '../../shared/data/ConfirmDialog';
+import { Pagination } from '../../shared/data/Pagination';
+import { SearchInput } from '../../shared/data/SearchInput';
+import { FilterBar, SelectFilter } from '../../shared/data/FilterBar';
+import { StatusBadge } from '../../shared/data/StatusBadge';
+import { useToast } from '../../shared/feedback/useToast';
 import { facturesApi } from './financeApi';
-import { suppliersApi } from '../suppliers/suppliersApi';
+import { suppliersApi } from '../admin/suppliers/suppliersApi';
 import { FactureForm } from './FactureForm';
-import { formatCurrency, formatDate, daysUntil } from '../../lib/formatters';
-import type { Facture, FactureStatus } from '../../types/domain';
-import type { FactureFormValues } from '../../lib/validators';
-import '../../components/layout/CrudPage.css';
+import { formatCurrency, formatDate, daysUntil } from '../../shared/lib/formatters';
+import type { Facture, FactureStatus } from '../../shared/types/domain';
+import type { FactureFormValues } from '../../shared/validators';
+import '../../shared/layout/CrudPage.css';
 
 const STATUT_LABEL: Record<FactureStatus, string> = {
   brouillon: 'Brouillon',
@@ -44,9 +44,7 @@ export function FacturesPage() {
   const qc = useQueryClient();
   const toast = useToast();
   const navigate = useNavigate();
-  const location = useLocation();
-  const isTreasurerScope = location.pathname.startsWith('/treasurer');
-  const paiementsRoute = isTreasurerScope ? '/treasurer/paiements' : '/admin/finance/paiements';
+  const paiementsRoute = '/treasurer/paiements';
 
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
@@ -140,7 +138,7 @@ export function FacturesPage() {
       <PageHeader
         title="Factures"
         description="Factures émises par les fournisseurs"
-        breadcrumb={[isTreasurerScope ? 'Trésorerie' : 'Administration', 'Finance', 'Factures']}
+        breadcrumb={['Trésorerie', 'Finance', 'Factures']}
         actions={<Button onClick={() => setCreating(true)}><Plus size={16} />Nouvelle facture</Button>}
       />
 

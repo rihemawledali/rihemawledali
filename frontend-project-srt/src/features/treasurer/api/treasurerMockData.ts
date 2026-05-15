@@ -7,7 +7,6 @@ export interface TreasurerStats {
   soldeActuel: number;
   entreesMois: number;
   sortiesMois: number;
-  demandesAdhesion: number;
   pretsAValider: number;
   indemnitesATraiter: number;
   retenuesGenerees: number;
@@ -31,7 +30,6 @@ export interface ExpenseSlice {
 }
 
 export type PendingRequestType =
-  | 'adhesion'
   | 'pret_social'
   | 'indemnite'
   | 'bon_commande';
@@ -68,7 +66,6 @@ export const mockTreasurerStats: TreasurerStats = {
   soldeActuel: 184_350,
   entreesMois: 28_700,
   sortiesMois: 19_420,
-  demandesAdhesion: 7,
   pretsAValider: 5,
   indemnitesATraiter: 4,
   retenuesGenerees: 142,
@@ -114,12 +111,10 @@ export const mockExpenseBreakdown: ExpenseSlice[] = [
 
 // ----- Pending requests -----
 export const mockPendingRequests: PendingRequest[] = [
-  { id: 'req-001', reference: 'ADH-2026-018', adherent: 'Salma Ben Salah',  type: 'adhesion',     montant: 50,    dateDemande: '2026-04-26', statut: 'en_attente' },
   { id: 'req-002', reference: 'PRT-2026-012', adherent: 'Mohamed Kefi',     type: 'pret_social',  montant: 4_500, dateDemande: '2026-04-25', statut: 'a_valider' },
   { id: 'req-003', reference: 'IND-2026-007', adherent: 'Houda Trabelsi',   type: 'indemnite',    montant: 320,   dateDemande: '2026-04-24', statut: 'en_attente' },
   { id: 'req-004', reference: 'BC-2026-031',  adherent: 'Karim Mansouri',   type: 'bon_commande', montant: 180,   dateDemande: '2026-04-23', statut: 'a_valider' },
   { id: 'req-005', reference: 'PRT-2026-013', adherent: 'Amira Gharbi',     type: 'pret_social',  montant: 2_800, dateDemande: '2026-04-22', statut: 'en_attente' },
-  { id: 'req-006', reference: 'ADH-2026-019', adherent: 'Walid Hammami',    type: 'adhesion',     montant: 50,    dateDemande: '2026-04-21', statut: 'en_attente' },
   { id: 'req-007', reference: 'IND-2026-008', adherent: 'Yasmine Bouzid',   type: 'indemnite',    montant: 540,   dateDemande: '2026-04-20', statut: 'a_valider' },
 ];
 

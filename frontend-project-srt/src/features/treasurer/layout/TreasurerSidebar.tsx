@@ -5,14 +5,14 @@
 
 import { NavLink } from 'react-router-dom';
 import {
-  LayoutDashboard, UserPlus, Banknote, HeartHandshake, Handshake, Receipt,
+  LayoutDashboard, Banknote, HeartHandshake, Handshake, Receipt,
   CreditCard, FileText, Ticket, ShoppingCart, Wallet, History,
   User, LogOut, ChevronsLeft,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import logoUrl from '../../../assets/amicalite-srt-logo-v1.png';
 import { useAuth } from '../../auth/hooks/useAuth';
-import '../../../components/layout/Sidebar.css';
+import '../../../shared/layout/Sidebar.css';
 
 interface TreasurerSidebarProps {
   collapsed: boolean;
@@ -42,7 +42,6 @@ const GROUPS: NavGroup[] = [
   {
     label: 'Demandes',
     items: [
-      { to: '/treasurer/demandes-adhesion', label: 'Demandes d\u2019adhésion', icon: UserPlus },
       { to: '/treasurer/prets',             label: 'Prêts sociaux',           icon: Banknote },
       { to: '/treasurer/indemnites',        label: 'Indemnités',              icon: HeartHandshake },
       { to: '/treasurer/conventions',       label: 'Conventions',             icon: Handshake },

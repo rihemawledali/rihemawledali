@@ -6,7 +6,7 @@ import type {
   Utilisateur, Adherent, PretSocial, Adhesion, Indemnite,
   BonCommande, TicketRestaurant, Convention, Fournisseur,
   Facture, Paiement, CompteBancaire, HistoriqueFinanciere,
-} from '../types/domain';
+} from '../shared/types/domain';
 
 const today = new Date();
 const isoDaysAgo = (n: number) => new Date(today.getTime() - n * 86400000).toISOString();

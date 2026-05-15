@@ -11,6 +11,7 @@ import {
   forgotPasswordService,
   resetPasswordService,
   getCurrentUser,
+  updateStoredUser,
   logoutService,
 } from '../services/authService';
 import { AuthContext } from './authContextInstance';
@@ -44,6 +45,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
     setUser(null);
   }, []);
 
+  const updateUser = useCallback((nextUser: User, token?: string) => {
+    updateStoredUser(nextUser, token);
+    setUser(nextUser);
+  }, []);
+
   const forgotPassword = useCallback(async (email: string) => {
     await forgotPasswordService(email);
   }, []);
@@ -61,6 +67,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     logout,
     forgotPassword,
     resetPassword,
+    updateUser,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -20,22 +20,22 @@ import {
   User,
   X,
 } from 'lucide-react';
-import { PageHeader } from '../../../components/layout/PageHeader';
-import { DataTable, type Column } from '../../../components/data/DataTable';
-import { StatusBadge } from '../../../components/data/StatusBadge';
-import { Button } from '../../../components/ui/Button';
-import { SearchInput } from '../../../components/data/SearchInput';
-import { FilterBar, SelectFilter } from '../../../components/data/FilterBar';
-import { Pagination } from '../../../components/data/Pagination';
-import { Modal } from '../../../components/data/Modal';
-import { useToast } from '../../../components/feedback/useToast';
-import { formatDate, formatNumber } from '../../../lib/formatters';
+import { PageHeader } from '../../../shared/layout/PageHeader';
+import { DataTable, type Column } from '../../../shared/data/DataTable';
+import { StatusBadge } from '../../../shared/data/StatusBadge';
+import { Button } from '../../../shared/ui/Button';
+import { SearchInput } from '../../../shared/data/SearchInput';
+import { FilterBar, SelectFilter } from '../../../shared/data/FilterBar';
+import { Pagination } from '../../../shared/data/Pagination';
+import { Modal } from '../../../shared/data/Modal';
+import { useToast } from '../../../shared/feedback/useToast';
+import { formatDate, formatNumber } from '../../../shared/lib/formatters';
 import {
   treasurerConventionsApi,
   type ConventionDemandeRow,
   type ConventionDemandeStatutBE,
-} from '../api/treasurerListApi';
-import '../../../components/layout/CrudPage.css';
+} from '../conventions-demande/api';
+import '../../../shared/layout/CrudPage.css';
 import './TreasurerConventionsPage.css';
 
 const STATUT_LABEL: Record<ConventionDemandeStatutBE, string> = {

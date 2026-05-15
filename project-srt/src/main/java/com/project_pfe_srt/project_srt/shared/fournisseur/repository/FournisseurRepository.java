@@ -1,0 +1,8 @@
+package com.project_pfe_srt.project_srt.shared.fournisseur.repository;
+
+import com.project_pfe_srt.project_srt.shared.fournisseur.entity.Fournisseur;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+
+public interface FournisseurRepository extends JpaRepository<Fournisseur, Long> {
+}

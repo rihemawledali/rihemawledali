@@ -4,17 +4,20 @@
    ============================================ */
 
 import { useForm } from 'react-hook-form';
-import { FormInput } from '../../components/ui/FormInput';
-import { FormSelect } from '../../components/ui/FormSelect';
-import { Button } from '../../components/ui/Button';
-import { formatCurrency } from '../../lib/formatters';
-import type { Facture, PaiementMode } from '../../types/domain';
+import { useEffect, useState } from 'react';
+import { FormInput } from '../../shared/ui/FormInput';
+import { FormSelect } from '../../shared/ui/FormSelect';
+import { Button } from '../../shared/ui/Button';
+import { formatCurrency } from '../../shared/lib/formatters';
+import { treasurerTresorerieApi } from '../../features/treasurer/api/treasurerListApi';
+import type { Facture, PaiementMode, CompteBancaire } from '../../shared/types/domain';
 
 interface FormValues {
   reference: string;
   montant: number;
   mode: PaiementMode;
   description?: string;
+  compteBancaireId: string;
 }
 
 interface Props {
@@ -24,18 +27,42 @@ interface Props {
   submitting?: boolean;
 }
 
+function createPaymentReference() {
+  return `PAY-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 9999)).padStart(4, '0')}`;
+}
+
 export function PayFactureForm({ facture, onSubmit, onCancel, submitting }: Props) {
+  const [reference] = useState(createPaymentReference);
+  const [comptes, setComptes] = useState<CompteBancaire[]>([]);
+  const [comptesLoading, setComptesLoading] = useState(true);
+
+  useEffect(() => {
+    treasurerTresorerieApi.listComptes()
+      .then(setComptes)
+      .finally(() => setComptesLoading(false));
+  }, []);
+
   const { register, handleSubmit, formState: { errors } } = useForm<FormValues>({
     defaultValues: {
-      reference: `PAY-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 9999)).padStart(4, '0')}`,
+      reference,
       montant: facture.montant,
       mode: 'virement',
       description: `Paiement facture fournisseur ${facture.numero}`,
+      compteBancaireId: '',
     },
   });
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="form-grid">
+      <FormSelect
+        label="Compte bancaire"
+        {...register('compteBancaireId', { required: 'Compte bancaire requis' })}
+        options={comptesLoading ? [{ value: '', label: 'Chargement...' }] : [
+          { value: '', label: 'Sélectionner un compte' },
+          ...comptes.map((c) => ({ value: c.id, label: `${c.banque} — ${c.iban} (${c.solde.toFixed(2)} ${c.devise})` })),
+        ]}
+        error={errors.compteBancaireId?.message}
+      />
       {/* Read-only context */}
       <div
         className="form-grid-full"
@@ -77,8 +104,8 @@ export function PayFactureForm({ facture, onSubmit, onCancel, submitting }: Prop
       </div>
 
       <div className="form-grid-full" style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-3)' }}>
-        <Button type="button" variant="secondary" onClick={onCancel} disabled={submitting}>Annuler</Button>
-        <Button type="submit" isLoading={submitting}>Payer la facture</Button>
+        <Button type="button" variant="secondary" onClick={onCancel} disabled={submitting || comptesLoading}>Annuler</Button>
+        <Button type="submit" isLoading={submitting || comptesLoading} disabled={comptes.length === 0}>Payer la facture</Button>
       </div>
     </form>
   );

@@ -1,0 +1,305 @@
+.treasurer-profile-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.treasurer-profile-hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-5);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background:
+    linear-gradient(135deg, rgba(236, 253, 245, 0.82), rgba(255, 255, 255, 0.96) 56%, rgba(239, 246, 255, 0.74)),
+    var(--color-surface);
+  box-shadow: var(--shadow-xs);
+}
+
+.treasurer-profile-identity {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.treasurer-profile-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 82px;
+  height: 82px;
+  flex: 0 0 82px;
+  border-radius: var(--radius-lg);
+  color: #ffffff;
+  background: linear-gradient(135deg, #047857, #2563eb);
+  box-shadow: var(--shadow-md);
+  font-size: 1.65rem;
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
+.treasurer-profile-title {
+  min-width: 0;
+}
+
+.treasurer-profile-kicker {
+  display: block;
+  margin-bottom: var(--space-1);
+  color: var(--color-text-tertiary);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  text-transform: uppercase;
+  letter-spacing: 0;
+}
+
+.treasurer-profile-title h2,
+.treasurer-profile-panel-header h3 {
+  margin: 0;
+  color: var(--color-text-primary);
+  line-height: var(--line-height-tight);
+}
+
+.treasurer-profile-title h2 {
+  font-size: 1.55rem;
+}
+
+.treasurer-profile-title p {
+  margin: var(--space-1) 0 0;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  overflow-wrap: anywhere;
+}
+
+.treasurer-profile-status {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.treasurer-profile-status-badge,
+.treasurer-profile-role {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 34px;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-full);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+}
+
+.treasurer-profile-status-badge {
+  color: var(--color-success-700);
+  background: var(--color-success-50);
+  border: 1px solid var(--color-success-100);
+}
+
+.treasurer-profile-role {
+  color: var(--color-primary-700);
+  background: var(--color-primary-50);
+  border: 1px solid var(--color-primary-100);
+}
+
+.treasurer-profile-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(300px, 0.65fr);
+  gap: var(--space-4);
+  align-items: start;
+}
+
+.treasurer-profile-panel {
+  min-width: 0;
+  padding: var(--space-5);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-xs);
+}
+
+.treasurer-profile-panel-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.treasurer-profile-panel-header h3 {
+  font-size: var(--font-size-lg);
+}
+
+.treasurer-profile-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+  margin: 0;
+}
+
+.treasurer-profile-field {
+  min-width: 0;
+  padding: var(--space-3);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-secondary);
+}
+
+.treasurer-profile-field dt {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+  color: var(--color-text-tertiary);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  text-transform: uppercase;
+  letter-spacing: 0;
+}
+
+.treasurer-profile-field dd {
+  margin: 0;
+  color: var(--color-text-primary);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
+  overflow-wrap: anywhere;
+}
+
+.treasurer-profile-field dd.is-mono {
+  font-family: var(--font-family-mono, monospace);
+  font-size: var(--font-size-sm);
+}
+
+.treasurer-profile-side {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.treasurer-profile-security {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.treasurer-profile-security-item {
+  display: flex;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-secondary);
+}
+
+.treasurer-profile-security-item > span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+  border-radius: var(--radius-md);
+  color: var(--color-primary-700);
+  background: var(--color-primary-50);
+}
+
+.treasurer-profile-security-item strong {
+  display: block;
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+}
+
+.treasurer-profile-security-item p {
+  margin: 2px 0 0;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
+}
+
+.treasurer-profile-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+}
+
+.treasurer-profile-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.treasurer-profile-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+.treasurer-profile-form-error {
+  margin: 0;
+  color: var(--color-error-700);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+}
+
+.treasurer-profile-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  margin-top: var(--space-2);
+}
+
+@media (max-width: 980px) {
+  .treasurer-profile-hero,
+  .treasurer-profile-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .treasurer-profile-layout {
+    display: grid;
+  }
+
+  .treasurer-profile-hero {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .treasurer-profile-status {
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 680px) {
+  .treasurer-profile-identity {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .treasurer-profile-avatar {
+    width: 68px;
+    height: 68px;
+    flex-basis: 68px;
+    font-size: 1.35rem;
+  }
+
+  .treasurer-profile-fields {
+    grid-template-columns: 1fr;
+  }
+
+  .treasurer-profile-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .treasurer-profile-actions .btn {
+    width: 100%;
+  }
+
+  .treasurer-profile-form-actions {
+    flex-direction: column-reverse;
+  }
+
+  .treasurer-profile-form-actions .btn {
+    width: 100%;
+  }
+}

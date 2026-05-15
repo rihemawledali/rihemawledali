@@ -1,29 +1,29 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useLocation, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Plus, Pencil, Trash2, CheckCircle2, Ban, Eye, CreditCard,
   Building2, HeartHandshake, MoreHorizontal,
 } from 'lucide-react';
-import { PageHeader } from '../../components/layout/PageHeader';
-import { Button } from '../../components/ui/Button';
-import { DataTable, type Column } from '../../components/data/DataTable';
-import { Modal } from '../../components/data/Modal';
-import { ConfirmDialog } from '../../components/data/ConfirmDialog';
-import { Pagination } from '../../components/data/Pagination';
-import { SearchInput } from '../../components/data/SearchInput';
-import { FilterBar, SelectFilter } from '../../components/data/FilterBar';
-import { StatusBadge } from '../../components/data/StatusBadge';
-import { useToast } from '../../components/feedback/useToast';
+import { PageHeader } from '../../shared/layout/PageHeader';
+import { Button } from '../../shared/ui/Button';
+import { DataTable, type Column } from '../../shared/data/DataTable';
+import { Modal } from '../../shared/data/Modal';
+import { ConfirmDialog } from '../../shared/data/ConfirmDialog';
+import { Pagination } from '../../shared/data/Pagination';
+import { SearchInput } from '../../shared/data/SearchInput';
+import { FilterBar, SelectFilter } from '../../shared/data/FilterBar';
+import { StatusBadge } from '../../shared/data/StatusBadge';
+import { useToast } from '../../shared/feedback/useToast';
 import { facturesApi, paiementsApi } from './financeApi';
 import { indemnitesWorkflow } from './financeApi';
 import { PaiementForm } from './PaiementForm';
 import { PayFactureForm } from './PayFactureForm';
 import { PayIndemniteForm } from './PayIndemniteForm';
-import { formatCurrency, formatDateTime } from '../../lib/formatters';
-import type { Facture, Indemnite, Paiement, TypePaiement } from '../../types/domain';
-import type { PaiementFormValues } from '../../lib/validators';
-import '../../components/layout/CrudPage.css';
+import { formatCurrency, formatDateTime } from '../../shared/lib/formatters';
+import type { Facture, Indemnite, Paiement, TypePaiement } from '../../shared/types/domain';
+import type { PaiementFormValues } from '../../shared/validators';
+import '../../shared/layout/CrudPage.css';
 
 const MODE_LABEL: Record<string, string> = {
   virement: 'Virement', cheque: 'Chèque', especes: 'Espèces', carte: 'Carte',
@@ -57,8 +57,6 @@ function inferType(p: Paiement): TypePaiement {
 export function PaiementsPage() {
   const qc = useQueryClient();
   const toast = useToast();
-  const location = useLocation();
-  const isTreasurerScope = location.pathname.startsWith('/treasurer');
   const [searchParams, setSearchParams] = useSearchParams();
 
   const [page, setPage] = useState(1);
@@ -96,7 +94,6 @@ export function PaiementsPage() {
     } else if (indemniteId) {
       indemnitesWorkflow.getById(indemniteId).then((i) => { if (i) setPayingIndemnite(i); });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
   const closePrefilled = () => {
@@ -126,6 +123,7 @@ export function PaiementsPage() {
       indemniteId: v.indemniteId,
       description: v.description,
       date: new Date().toISOString(),
+      compteBancaireId: v.compteBancaireId,
     }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['paiements'] });
@@ -192,7 +190,7 @@ export function PaiementsPage() {
   });
 
   const payFacture = useMutation({
-    mutationFn: ({ factureId, payload }: { factureId: string; payload: { reference: string; montant: number; mode: Paiement['mode']; description?: string } }) =>
+    mutationFn: ({ factureId, payload }: { factureId: string; payload: { reference: string; montant: number; mode: Paiement['mode']; description?: string; compteBancaireId: string } }) =>
       paiementsApi.payFacture(factureId, payload),
     onSuccess: async (_data, variables) => {
       qc.invalidateQueries({ queryKey: ['paiements'] });
@@ -218,7 +216,7 @@ export function PaiementsPage() {
   });
 
   const payIndemnite = useMutation({
-    mutationFn: ({ indemniteId, payload }: { indemniteId: string; payload: { reference: string; montant: number; mode: Paiement['mode']; description?: string } }) =>
+    mutationFn: ({ indemniteId, payload }: { indemniteId: string; payload: { reference: string; montant: number; mode: Paiement['mode']; description?: string; compteBancaireId: string } }) =>
       paiementsApi.payIndemnite(indemniteId, payload),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['paiements'] });
@@ -268,7 +266,7 @@ export function PaiementsPage() {
       <PageHeader
         title="Paiements"
         description="Suivi des paiements (factures fournisseur, indemnités, autres sorties)"
-        breadcrumb={[isTreasurerScope ? 'Trésorerie' : 'Administration', 'Finance', 'Paiements']}
+        breadcrumb={['Trésorerie', 'Finance', 'Paiements']}
         actions={<Button onClick={() => setCreating(true)}><Plus size={16} />Nouveau paiement</Button>}
       />
 
@@ -382,6 +380,7 @@ function PaiementDetail({ paiement: p }: { paiement: Paiement }) {
       <Detail label="Mode" value={MODE_LABEL[p.mode]} />
       <Detail label="Statut" value={<StatusBadge status={p.statut} />} />
       <Detail label="Date paiement" value={formatDateTime(p.date)} />
+      {p.compteBancaireBanque && <Detail label="Compte bancaire" value={p.compteBancaireBanque} />}
       {p.description && <Detail label="Description" value={p.description} />}
     </div>
   );

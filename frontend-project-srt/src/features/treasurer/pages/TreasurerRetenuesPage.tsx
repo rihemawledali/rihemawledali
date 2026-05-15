@@ -13,14 +13,14 @@ import {
   HandCoins, Banknote, Building2, Clock, AlertTriangle, Calendar,
   Ticket,
 } from 'lucide-react';
-import { PageHeader } from '../../../components/layout/PageHeader';
-import { DataTable, type Column } from '../../../components/data/DataTable';
-import { StatusBadge } from '../../../components/data/StatusBadge';
-import { Button } from '../../../components/ui/Button';
-import { SearchInput } from '../../../components/data/SearchInput';
-import { FilterBar, SelectFilter } from '../../../components/data/FilterBar';
-import { Pagination } from '../../../components/data/Pagination';
-import { formatCurrency, formatNumber } from '../../../lib/formatters';
+import { PageHeader } from '../../../shared/layout/PageHeader';
+import { DataTable, type Column } from '../../../shared/data/DataTable';
+import { StatusBadge } from '../../../shared/data/StatusBadge';
+import { Button } from '../../../shared/ui/Button';
+import { SearchInput } from '../../../shared/data/SearchInput';
+import { FilterBar, SelectFilter } from '../../../shared/data/FilterBar';
+import { Pagination } from '../../../shared/data/Pagination';
+import { formatCurrency, formatNumber } from '../../../shared/lib/formatters';
 import {
   treasurerRetenuesApi,
   type RetenueMensuelle,
@@ -28,8 +28,8 @@ import {
   type RetenueLigneRow,
   type RetenueLigneStatut,
   type RetenueLigneType,
-} from '../api/treasurerListApi';
-import '../../../components/layout/CrudPage.css';
+} from '../retenues/api';
+import '../../../shared/layout/CrudPage.css';
 import './TreasurerRetenuesPage.css';
 
 // ---- Master statut visuals ----
@@ -122,15 +122,25 @@ export function TreasurerRetenuesPage() {
     const items = (all.data?.items ?? []).filter(
       (r) => r.mois === periodMois && r.annee === periodAnnee,
     );
+    const lignes = items.flatMap((r) => r.lignes ?? []);
+    const lignesActives = lignes.filter((l) => l.statut !== 'ANNULEE');
     const sansCotisation = items.filter((r) => r.totalCotisation <= 0).length;
+    const exportees = items.filter((r) => r.statut === 'EXPORTEE').length;
+    const montantTotal = items.reduce((s, r) => s + r.totalRetenu, 0);
     return {
       total: items.length,
-      exportees: items.filter((r) => r.statut === 'EXPORTEE').length,
+      exportees,
       aExporter: items.filter((r) => r.statut === 'GENEREE').length,
       sansCotisation,
-      montantTotal: items.reduce((s, r) => s + r.totalRetenu, 0),
+      montantTotal,
+      lignesActives: lignesActives.length,
+      lignesEnAttente: lignes.filter((l) => l.statut === 'EN_ATTENTE').length,
+      lignesPrelevees: lignes.filter((l) => l.statut === 'PRELEVEE').length,
+      lignesAnnulees: lignes.filter((l) => l.statut === 'ANNULEE').length,
     };
   }, [all.data, periodMois, periodAnnee]);
+
+  const currentPeriodLabel = `${MOIS_LABELS[periodMois - 1]} ${periodAnnee}`;
 
   // ---- Period-scoped client-side filtering ----
   const filterByPeriod = <T extends { mois: number; annee: number }>(rows: T[]): T[] =>
@@ -159,6 +169,10 @@ export function TreasurerRetenuesPage() {
     },
     enabled: mode === 'flat',
   });
+
+  const displayedTotal = mode === 'group'
+    ? (groupQuery.data?.total ?? 0)
+    : (flatQuery.data?.total ?? 0);
 
   // ---- Generate (idempotent) for the selected period ----
   const generate = useMutation({
@@ -213,52 +227,39 @@ export function TreasurerRetenuesPage() {
     {
       key: 'adherentNom',
       header: 'Adhérent',
+      width: '230px',
       cell: (r) => (
         <div>
           <strong className="cell-strong">{r.adherentNom}</strong>
-          {r.adherentMatricule && (
-            <div className="retenue-member-meta">
-              {r.adherentMatricule}
-            </div>
-          )}
+          <div className="retenue-member-meta">
+            {r.adherentMatricule ? r.adherentMatricule : 'Sans matricule'}
+            <span>{formatNumber(r.lignes?.length ?? 0)} ligne{(r.lignes?.length ?? 0) > 1 ? 's' : ''}</span>
+          </div>
         </div>
       ),
     },
     {
-      key: 'mois',
-      header: 'Mois',
-      cell: (r) => formatMonth(r.mois, r.annee),
-      width: '160px',
-    },
-    {
-      key: 'totalCotisation',
-      header: 'Cotisation',
-      align: 'right',
-      width: '140px',
+      key: 'ventilation',
+      header: 'Détails retenue',
+      width: '360px',
       cell: (r) => r.totalCotisation > 0 ? (
-        <span className="retenue-money">{formatCurrency(r.totalCotisation)}</span>
+        <div className="retenue-breakdown-cell">
+          <BreakdownMini label="Cot." value={formatCurrency(r.totalCotisation)} tone="info" />
+          <BreakdownMini label="Prêt" value={r.totalPret > 0 ? formatCurrency(r.totalPret) : '—'} tone="warning" muted={r.totalPret <= 0} />
+          <BreakdownMini label="Conv." value={r.totalConvention > 0 ? formatCurrency(r.totalConvention) : '—'} tone="primary" muted={r.totalConvention <= 0} />
+        </div>
       ) : (
-        <span
-          title="Aucune ligne de cotisation pour cet adhérent — l'adhésion n'est peut-être pas active ce mois-ci. Cliquez sur « Régénérer » pour recalculer."
-          className="retenue-missing-badge"
-        >
-          <AlertTriangle size={12} /> Manquante
-        </span>
+        <div className="retenue-breakdown-cell">
+          <span
+            title="Aucune ligne de cotisation pour cet adhérent — l'adhésion n'est peut-être pas active ce mois-ci. Cliquez sur « Régénérer » pour recalculer."
+            className="retenue-missing-badge"
+          >
+            <AlertTriangle size={12} /> Cotisation manquante
+          </span>
+          <BreakdownMini label="Prêt" value={r.totalPret > 0 ? formatCurrency(r.totalPret) : '—'} tone="warning" muted={r.totalPret <= 0} />
+          <BreakdownMini label="Conv." value={r.totalConvention > 0 ? formatCurrency(r.totalConvention) : '—'} tone="primary" muted={r.totalConvention <= 0} />
+        </div>
       ),
-    },
-    {
-      key: 'totalPret',
-      header: 'Prêt',
-      align: 'right',
-      width: '120px',
-      cell: (r) => r.totalPret > 0 ? formatCurrency(r.totalPret) : <span className="retenue-empty-value">—</span>,
-    },
-    {
-      key: 'totalConvention',
-      header: 'Convention',
-      align: 'right',
-      width: '120px',
-      cell: (r) => r.totalConvention > 0 ? formatCurrency(r.totalConvention) : <span className="retenue-empty-value">—</span>,
     },
     {
       key: 'totalRetenu',
@@ -340,7 +341,16 @@ export function TreasurerRetenuesPage() {
         </span>
       ),
     },
-    { key: 'motif', header: 'Motif', cell: (r) => r.motif },
+    {
+      key: 'motif',
+      header: 'Motif',
+      cell: (r) => (
+        <div className="retenue-line-copy">
+          <strong>{r.motif || 'Retenue sans motif'}</strong>
+          {r.sourceRefId && <span>Source {r.sourceRefId}</span>}
+        </div>
+      ),
+    },
     {
       key: 'montant',
       header: 'Montant',
@@ -393,7 +403,7 @@ export function TreasurerRetenuesPage() {
     <div className="treasurer-retenues-page">
       <PageHeader
         title="Retenues mensuelles"
-        description={`Générer et exporter les retenues sur paie — Période sélectionnée : ${MOIS_LABELS[periodMois - 1]} ${periodAnnee}`}
+        description={`Générer, contrôler et exporter les retenues sur paie — période sélectionnée : ${currentPeriodLabel}`}
         breadcrumb={['Trésorerie', 'Finance', 'Retenues']}
         actions={(
           <div className="retenue-header-actions">
@@ -512,6 +522,16 @@ export function TreasurerRetenuesPage() {
           </FilterBar>
         </div>
 
+        <div className="retenue-table-context">
+          <div>
+            <strong>{loadingText(mode, displayedTotal, all.isLoading || groupQuery.isLoading || flatQuery.isLoading)}</strong>
+            <span>{mode === 'group' ? 'retenues adhérents' : 'lignes de détail'} pour {currentPeriodLabel}</span>
+          </div>
+          <span>
+            {stats.lignesActives} lignes actives · {stats.lignesPrelevees} prélevées · {stats.lignesEnAttente} en attente
+          </span>
+        </div>
+
       {mode === 'group' ? (
         <>
           <DataTable
@@ -519,7 +539,7 @@ export function TreasurerRetenuesPage() {
             rows={groupQuery.data?.items ?? []}
             loading={groupQuery.isLoading}
             rowKey={(r) => r.id}
-            emptyTitle={`Aucune retenue pour ${MOIS_LABELS[periodMois - 1]} ${periodAnnee}`}
+            emptyTitle={`Aucune retenue pour ${currentPeriodLabel}`}
             emptyDescription="Cliquez sur « Générer la période » pour créer les retenues mensuelles."
           />
           {groupQuery.data && groupQuery.data.total > 0 && (
@@ -553,6 +573,31 @@ export function TreasurerRetenuesPage() {
         </div>
       )}
     </div>
+  );
+}
+
+function loadingText(mode: ViewMode, total: number, loading?: boolean) {
+  if (loading) return 'Chargement...';
+  const label = mode === 'group' ? 'retenue' : 'ligne';
+  return `${formatNumber(total)} ${label}${total > 1 ? 's' : ''}`;
+}
+
+function BreakdownMini({
+  label,
+  value,
+  tone,
+  muted,
+}: {
+  label: string;
+  value: string;
+  tone: 'info' | 'warning' | 'primary';
+  muted?: boolean;
+}) {
+  return (
+    <span className={`retenue-breakdown-mini retenue-breakdown-mini--${tone} ${muted ? 'is-muted' : ''}`}>
+      <small>{label}</small>
+      <strong>{value}</strong>
+    </span>
   );
 }
 

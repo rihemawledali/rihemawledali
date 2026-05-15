@@ -1,12 +1,12 @@
 import { useState, type FormEvent } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { ApiError } from '../../../lib/apiClient';
+import { ApiError } from '../../../shared/lib/apiClient';
 import { AuthLayout } from '../components/AuthLayout';
-import { FormInput } from '../../../components/ui/FormInput';
-import { PasswordInput } from '../../../components/ui/PasswordInput';
-import { Checkbox } from '../../../components/ui/Checkbox';
-import { Alert } from '../../../components/ui/Alert';
+import { FormInput } from '../../../shared/ui/FormInput';
+import { PasswordInput } from '../../../shared/ui/PasswordInput';
+import { Checkbox } from '../../../shared/ui/Checkbox';
+import { Alert } from '../../../shared/ui/Alert';
 import { validateLoginForm } from '../utils/validation';
 import { ROLE_DASHBOARD_MAP } from '../types/auth.types';
 import type { ValidationErrors } from '../types/auth.types';

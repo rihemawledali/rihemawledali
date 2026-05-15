@@ -17,7 +17,6 @@ import {
   PiggyBank,
   Receipt,
   ShoppingCart,
-  UserPlus,
   Wallet,
 } from 'lucide-react';
 import {
@@ -35,11 +34,11 @@ import {
   YAxis,
 } from 'recharts';
 
-import { PageHeader } from '../../../components/layout/PageHeader';
-import { ChartCard } from '../../../components/charts/ChartCard';
-import { StatusBadge } from '../../../components/data/StatusBadge';
-import { Button } from '../../../components/ui/Button';
-import { formatCurrency, formatDate, formatNumber } from '../../../lib/formatters';
+import { PageHeader } from '../../../shared/layout/PageHeader';
+import { ChartCard } from '../../../shared/charts/ChartCard';
+import { StatusBadge } from '../../../shared/data/StatusBadge';
+import { Button } from '../../../shared/ui/Button';
+import { formatCurrency, formatDate, formatNumber } from '../../../shared/lib/formatters';
 import { treasurerApi } from '../api/treasurerApi';
 import type {
   ExpenseSlice,
@@ -52,21 +51,18 @@ import type {
 import './TreasurerDashboardPage.css';
 
 const REQUEST_TYPE_LABEL: Record<PendingRequestType, string> = {
-  adhesion: 'Adhésion',
   pret_social: 'Prêt social',
   indemnite: 'Indemnité',
   bon_commande: 'Bon de commande',
 };
 
 const REQUEST_TYPE_TONE: Record<PendingRequestType, 'primary' | 'info' | 'success' | 'warning'> = {
-  adhesion: 'primary',
   pret_social: 'info',
   indemnite: 'success',
   bon_commande: 'warning',
 };
 
 const REQUEST_TYPE_ROUTE: Record<PendingRequestType, string> = {
-  adhesion: '/treasurer/demandes-adhesion',
   pret_social: '/treasurer/prets',
   indemnite: '/treasurer/indemnites',
   bon_commande: '/treasurer/bons-commande',
@@ -135,8 +131,7 @@ export function TreasurerDashboardPage() {
   const operationData = operations.data ?? [];
 
   const netMovement = (statsData?.entreesMois ?? 0) - (statsData?.sortiesMois ?? 0);
-  const pendingTotal = (statsData?.demandesAdhesion ?? 0)
-    + (statsData?.pretsAValider ?? 0)
+  const pendingTotal = (statsData?.pretsAValider ?? 0)
     + (statsData?.indemnitesATraiter ?? 0)
     + (statsData?.facturesImpayees ?? 0);
 
@@ -183,13 +178,6 @@ export function TreasurerDashboardPage() {
           value={statsData ? formatNumber(statsData.facturesImpayees) : '—'}
           loading={stats.isLoading}
           tone="error"
-        />
-        <MiniMetric
-          icon={<UserPlus size={18} />}
-          label="Adhésions en attente"
-          value={statsData ? formatNumber(statsData.demandesAdhesion) : '—'}
-          loading={stats.isLoading}
-          tone="warning"
         />
       </section>
 
@@ -298,7 +286,6 @@ function PendingWorkPanel({
   onNavigate: (path: string) => void;
 }) {
   const items = [
-    { label: 'Adhésions', value: stats?.demandesAdhesion ?? 0, to: '/treasurer/demandes-adhesion', icon: UserPlus },
     { label: 'Prêts sociaux', value: stats?.pretsAValider ?? 0, to: '/treasurer/prets', icon: Banknote },
     { label: 'Indemnités', value: stats?.indemnitesATraiter ?? 0, to: '/treasurer/indemnites', icon: HeartHandshake },
     { label: 'Factures', value: stats?.facturesImpayees ?? 0, to: '/treasurer/factures', icon: FileWarning },

@@ -1,16 +1,16 @@
 import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { ArrowUpRight, ArrowDownRight } from 'lucide-react';
-import { PageHeader } from '../../components/layout/PageHeader';
-import { DataTable, type Column } from '../../components/data/DataTable';
-import { Pagination } from '../../components/data/Pagination';
-import { SearchInput } from '../../components/data/SearchInput';
-import { FilterBar, SelectFilter } from '../../components/data/FilterBar';
-import { StatusBadge } from '../../components/data/StatusBadge';
+import { PageHeader } from '../../shared/layout/PageHeader';
+import { DataTable, type Column } from '../../shared/data/DataTable';
+import { Pagination } from '../../shared/data/Pagination';
+import { SearchInput } from '../../shared/data/SearchInput';
+import { FilterBar, SelectFilter } from '../../shared/data/FilterBar';
+import { StatusBadge } from '../../shared/data/StatusBadge';
 import { historiqueApi } from './financeApi';
-import { formatCurrency, formatDateTime } from '../../lib/formatters';
-import type { HistoriqueFinanciere } from '../../types/domain';
-import '../../components/layout/CrudPage.css';
+import { formatCurrency, formatDateTime } from '../../shared/lib/formatters';
+import type { HistoriqueFinanciere } from '../../shared/types/domain';
+import '../../shared/layout/CrudPage.css';
 
 const TYPE_LABEL: Record<string, string> = {
   credit: 'Crédit', debit: 'Débit', pret: 'Prêt',
@@ -42,6 +42,7 @@ export function HistoriquePage() {
         {h.utilisateur && <span>par {h.utilisateur}</span>}
       </div>
     )},
+    { key: 'compteBancaireBanque', header: 'Compte', cell: (h) => h.compteBancaireBanque ? <span className="cell-muted">{h.compteBancaireBanque}</span> : null, width: '140px' },
     { key: 'type', header: 'Type', sortable: true, cell: (h) => <StatusBadge tone="neutral" status={h.type} label={TYPE_LABEL[h.type]} /> },
     { key: 'montant', header: 'Montant', sortable: true, align: 'right', cell: (h) => {
       const positive = h.montant >= 0;

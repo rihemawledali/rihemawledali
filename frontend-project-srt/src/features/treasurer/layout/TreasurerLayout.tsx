@@ -5,8 +5,8 @@
 import { useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import { TreasurerSidebar } from './TreasurerSidebar';
-import { Topbar } from '../../../components/layout/Topbar';
-import '../../../components/layout/AdminLayout.css';
+import { Topbar } from '../../../shared/layout/Topbar';
+import '../../../shared/layout/AdminLayout.css';
 
 export function TreasurerLayout() {
   const [collapsed, setCollapsed] = useState(false);
