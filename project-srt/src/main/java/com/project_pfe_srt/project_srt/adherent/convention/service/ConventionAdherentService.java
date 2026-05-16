@@ -6,7 +6,7 @@ import com.project_pfe_srt.project_srt.adherent.convention.dto.ConventionDemande
 import com.project_pfe_srt.project_srt.adherent.convention.entity.ConventionDemande;
 import com.project_pfe_srt.project_srt.adherent.convention.repository.ConventionDemandeRepository;
 import com.project_pfe_srt.project_srt.auth.entity.User;
-import com.project_pfe_srt.project_srt.common.util.Repos;
+import com.project_pfe_srt.project_srt.common.exception.NotFoundException;
 import com.project_pfe_srt.project_srt.shared.convention.entity.Convention;
 import com.project_pfe_srt.project_srt.shared.convention.repository.ConventionRepository;
 import com.project_pfe_srt.project_srt.shared.file.entity.Attachment;
@@ -14,10 +14,12 @@ import com.project_pfe_srt.project_srt.shared.file.repository.AttachmentReposito
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -27,98 +29,162 @@ public class ConventionAdherentService {
     private final ConventionDemandeRepository demandeRepository;
     private final AttachmentRepository attachmentRepository;
 
-    /** Mirrors getAdherentConventionStatus from the frontend. */
-    public static String adherentStatus(Convention conv,
-                                        Map<Long, ConventionDemande> myDemandesByConvId,
-                                        LocalDate today) {
-        if (conv.getDateFin().isBefore(today) || "expiree".equals(conv.getStatut())) return "expiree";
-        if ("suspendue".equals(conv.getStatut()) || "en_negociation".equals(conv.getStatut())) {
-            return "non_disponible";
-        }
-        ConventionDemande mine = myDemandesByConvId.get(conv.getId());
-        if (mine != null) {
-            if ("validee".equals(mine.getStatut())) return "active";
-            if ("en_attente".equals(mine.getStatut())) return "deja_demandee";
-            // refusee / annulee → can request again
-        }
-        return "disponible";
-    }
+    // =====================================================================
+    // Read
+    // =====================================================================
 
+    @Transactional(readOnly = true)
     public List<ConventionAdherentDto> listConventions(User user) {
         LocalDate today = LocalDate.now();
-        Map<Long, ConventionDemande> mine = mineByConvention(user);
+        Map<Long, ConventionDemande> myDemandes = latestDemandePerConvention(user);
+
         return conventionRepository.findAll().stream()
-                .map(c -> ConventionAdherentDto.from(c, adherentStatus(c, mine, today)))
+                .map(conv -> ConventionAdherentDto.from(conv, resolveStatus(conv, myDemandes, today)))
                 .toList();
     }
 
-    public ConventionAdherentDto getConvention(User user, Long id) {
-        Convention c = Repos.findOrThrow(conventionRepository, id, "Convention");
-        Map<Long, ConventionDemande> mine = mineByConvention(user);
-        return ConventionAdherentDto.from(c, adherentStatus(c, mine, LocalDate.now()));
+    @Transactional(readOnly = true)
+    public ConventionAdherentDto getConvention(User user, Long conventionId) {
+        Convention convention = findConventionById(conventionId);
+        Map<Long, ConventionDemande> myDemandes = latestDemandePerConvention(user);
+
+        return ConventionAdherentDto.from(convention, resolveStatus(convention, myDemandes, LocalDate.now()));
     }
 
+    @Transactional(readOnly = true)
     public List<ConventionDemandeDto> listMyDemandes(User user) {
         return demandeRepository.findByAdherentIdOrderByDateDemandeDesc(user.getId())
-                .stream().map(ConventionDemandeDto::from).toList();
+                .stream()
+                .map(ConventionDemandeDto::from)
+                .toList();
     }
 
+    // =====================================================================
+    // Write
+    // =====================================================================
+
+    @Transactional
     public ConventionDemandeDto createDemande(User user, ConventionDemandeRequest req) {
-        if (req.getConventionId() == null || req.getConventionId().isBlank()) {
-            throw new IllegalArgumentException("Convention requise.");
-        }
-        Long convId;
-        try { convId = Long.parseLong(req.getConventionId()); }
-        catch (NumberFormatException e) { throw new IllegalArgumentException("ID convention invalide."); }
+        Long conventionId = parseConventionId(req.getConventionId());
+        Convention convention = findConventionById(conventionId);
 
-        Convention c = Repos.findOrThrow(conventionRepository, convId, "Convention");
+        validateConventionIsAvailable(convention);
+        validateNoDuplicateDemande(convention.getId(), user.getId());
 
-        if (c.getDateFin().isBefore(LocalDate.now()) || "expiree".equals(c.getStatut())) {
-            throw new IllegalArgumentException("Cette convention est expirée et ne peut plus faire l'objet d'une demande.");
-        }
-        if ("suspendue".equals(c.getStatut()) || "en_negociation".equals(c.getStatut())) {
-            throw new IllegalArgumentException("Cette convention n'est pas disponible actuellement.");
-        }
-        boolean dup = demandeRepository.existsByConventionIdAndAdherentIdAndStatutIn(
-                c.getId(), user.getId(), List.of("en_attente", "validee"));
-        if (dup) {
-            throw new IllegalArgumentException("Vous avez déjà une demande active pour cette convention.");
-        }
+        Attachment attachment = findAttachmentIfPresent(req.getAttachmentId());
 
-        Attachment att = req.getAttachmentId() == null
-                ? null
-                : Repos.findOrThrow(attachmentRepository, req.getAttachmentId(), "Pièce jointe");
-
-        ConventionDemande d = ConventionDemande.builder()
-                .convention(c)
+        ConventionDemande demande = ConventionDemande.builder()
+                .convention(convention)
                 .adherent(user)
                 .dateDemande(LocalDate.now())
                 .statut("en_attente")
                 .commentaire(req.getCommentaire())
-                .attachment(att)
+                .attachment(attachment)
                 .build();
-        return ConventionDemandeDto.from(demandeRepository.save(d));
+
+        return ConventionDemandeDto.from(demandeRepository.save(demande));
     }
 
+    @Transactional
     public ConventionDemandeDto cancelDemande(User user, Long demandeId) {
-        ConventionDemande d = Repos.findOrThrow(demandeRepository, demandeId, "Demande");
-        if (!d.getAdherent().getId().equals(user.getId())) {
+        ConventionDemande demande = findDemandeById(demandeId);
+
+        if (!demande.getAdherent().getId().equals(user.getId())) {
             throw new IllegalArgumentException("Demande non autorisée.");
         }
-        if (!"en_attente".equals(d.getStatut())) {
+        if (!"en_attente".equals(demande.getStatut())) {
             throw new IllegalArgumentException("Seules les demandes en attente peuvent être annulées.");
         }
-        d.setStatut("annulee");
-        d.setDateDecision(LocalDate.now());
-        return ConventionDemandeDto.from(demandeRepository.save(d));
+
+        demande.setStatut("annulee");
+        demande.setDateDecision(LocalDate.now());
+        return ConventionDemandeDto.from(demandeRepository.save(demande));
     }
 
-    private Map<Long, ConventionDemande> mineByConvention(User user) {
-        return demandeRepository.findByAdherentIdOrderByDateDemandeDesc(user.getId()).stream()
-                // Keep the most recent per convention (list is already DESC).
-                .collect(java.util.stream.Collectors.toMap(
+    // =====================================================================
+    // Status resolution
+    // =====================================================================
+
+    public static String resolveStatus(Convention conv,
+                                       Map<Long, ConventionDemande> myDemandesByConvId,
+                                       LocalDate today) {
+        if (isExpired(conv, today))     return "expiree";
+        if (isUnavailable(conv))        return "non_disponible";
+
+        ConventionDemande mine = myDemandesByConvId.get(conv.getId());
+        if (mine != null) {
+            if ("validee".equals(mine.getStatut()))    return "active";
+            if ("en_attente".equals(mine.getStatut())) return "deja_demandee";
+        }
+        return "disponible";
+    }
+
+    // =====================================================================
+    // Lookups
+    // =====================================================================
+
+    private Convention findConventionById(Long id) {
+        return conventionRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Convention introuvable."));
+    }
+
+    private ConventionDemande findDemandeById(Long id) {
+        return demandeRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Demande introuvable."));
+    }
+
+    private Attachment findAttachmentIfPresent(Long attachmentId) {
+        if (attachmentId == null) return null;
+        return attachmentRepository.findById(attachmentId)
+                .orElseThrow(() -> new NotFoundException("Pièce jointe introuvable."));
+    }
+
+    private Map<Long, ConventionDemande> latestDemandePerConvention(User user) {
+        return demandeRepository.findByAdherentIdOrderByDateDemandeDesc(user.getId())
+                .stream()
+                .collect(Collectors.toMap(
                         d -> d.getConvention().getId(),
                         d -> d,
-                        (a, b) -> a));
+                        (newer, older) -> newer));
+    }
+
+    // =====================================================================
+    // Validation helpers
+    // =====================================================================
+
+    private static boolean isExpired(Convention conv, LocalDate today) {
+        return conv.getDateFin().isBefore(today) || "expiree".equals(conv.getStatut());
+    }
+
+    private static boolean isUnavailable(Convention conv) {
+        return "suspendue".equals(conv.getStatut()) || "en_negociation".equals(conv.getStatut());
+    }
+
+    private static Long parseConventionId(String raw) {
+        if (raw == null || raw.isBlank()) {
+            throw new IllegalArgumentException("Convention requise.");
+        }
+        try {
+            return Long.parseLong(raw);
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("ID convention invalide.");
+        }
+    }
+
+    private void validateConventionIsAvailable(Convention convention) {
+        if (isExpired(convention, LocalDate.now())) {
+            throw new IllegalArgumentException("Cette convention est expirée et ne peut plus faire l'objet d'une demande.");
+        }
+        if (isUnavailable(convention)) {
+            throw new IllegalArgumentException("Cette convention n'est pas disponible actuellement.");
+        }
+    }
+
+    private void validateNoDuplicateDemande(Long conventionId, Long userId) {
+        boolean alreadyExists = demandeRepository.existsByConventionIdAndAdherentIdAndStatutIn(
+                conventionId, userId, List.of("en_attente", "validee"));
+        if (alreadyExists) {
+            throw new IllegalArgumentException("Vous avez déjà une demande active pour cette convention.");
+        }
     }
 }
