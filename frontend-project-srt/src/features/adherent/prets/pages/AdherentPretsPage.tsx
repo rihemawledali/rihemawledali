@@ -17,7 +17,7 @@ import { Modal } from '../../../../shared/data/Modal';
 import { DataTable } from '../../../../shared/data/DataTable';
 import { StatusBadge } from '../../../../shared/data/StatusBadge';
 import { useToast } from '../../../../shared/feedback/useToast';
-import { uploadFile } from '../../../../shared/lib/apiClient';
+import { uploadFile } from '../../../../shared/api/apiClient';
 import { pretsApi } from '../api';
 import { PretRequestForm } from '../forms/PretRequestForm';
 import type { PretRequestFormValues } from '../../validators';

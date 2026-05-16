@@ -59,7 +59,7 @@ class PretServiceTest {
 
         assertThatThrownBy(() -> pretService.create(adherent, validRequest()))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("Vous avez dÃ©jÃ  un prÃªt actif ou une demande de prÃªt en attente.");
+                .hasMessage("Vous avez déjà un prêt actif ou une demande de prêt en attente.");
     }
 
     @Test
@@ -75,7 +75,7 @@ class PretServiceTest {
 
         assertThatThrownBy(() -> pretService.valider(10L))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("Vous avez dÃ©jÃ  un prÃªt actif ou une demande de prÃªt en attente.");
+                .hasMessage("Vous avez déjà un prêt actif ou une demande de prêt en attente.");
     }
 
     @Test

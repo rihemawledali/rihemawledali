@@ -135,7 +135,7 @@ public class PaiementService {
         Indemnite indemnite = req.getIndemniteId() == null ? null
                 : Repos.findOrThrow(indemniteRepository, req.getIndemniteId(), "Indemnité");
 
-        CompteBancaire compteBancaire = ledger.resolveCompte(req.getCompteBancaireId());
+        CompteBancaire compteBancaire = resolveCompteForPayment(req, statut);
 
         Paiement saved = paiementRepository.save(Paiement.builder()
                 .reference(ref)
@@ -204,8 +204,9 @@ public class PaiementService {
     public PaiementDto valider(Long id, String currentUserName) {
         Paiement p = findPaiement(id);
         if (!"en_attente".equalsIgnoreCase(p.getStatut())) {
-            throw new IllegalArgumentException("Seul un paiement en attente peut Ãªtre validÃ©.");
+            throw new IllegalArgumentException("Seul un paiement en attente peut être validé.");
         }
+        requirePaymentCompte(p);
         p.setStatut(STATUT_REUSSI);
         Paiement saved = paiementRepository.save(p);
         applyTreasuryFor(saved, currentUserName);
@@ -238,6 +239,16 @@ public class PaiementService {
 
     private Paiement findPaiement(Long id) {
         return Repos.findOrThrow(paiementRepository, id, "Paiement");
+    }
+
+    private CompteBancaire resolveCompteForPayment(PaiementRequest req, String statut) {
+        if (req.getCompteBancaireId() == null) {
+            if (STATUT_REUSSI.equalsIgnoreCase(statut)) {
+                throw new IllegalArgumentException("Compte bancaire obligatoire.");
+            }
+            return null;
+        }
+        return ledger.resolveCompte(req.getCompteBancaireId());
     }
 
     /** Force workflow defaults on the request so {@link #create} produces a coherent paiement. */
@@ -291,14 +302,13 @@ public class PaiementService {
 
     /** Builds the historique row + decrements the compte for a successful paiement. */
     private void applyTreasuryFor(Paiement p, String userName) {
+        requirePaymentCompte(p);
         String sourceType = switch (p.getTypePaiement()) {
             case TYPE_FACTURE -> "FOURNISSEUR";
             case TYPE_INDEMNITE -> "INDEMNITE";
             default -> "AUTRE";
         };
-        Long refId = p.getFacture() != null ? p.getFacture().getId()
-                : p.getIndemnite() != null ? p.getIndemnite().getId()
-                : null;
+        Long refId = p.getId();
         String description = p.getDescription();
         if (isBlank(description)) {
             if (p.getFacture() != null) description = "Paiement facture fournisseur " + p.getFacture().getNumero();
@@ -308,5 +318,11 @@ public class PaiementService {
         Long compteId = p.getCompteBancaire() != null ? p.getCompteBancaire().getId() : null;
         ledger.applySortie(compteId, p.getMontant(), "PAIEMENT", sourceType, refId, description,
                 p.getReference(), p.getMode(), p.getStatut(), userName);
+    }
+
+    private static void requirePaymentCompte(Paiement paiement) {
+        if (paiement.getCompteBancaire() == null || paiement.getCompteBancaire().getId() == null) {
+            throw new IllegalArgumentException("Compte bancaire obligatoire.");
+        }
     }
 }

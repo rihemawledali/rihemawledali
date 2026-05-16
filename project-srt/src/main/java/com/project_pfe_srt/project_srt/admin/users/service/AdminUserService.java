@@ -25,7 +25,7 @@ public class AdminUserService {
 
     @Transactional(readOnly = true)
     public List<UserDto> listUsers() {
-        return userRepository.findAll().stream()
+        return userRepository.findAllByOrderByIdAsc().stream()
                 .map(UserDto::from)
                 .toList();
     }

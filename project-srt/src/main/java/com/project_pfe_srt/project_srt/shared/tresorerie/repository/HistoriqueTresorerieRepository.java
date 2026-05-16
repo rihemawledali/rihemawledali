@@ -13,8 +13,14 @@ public interface HistoriqueTresorerieRepository extends JpaRepository<Historique
 
     List<HistoriqueTresorerie> findAllByOrderByDateDesc();
 
-    /** Removes the row produced by a given paiement reference, if any. */
-    long deleteByReference(String reference);
+    List<HistoriqueTresorerie> findByReferenceOrderByDateDesc(String reference);
+
+    @Query("""
+           SELECT COALESCE(SUM(h.montant), 0)
+           FROM HistoriqueTresorerie h
+           WHERE LOWER(h.type) = LOWER(:type)
+           """)
+    double sumMontantByType(@Param("type") String type);
 
     @Query("""
            SELECT h FROM HistoriqueTresorerie h

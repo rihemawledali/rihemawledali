@@ -15,7 +15,7 @@ import type {
   TicketType,
   Utilisateur,
 } from '../../../shared/types/domain';
-import { get, post, put, del, downloadBlob, triggerBlobDownload } from '../../../shared/lib/apiClient';
+import { get, post, put, del, downloadBlob, triggerBlobDownload } from '../../../shared/api/apiClient';
 import { paginate } from '../../../shared/lib/paginate';
 
 // ---------------- Backend DTOs ----------------

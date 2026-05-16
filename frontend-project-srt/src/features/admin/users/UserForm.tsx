@@ -52,7 +52,6 @@ export function UserForm({ initial, onSubmit, onCancel, submitting }: Props) {
         options={[
           { value: 'admin', label: 'Administrateur' },
           { value: 'treasurer', label: 'Trésorier' },
-          { value: 'manager', label: 'Gestionnaire' },
           { value: 'adherent', label: 'Adhérent' },
         ]}
         error={errors.role?.message}

@@ -42,14 +42,6 @@ public class AuthUtils {
         return u;
     }
 
-    public User currentTresorier() {
-        User u = currentUser();
-        if (u.getRole() != Role.TRESORIER) {
-            throw new AccessDeniedException("Réservé au trésorier.");
-        }
-        return u;
-    }
-
     /** Display name "Prénom Nom" of the current user, or "Système" if missing. */
     public String currentDisplayName() {
         try {

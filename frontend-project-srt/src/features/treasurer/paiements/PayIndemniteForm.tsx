@@ -1,16 +1,24 @@
 /* ============================================
-   Form: Pay a fournisseur facture
-   Used from FacturesPage and PaiementsPage (when ?factureId=… is set).
+   Form: Pay a validated indemnité
+   Used from TreasurerIndemnitesPage and PaiementsPage (?indemniteId=…).
    ============================================ */
 
 import { useForm } from 'react-hook-form';
 import { useEffect, useState } from 'react';
-import { FormInput } from '../../shared/ui/FormInput';
-import { FormSelect } from '../../shared/ui/FormSelect';
-import { Button } from '../../shared/ui/Button';
-import { formatCurrency } from '../../shared/lib/formatters';
-import { treasurerTresorerieApi } from '../../features/treasurer/api/treasurerListApi';
-import type { Facture, PaiementMode, CompteBancaire } from '../../shared/types/domain';
+import { FormInput } from '../../../shared/ui/FormInput';
+import { FormSelect } from '../../../shared/ui/FormSelect';
+import { Button } from '../../../shared/ui/Button';
+import { formatCurrency } from '../../../shared/lib/formatters';
+import { treasurerTresorerieApi } from '../api/treasurerListApi';
+import type { Indemnite, PaiementMode, CompteBancaire } from '../../../shared/types/domain';
+
+const TYPE_LABEL: Record<Indemnite['type'], string> = {
+  maladie: 'Maladie',
+  naissance: 'Naissance',
+  mariage: 'Mariage',
+  deces: 'Décès',
+  scolarite: 'Scolarité',
+};
 
 interface FormValues {
   reference: string;
@@ -21,7 +29,7 @@ interface FormValues {
 }
 
 interface Props {
-  facture: Facture;
+  indemnite: Indemnite;
   onSubmit: (v: FormValues) => Promise<unknown> | void;
   onCancel: () => void;
   submitting?: boolean;
@@ -31,7 +39,7 @@ function createPaymentReference() {
   return `PAY-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 9999)).padStart(4, '0')}`;
 }
 
-export function PayFactureForm({ facture, onSubmit, onCancel, submitting }: Props) {
+export function PayIndemniteForm({ indemnite, onSubmit, onCancel, submitting }: Props) {
   const [reference] = useState(createPaymentReference);
   const [comptes, setComptes] = useState<CompteBancaire[]>([]);
   const [comptesLoading, setComptesLoading] = useState(true);
@@ -45,9 +53,9 @@ export function PayFactureForm({ facture, onSubmit, onCancel, submitting }: Prop
   const { register, handleSubmit, formState: { errors } } = useForm<FormValues>({
     defaultValues: {
       reference,
-      montant: facture.montant,
+      montant: indemnite.montant,
       mode: 'virement',
-      description: `Paiement facture fournisseur ${facture.numero}`,
+      description: `Paiement indemnité ${indemnite.id.toUpperCase()} (${TYPE_LABEL[indemnite.type]})`,
       compteBancaireId: '',
     },
   });
@@ -63,7 +71,6 @@ export function PayFactureForm({ facture, onSubmit, onCancel, submitting }: Prop
         ]}
         error={errors.compteBancaireId?.message}
       />
-      {/* Read-only context */}
       <div
         className="form-grid-full"
         style={{
@@ -76,10 +83,10 @@ export function PayFactureForm({ facture, onSubmit, onCancel, submitting }: Prop
           gap: 'var(--space-3)',
         }}
       >
-        <ReadField label="Facture" value={facture.numero} mono />
-        <ReadField label="Fournisseur" value={facture.fournisseurNom} />
-        <ReadField label="Montant" value={formatCurrency(facture.montant)} highlight />
-        <ReadField label="Statut" value={facture.statut.replace('_', ' ')} />
+        <ReadField label="Référence" value={indemnite.id.toUpperCase()} mono />
+        <ReadField label="Adhérent" value={indemnite.adherentNom} />
+        <ReadField label="Type" value={TYPE_LABEL[indemnite.type]} />
+        <ReadField label="Montant" value={formatCurrency(indemnite.montant)} highlight />
       </div>
 
       <FormInput label="Référence paiement" {...register('reference', { required: 'Référence requise' })} error={errors.reference?.message} />
@@ -105,7 +112,7 @@ export function PayFactureForm({ facture, onSubmit, onCancel, submitting }: Prop
 
       <div className="form-grid-full" style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-3)' }}>
         <Button type="button" variant="secondary" onClick={onCancel} disabled={submitting || comptesLoading}>Annuler</Button>
-        <Button type="submit" isLoading={submitting || comptesLoading} disabled={comptes.length === 0}>Payer la facture</Button>
+        <Button type="submit" isLoading={submitting || comptesLoading} disabled={comptes.length === 0}>Payer l'indemnité</Button>
       </div>
     </form>
   );

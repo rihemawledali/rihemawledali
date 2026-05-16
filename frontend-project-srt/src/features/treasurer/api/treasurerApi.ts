@@ -1,8 +1,8 @@
 /* ============================================
    Treasurer API — backed by /api/treasurer/*
    --------------------------------------------------
-   Replaces the legacy mock implementation. Exposes the same shape
-   the dashboard page consumes (stats / cashflow / breakdown / pending
+   Exposes the dashboard data shape consumed by the page
+   (stats / cashflow / breakdown / pending
    requests / recent operations) but everything is computed from real
    backend data:
      - stats        ← /api/treasurer/dashboard/stats
@@ -12,14 +12,14 @@
      - operations   ← /api/treasurer/historique (limited)
    ============================================ */
 
-import { get } from '../../../shared/lib/apiClient';
+import { get } from '../../../shared/api/apiClient';
 import type {
   TreasurerStats,
   MonthlyCashflowPoint,
   ExpenseSlice,
   PendingRequest,
   FinancialOperation,
-} from './treasurerMockData';
+} from './treasurerDashboardTypes';
 
 // ---------------- Types from the backend ----------------
 

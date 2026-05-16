@@ -2,8 +2,10 @@ package com.project_pfe_srt.project_srt.treasurer.facture.controller;
 
 import com.project_pfe_srt.project_srt.common.util.AuthUtils;
 import com.project_pfe_srt.project_srt.shared.pdf.service.FacturePdfService;
+import com.project_pfe_srt.project_srt.treasurer.facture.dto.FactureDto;
 import com.project_pfe_srt.project_srt.treasurer.facture.dto.FactureRequest;
 import com.project_pfe_srt.project_srt.treasurer.facture.service.FactureService;
+import com.project_pfe_srt.project_srt.treasurer.paiement.dto.PaiementDto;
 import com.project_pfe_srt.project_srt.treasurer.paiement.dto.PaiementRequest;
 import com.project_pfe_srt.project_srt.treasurer.paiement.service.PaiementService;
 
@@ -14,6 +16,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -28,33 +31,33 @@ public class TreasurerFactureController {
     private final FacturePdfService facturePdfService;
 
     @GetMapping
-    public Object list() {
+    public List<FactureDto> list() {
         return factureService.list();
     }
 
     @GetMapping("/{id}")
-    public Object get(@PathVariable Long id) {
+    public FactureDto get(@PathVariable Long id) {
         return factureService.getById(id);
     }
 
     @PostMapping
-    public Object create(@RequestBody FactureRequest req) {
+    public FactureDto create(@RequestBody FactureRequest req) {
         return factureService.create(req);
     }
 
     @PutMapping("/{id}")
-    public Object update(@PathVariable Long id, @RequestBody FactureRequest req) {
+    public FactureDto update(@PathVariable Long id, @RequestBody FactureRequest req) {
         return factureService.update(id, req);
     }
 
     @PutMapping("/{id}/annuler")
-    public Object annuler(@PathVariable Long id) {
+    public FactureDto annuler(@PathVariable Long id) {
         return factureService.annuler(id);
     }
 
     /** Pay a facture: creates a Paiement + drives the workflow. */
     @PostMapping("/{id}/payer")
-    public Object payer(@PathVariable Long id, @RequestBody PaiementRequest req) {
+    public PaiementDto payer(@PathVariable Long id, @RequestBody PaiementRequest req) {
         return paiementService.payFacture(id, req, authUtils.currentDisplayName());
     }
 
@@ -73,7 +76,7 @@ public class TreasurerFactureController {
     }
 
     @DeleteMapping("/{id}")
-    public Object delete(@PathVariable Long id) {
+    public Map<String, String> delete(@PathVariable Long id) {
         factureService.delete(id);
         return Map.of("message", "Facture supprimée.");
     }

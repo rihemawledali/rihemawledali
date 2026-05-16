@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { ApiError } from '../../../shared/lib/apiClient';
+import { ApiError } from '../../../shared/api/apiClient';
 import { AuthLayout } from '../components/AuthLayout';
 import { FormInput } from '../../../shared/ui/FormInput';
 import { PasswordInput } from '../../../shared/ui/PasswordInput';

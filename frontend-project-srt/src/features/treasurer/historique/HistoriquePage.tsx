@@ -1,16 +1,16 @@
 import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { ArrowUpRight, ArrowDownRight } from 'lucide-react';
-import { PageHeader } from '../../shared/layout/PageHeader';
-import { DataTable, type Column } from '../../shared/data/DataTable';
-import { Pagination } from '../../shared/data/Pagination';
-import { SearchInput } from '../../shared/data/SearchInput';
-import { FilterBar, SelectFilter } from '../../shared/data/FilterBar';
-import { StatusBadge } from '../../shared/data/StatusBadge';
-import { historiqueApi } from './financeApi';
-import { formatCurrency, formatDateTime } from '../../shared/lib/formatters';
-import type { HistoriqueFinanciere } from '../../shared/types/domain';
-import '../../shared/layout/CrudPage.css';
+import { PageHeader } from '../../../shared/layout/PageHeader';
+import { DataTable, type Column } from '../../../shared/data/DataTable';
+import { Pagination } from '../../../shared/data/Pagination';
+import { SearchInput } from '../../../shared/data/SearchInput';
+import { FilterBar, SelectFilter } from '../../../shared/data/FilterBar';
+import { StatusBadge } from '../../../shared/data/StatusBadge';
+import { historiqueApi } from './api';
+import { formatCurrency, formatDateTime } from '../../../shared/lib/formatters';
+import type { HistoriqueFinanciere } from '../../../shared/types/domain';
+import '../../../shared/layout/CrudPage.css';
 
 const TYPE_LABEL: Record<string, string> = {
   credit: 'Crédit', debit: 'Débit', pret: 'Prêt',

@@ -31,8 +31,8 @@ import org.springframework.stereotype.Component;
 import java.time.LocalDate;
 
 /**
- * Populates the database with a demo dataset that mirrors the React mockData
- * the first time the application starts (i.e. when no users exist yet).
+ * Populates the database with a demo dataset for local development
+ * when no users exist yet.
  *
  * Default demo credentials:
  *   - admin@srt.com / admin123 (ADMIN)

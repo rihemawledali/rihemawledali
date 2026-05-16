@@ -18,7 +18,7 @@ import java.time.LocalDateTime;
  *   - AUTRE_SORTIE                 : sortie libre
  *
  * Tous les paiements `reussi` génèrent une ligne SORTIE dans
- * `historique_tresorerie` et débitent le premier compte bancaire.
+ * `historique_tresorerie` et débitent le compte bancaire sélectionné.
  */
 @Entity
 @Table(name = "paiements")

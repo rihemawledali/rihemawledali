@@ -17,7 +17,7 @@ import { Modal } from '../../../../shared/data/Modal';
 import { StatusBadge } from '../../../../shared/data/StatusBadge';
 import { conventionsApi, getAdherentConventionStatus } from '../api';
 import { profileApi } from '../../profile/api';
-import { uploadFile } from '../../../../shared/lib/apiClient';
+import { uploadFile } from '../../../../shared/api/apiClient';
 import type { DemandeConventionPayload } from '../forms/DemandeConventionForm';
 import {
   CONV_TYPE_LABEL, CONV_TYPE_ICON, CONV_TYPE_TONE,

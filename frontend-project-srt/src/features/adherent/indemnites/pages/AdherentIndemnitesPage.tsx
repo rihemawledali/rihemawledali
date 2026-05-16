@@ -12,7 +12,7 @@ import { DataTable } from '../../../../shared/data/DataTable';
 import { StatusBadge } from '../../../../shared/data/StatusBadge';
 import { useToast } from '../../../../shared/feedback/useToast';
 import { indemnitesApi } from '../api';
-import { uploadFile } from '../../../../shared/lib/apiClient';
+import { uploadFile } from '../../../../shared/api/apiClient';
 import { IndemniteRequestForm } from '../forms/IndemniteRequestForm';
 import type { IndemniteRequestFormValues } from '../../validators';
 import type { Indemnite } from '../../../../shared/types/domain';

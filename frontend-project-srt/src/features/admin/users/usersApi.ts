@@ -3,7 +3,7 @@
    ============================================ */
 
 import type { PageQuery, PageResult, Utilisateur, UserRole, UserStatus } from '../../../shared/types/domain';
-import { get, post, put, del } from '../../../shared/lib/apiClient';
+import { get, post, put, del } from '../../../shared/api/apiClient';
 
 /** Backend DTO returned by /api/admin/users */
 interface BackendUserDto {
@@ -12,7 +12,7 @@ interface BackendUserDto {
   lastName: string;
   email: string;
   phone: string | null;
-  role: string;       // admin | adherent | treasurer | manager
+  role: string;       // admin | adherent | treasurer
   statut: string;     // actif | inactif | suspendu (lowercase)
   matricule: string | null;
   createdAt: string | null;

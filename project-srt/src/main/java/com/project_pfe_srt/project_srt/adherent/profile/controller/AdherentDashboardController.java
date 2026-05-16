@@ -1,5 +1,6 @@
 package com.project_pfe_srt.project_srt.adherent.profile.controller;
 
+import com.project_pfe_srt.project_srt.adherent.profile.dto.DashboardDto;
 import com.project_pfe_srt.project_srt.adherent.profile.service.DashboardService;
 import com.project_pfe_srt.project_srt.common.util.AuthUtils;
 
@@ -18,7 +19,7 @@ public class AdherentDashboardController {
     private final AuthUtils authUtils;
 
     @GetMapping
-    public ResponseEntity<?> dashboard() {
+    public ResponseEntity<DashboardDto> dashboard() {
         return ResponseEntity.ok(dashboardService.build(authUtils.currentAdherent()));
     }
 }

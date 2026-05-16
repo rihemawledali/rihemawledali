@@ -1,12 +1,16 @@
 package com.project_pfe_srt.project_srt.treasurer.workflow.controller;
 
+import com.project_pfe_srt.project_srt.adherent.indemnite.dto.IndemniteDto;
 import com.project_pfe_srt.project_srt.adherent.indemnite.service.IndemniteService;
+import com.project_pfe_srt.project_srt.adherent.pret.dto.PretDto;
 import com.project_pfe_srt.project_srt.adherent.pret.service.PretService;
 import com.project_pfe_srt.project_srt.treasurer.workflow.dto.WorkflowDecisionRequest;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 /**
  * Read-only listings + workflow operations on prêts / indemnités for
@@ -25,22 +29,22 @@ public class TreasurerWorkflowController {
     // ---- Prêts ---------------------------------------------------------
 
     @GetMapping("/prets")
-    public Object listPrets() {
+    public List<PretDto> listPrets() {
         return pretService.listAll();
     }
 
     @GetMapping("/prets/{id}")
-    public Object getPret(@PathVariable Long id) {
+    public PretDto getPret(@PathVariable Long id) {
         return pretService.getById(id);
     }
 
     @PutMapping("/prets/{id}/valider")
-    public Object validerPret(@PathVariable Long id) {
+    public PretDto validerPret(@PathVariable Long id) {
         return pretService.valider(id);
     }
 
     @PutMapping("/prets/{id}/rejeter")
-    public Object rejeterPret(@PathVariable Long id,
+    public PretDto rejeterPret(@PathVariable Long id,
                               @RequestBody(required = false) WorkflowDecisionRequest body) {
         return pretService.rejeter(id, motifOf(body));
     }
@@ -48,28 +52,28 @@ public class TreasurerWorkflowController {
     // ---- Indemnités ----------------------------------------------------
 
     @GetMapping("/indemnites")
-    public Object listIndemnites() {
+    public List<IndemniteDto> listIndemnites() {
         return indemniteService.listAll();
     }
 
     @GetMapping("/indemnites/{id}")
-    public Object getIndemnite(@PathVariable Long id) {
+    public IndemniteDto getIndemnite(@PathVariable Long id) {
         return indemniteService.getById(id);
     }
 
     @PutMapping("/indemnites/{id}/valider")
-    public Object validerIndemnite(@PathVariable Long id) {
+    public IndemniteDto validerIndemnite(@PathVariable Long id) {
         return indemniteService.valider(id);
     }
 
     @PutMapping("/indemnites/{id}/rejeter")
-    public Object rejeterIndemnite(@PathVariable Long id,
+    public IndemniteDto rejeterIndemnite(@PathVariable Long id,
                                    @RequestBody(required = false) WorkflowDecisionRequest body) {
         return indemniteService.rejeter(id, motifOf(body));
     }
 
     @PutMapping("/indemnites/{id}/annuler")
-    public Object annulerIndemnite(@PathVariable Long id) {
+    public IndemniteDto annulerIndemnite(@PathVariable Long id) {
         return indemniteService.annuler(id);
     }
 

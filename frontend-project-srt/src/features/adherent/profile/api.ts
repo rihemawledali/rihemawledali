@@ -2,11 +2,8 @@
    Profile API — Adherent Portal
    ============================================ */
 
-import { get, put, post } from '../../../shared/lib/apiClient';
+import { get, put, post } from '../../../shared/api/apiClient';
 import type { Adherent } from '../../../shared/types/domain';
-import { mockAdherent, delay } from '../shared/mockData';
-
-const USE_MOCKS = false;
 
 export interface ProfileUpdateRequest {
   nom?: string;
@@ -26,31 +23,16 @@ export interface ChangePasswordRequest {
 
 export const profileApi = {
   async getProfile(): Promise<Adherent> {
-    if (USE_MOCKS) {
-      return delay({ ...mockAdherent }, 400);
-    }
     const { data } = await get<Adherent>('/api/adherent/profile');
     return data;
   },
 
   async updateProfile(req: ProfileUpdateRequest): Promise<Adherent> {
-    if (USE_MOCKS) {
-      const updated = { ...mockAdherent, ...req };
-      return delay(updated, 500);
-    }
     const { data } = await put<Adherent>('/api/adherent/profile', req);
     return data;
   },
 
   async changePassword(req: ChangePasswordRequest): Promise<{ ok: true }> {
-    if (USE_MOCKS) {
-      // Pretend "demo123" is the current password for the mock account
-      if (req.currentPassword !== 'demo123') {
-        await delay(null, 400);
-        throw new Error('Mot de passe actuel incorrect');
-      }
-      return delay({ ok: true as const }, 500);
-    }
     const { data } = await post<{ ok: true }>('/api/adherent/profile/password', req);
     return data;
   },

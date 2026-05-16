@@ -23,12 +23,6 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-/**
- * Prêt social demandes lifecycle: {@code en_attente → en_cours} or
- * {@code en_attente → rejete}. Monthly payments are computed by
- * {@link #calculateMonthlyPayment} and consumed by {@code RetenueService}
- * when generating monthly retenues.
- */
 @Service
 @RequiredArgsConstructor
 public class PretService {
@@ -86,7 +80,7 @@ public class PretService {
         requirePending(p);
         User adherent = p.getAdherent();
         if (adherent == null) {
-            throw new IllegalArgumentException("AdhÃ©rent du prÃªt introuvable.");
+            throw new IllegalArgumentException("Adhérent du prêt introuvable.");
         }
         refreshCompletedPrets(adherent.getId());
         ensureNoBlockingPret(adherent.getId(), p.getId());
@@ -222,7 +216,7 @@ public class PretService {
                 .toList();
         if (!blocking.isEmpty()) {
             throw new IllegalArgumentException(
-                    "Vous avez dÃ©jÃ  un prÃªt actif ou une demande de prÃªt en attente.");
+                    "Vous avez déjà un prêt actif ou une demande de prêt en attente.");
         }
     }
 

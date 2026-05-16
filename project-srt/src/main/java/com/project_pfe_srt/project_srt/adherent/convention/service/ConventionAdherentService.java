@@ -38,7 +38,7 @@ public class ConventionAdherentService {
         LocalDate today = LocalDate.now();
         Map<Long, ConventionDemande> myDemandes = latestDemandePerConvention(user);
 
-        return conventionRepository.findAll().stream()
+        return conventionRepository.findAllByOrderByDateDebutDescIdDesc().stream()
                 .map(conv -> ConventionAdherentDto.from(conv, resolveStatus(conv, myDemandes, today)))
                 .toList();
     }

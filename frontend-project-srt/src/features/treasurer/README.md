@@ -10,6 +10,10 @@ Subfeatures:
 - `retenues`
 - `tresorerie`
 - `conventions-demande`
+- `paiements`
+- `factures`
+- `historique`
 - `profile`
 
-The split API entrypoints re-export the current backend-backed clients while pages migrate away from the old aggregate list API.
+Each subfeature should expose route pages through its own `index.ts` and keep API calls in a local `api.ts`.
+Shared treasurer transport helpers stay internal to the owning subfeature.

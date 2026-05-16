@@ -42,7 +42,6 @@ function getErrorMessage(error: unknown, fallback: string) {
 const ROLE_LABEL: Record<string, string> = {
   admin: 'Administrateur',
   treasurer: 'Trésorier',
-  manager: 'Gestionnaire',
   adherent: 'Adhérent',
 };
 
@@ -134,7 +133,7 @@ export function UsersPage() {
     <div className="admin-surface">
       <PageHeader
         title="Utilisateurs"
-        description="Gérer les comptes administrateurs, trésoriers, gestionnaires et adhérents."
+        description="Gérer les comptes administrateurs, trésoriers et adhérents."
         breadcrumb={['Administration', 'Gestion', 'Utilisateurs']}
         actions={(
           <Button onClick={() => setCreating(true)}>
@@ -171,7 +170,6 @@ export function UsersPage() {
                 options={[
                   { value: 'admin', label: 'Administrateur' },
                   { value: 'treasurer', label: 'Trésorier' },
-                  { value: 'manager', label: 'Gestionnaire' },
                   { value: 'adherent', label: 'Adhérent' },
                 ]}
               />

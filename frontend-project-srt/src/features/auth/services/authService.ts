@@ -4,7 +4,7 @@
    Connects to Spring Boot backend at port 8081
    ============================================ */
 
-import { post } from '../../../shared/lib/apiClient';
+import { post } from '../../../shared/api/apiClient';
 import type { User, SignupPayload } from '../types/auth.types';
 
 const USER_STORAGE_KEY = 'srt_auth_user';
@@ -55,7 +55,7 @@ export async function loginService(
 }
 
 export async function signupService(data: SignupPayload): Promise<User> {
-  // Backend expects 'admin', 'adherent', 'treasurer', or 'manager'
+  // Backend expects 'admin', 'adherent', or 'treasurer'
   // Default role for self-registration is 'adherent'
   const { data: apiUser } = await post<AuthApiResponse>('/api/auth/register', {
     firstName: data.firstName,

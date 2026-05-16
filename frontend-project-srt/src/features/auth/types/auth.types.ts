@@ -2,7 +2,7 @@
    Authentication Type Definitions
    ============================================ */
 
-export type UserRole = 'admin' | 'treasurer' | 'manager' | 'adherent';
+export type UserRole = 'admin' | 'treasurer' | 'adherent';
 
 export interface User {
   id: string;
@@ -60,7 +60,6 @@ export interface AuthContextType extends AuthState {
 export const ROLE_DASHBOARD_MAP: Record<UserRole, string> = {
   admin: '/admin/dashboard',
   treasurer: '/treasurer/dashboard',
-  manager: '/manager/dashboard',
   adherent: '/adherent/dashboard',
 };
 
