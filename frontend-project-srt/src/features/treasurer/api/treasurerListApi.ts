@@ -1,14 +1,14 @@
 /* ============================================
    Treasurer — list APIs (backed by /api/treasurer/*)
    --------------------------------------------------
-   Page contracts unchanged: each method returns a `PageResult<T>` or
-   the same shape used previously by the mock implementation. Pagination
+   Page contracts unchanged: each method returns a `PageResult<T>`.
+   Pagination
    / search / sort happen client-side on top of the list responses
    delivered by the backend.
    ============================================ */
 
 import { paginate } from '../../../shared/lib/paginate';
-import { get, post, put, del, downloadBlob, triggerBlobDownload } from '../../../shared/lib/apiClient';
+import { get, post, put, del, downloadBlob, triggerBlobDownload } from '../../../shared/api/apiClient';
 import type {
   PretSocial, CompteBancaire, PageQuery,
   HistoriqueFinanciere, PaiementMode,
@@ -16,10 +16,7 @@ import type {
   PretStatus,
   HistoriqueSourceType, PaiementStatus,
 } from '../../../shared/types/domain';
-import { paiementsApi as _paiementsApi } from '../../finance/financeApi';
-import { indemnitesWorkflow } from '../../finance/financeApi';
-
-void indemnitesWorkflow; // re-exported below for treasurerIndemnitesApi
+import { paiementsApi as _paiementsApi } from '../paiements/api';
 
 // =============================================================
 // Prêts list
@@ -147,7 +144,7 @@ export const treasurerIndemnitesApi = {
   /** Pay a validated indemnité (creates Paiement + SORTIE historique). */
   payer: (
     id: string,
-    payload: { montant: number; mode: PaiementMode; description?: string; reference?: string },
+    payload: { montant: number; mode: PaiementMode; compteBancaireId: string; description?: string; reference?: string },
   ) => _paiementsApi.payIndemnite(id, payload),
 };
 

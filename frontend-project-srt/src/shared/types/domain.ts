@@ -2,7 +2,7 @@
    Domain Types — SRT Management System
    ============================================ */
 
-export type UserRole = 'admin' | 'treasurer' | 'manager' | 'adherent';
+export type UserRole = 'admin' | 'treasurer' | 'adherent';
 export type UserStatus = 'actif' | 'inactif' | 'suspendu';
 
 export interface Utilisateur {

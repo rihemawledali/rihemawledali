@@ -1,6 +1,8 @@
 package com.project_pfe_srt.project_srt.treasurer.boncommande.controller;
 
 import com.project_pfe_srt.project_srt.shared.pdf.service.BonCommandePdfService;
+import com.project_pfe_srt.project_srt.treasurer.boncommande.dto.BonCommandeDetailDto;
+import com.project_pfe_srt.project_srt.treasurer.boncommande.dto.BonCommandeDto;
 import com.project_pfe_srt.project_srt.treasurer.boncommande.dto.BonCommandeRequest;
 import com.project_pfe_srt.project_srt.treasurer.boncommande.service.BonCommandeService;
 
@@ -11,6 +13,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -23,29 +26,29 @@ public class TreasurerBonCommandeController {
     private final BonCommandePdfService pdfService;
 
     @GetMapping
-    public Object list() {
+    public List<BonCommandeDto> list() {
         return service.list();
     }
 
     /** Detail view: bon fields + the tickets generated from it. */
     @GetMapping("/{id}")
-    public Object get(@PathVariable Long id) {
+    public BonCommandeDetailDto get(@PathVariable Long id) {
         return service.getById(id);
     }
 
     /** Move the bon from {@code brouillon} to {@code valide}. */
     @PostMapping("/{id}/valider")
-    public Object valider(@PathVariable Long id) {
+    public BonCommandeDto valider(@PathVariable Long id) {
         return service.valider(id);
     }
 
     @PostMapping
-    public Object create(@RequestBody BonCommandeRequest req) {
+    public BonCommandeDto create(@RequestBody BonCommandeRequest req) {
         return service.create(req);
     }
 
     @PutMapping("/{id}")
-    public Object update(@PathVariable Long id, @RequestBody BonCommandeRequest req) {
+    public BonCommandeDto update(@PathVariable Long id, @RequestBody BonCommandeRequest req) {
         return service.update(id, req);
     }
 
@@ -64,7 +67,7 @@ public class TreasurerBonCommandeController {
     }
 
     @DeleteMapping("/{id}")
-    public Object delete(@PathVariable Long id) {
+    public Map<String, String> delete(@PathVariable Long id) {
         service.delete(id);
         return Map.of("message", "Bon de commande supprimé.");
     }

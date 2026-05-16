@@ -1,12 +1,12 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect, useState } from 'react';
-import { paiementSchema, type PaiementFormValues } from '../../shared/validators';
-import { FormInput } from '../../shared/ui/FormInput';
-import { FormSelect } from '../../shared/ui/FormSelect';
-import { Button } from '../../shared/ui/Button';
-import { treasurerTresorerieApi } from '../../features/treasurer/api/treasurerListApi';
-import type { Paiement, CompteBancaire } from '../../shared/types/domain';
+import { paiementSchema, type PaiementFormValues } from '../../../shared/validators';
+import { FormInput } from '../../../shared/ui/FormInput';
+import { FormSelect } from '../../../shared/ui/FormSelect';
+import { Button } from '../../../shared/ui/Button';
+import { treasurerTresorerieApi } from '../api/treasurerListApi';
+import type { Paiement, CompteBancaire } from '../../../shared/types/domain';
 
 interface Props {
   initial?: Paiement;

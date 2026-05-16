@@ -1,11 +1,13 @@
 package com.project_pfe_srt.project_srt.treasurer.workflow.controller;
 
+import com.project_pfe_srt.project_srt.adherent.convention.dto.ConventionDemandeDto;
 import com.project_pfe_srt.project_srt.treasurer.workflow.service.TreasurerConventionService;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -26,22 +28,22 @@ public class TreasurerConventionController {
     private final TreasurerConventionService service;
 
     @GetMapping("/demandes")
-    public Object list() {
+    public List<ConventionDemandeDto> list() {
         return service.listDemandes();
     }
 
     @GetMapping("/demandes/{id}")
-    public Object getOne(@PathVariable Long id) {
+    public ConventionDemandeDto getOne(@PathVariable Long id) {
         return service.getById(id);
     }
 
     @PutMapping("/demandes/{id}/valider")
-    public Object valider(@PathVariable Long id) {
+    public ConventionDemandeDto valider(@PathVariable Long id) {
         return service.valider(id);
     }
 
     @PutMapping("/demandes/{id}/refuser")
-    public Object refuser(@PathVariable Long id,
+    public ConventionDemandeDto refuser(@PathVariable Long id,
                           @RequestBody(required = false) Map<String, String> body) {
         String motif = body == null ? null : body.get("motif");
         return service.refuser(id, motif);

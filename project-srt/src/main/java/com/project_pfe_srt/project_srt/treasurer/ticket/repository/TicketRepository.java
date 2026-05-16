@@ -14,7 +14,6 @@ public interface TicketRepository extends JpaRepository<TicketRestaurant, Long> 
     long countByStatut(String statut);
 
     List<TicketRestaurant> findByBonCommandeIdOrderByNumeroAsc(Long bonCommandeId);
-    long countByBonCommandeId(Long bonCommandeId);
     long countByBonCommandeIdAndStatut(Long bonCommandeId, String statut);
 
     /** Used by the assignment routine to grab the next N unassigned tickets. */

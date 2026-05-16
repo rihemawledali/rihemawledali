@@ -1,16 +1,4 @@
-/* ============================================
-   Finance API — backed by /api/treasurer/* endpoints
-   --------------------------------------------------
-   This module replaces the legacy mock implementation. Pages keep
-   calling `paiementsApi.*`, `facturesApi.*`, `historiqueApi.*` and
-   `indemnitesWorkflow.*` — only the underlying transport changed.
-
-   Pagination/search/sort is performed client-side via the same
-   `paginate()` helper used by the mocks: backend endpoints return
-   the full collection and the helper slices it. This keeps page
-   contracts unchanged and avoids server-side pagination plumbing
-   for now.
-   ============================================ */
+/* Treasurer finance workflows backed by /api/treasurer/* endpoints. */
 
 import type {
   Paiement,
@@ -26,9 +14,9 @@ import type {
   FactureStatus,
   IndemniteType,
   IndemniteStatus,
-} from '../../shared/types/domain';
-import { get, post, put, del, downloadBlob, triggerBlobDownload } from '../../shared/lib/apiClient';
-import { paginate } from '../../shared/lib/paginate';
+} from '../../../shared/types/domain';
+import { get, post, put, del, downloadBlob, triggerBlobDownload } from '../../../shared/api/apiClient';
+import { paginate } from '../../../shared/lib/paginate';
 
 // ---------------- DTO shapes returned by the backend ----------------
 

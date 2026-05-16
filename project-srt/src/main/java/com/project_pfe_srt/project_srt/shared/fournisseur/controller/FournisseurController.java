@@ -31,7 +31,7 @@ public class FournisseurController {
 
     @GetMapping
     public List<FournisseurDto> list() {
-        return fournisseurRepository.findAll().stream().map(FournisseurDto::from).toList();
+        return fournisseurRepository.findAllByOrderByNomAsc().stream().map(FournisseurDto::from).toList();
     }
 
     @PostMapping

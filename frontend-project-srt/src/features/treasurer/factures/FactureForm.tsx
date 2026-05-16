@@ -2,12 +2,12 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
-import { factureSchema, type FactureFormValues } from '../../shared/validators';
-import { FormInput } from '../../shared/ui/FormInput';
-import { FormSelect } from '../../shared/ui/FormSelect';
-import { Button } from '../../shared/ui/Button';
-import { suppliersApi } from '../admin/suppliers/suppliersApi';
-import type { Facture } from '../../shared/types/domain';
+import { factureSchema, type FactureFormValues } from '../../../shared/validators';
+import { FormInput } from '../../../shared/ui/FormInput';
+import { FormSelect } from '../../../shared/ui/FormSelect';
+import { Button } from '../../../shared/ui/Button';
+import { suppliersApi } from '../../admin/suppliers/suppliersApi';
+import type { Facture } from '../../../shared/types/domain';
 
 interface Props {
   initial?: Facture;

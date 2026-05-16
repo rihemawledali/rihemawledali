@@ -1,10 +1,8 @@
-import { useState } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import type { LucideIcon } from 'lucide-react';
 import {
   AlertTriangle,
   BadgeCheck,
-  Ban,
   Calendar,
   Clock3,
   CreditCard,
@@ -14,17 +12,12 @@ import {
 } from 'lucide-react';
 import { PageHeader } from '../../../../shared/layout/PageHeader';
 import { DataTable } from '../../../../shared/data/DataTable';
-import { Modal } from '../../../../shared/data/Modal';
 import { StatusBadge } from '../../../../shared/data/StatusBadge';
-import { Button } from '../../../../shared/ui/Button';
 import { adhesionApi } from '../api';
 import type { Adhesion } from '../../../../shared/types/domain';
 import '../../profile/pages/AdherentAccountPages.css';
 
 export function AdherentAdhesionPage() {
-  const queryClient = useQueryClient();
-  const [cancelOpen, setCancelOpen] = useState(false);
-
   const { data: adhesion, isLoading: adhesionLoading } = useQuery({
     queryKey: ['adherent-adhesion'],
     queryFn: () => adhesionApi.getCurrentAdhesion(),
@@ -33,15 +26,6 @@ export function AdherentAdhesionPage() {
   const { data: history, isLoading: historyLoading } = useQuery({
     queryKey: ['adherent-adhesion-history'],
     queryFn: () => adhesionApi.getAdhesionHistory(),
-  });
-
-  const cancelMutation = useMutation({
-    mutationFn: () => adhesionApi.cancelAdhesion(),
-    onSuccess: () => {
-      setCancelOpen(false);
-      queryClient.invalidateQueries({ queryKey: ['adherent-adhesion'] });
-      queryClient.invalidateQueries({ queryKey: ['adherent-adhesion-history'] });
-    },
   });
 
   const activeHistory = (history ?? []).filter((item) => item.statut === 'active');
@@ -78,7 +62,7 @@ export function AdherentAdhesionPage() {
     <div className="adh-account-page">
       <PageHeader
         title="Mon adhésion"
-        description="Votre statut d’adhésion à l’Amicale SRT et son historique."
+        description="Votre statut d'adhésion à l'Amicale SRT et son historique."
       />
 
       {adhesionLoading ? (
@@ -122,15 +106,6 @@ export function AdherentAdhesionPage() {
               </span>
             </div>
           </div>
-
-          {adhesion.statut === 'active' && (
-            <div className="adh-membership-actions">
-              <Button variant="danger" onClick={() => setCancelOpen(true)}>
-                <Ban size={16} className="adh-account-btn-icon" />
-                Annuler mon adhésion
-              </Button>
-            </div>
-          )}
         </section>
       ) : pendingDemande ? (
         <section className="adh-empty-card adh-account-empty">
@@ -149,7 +124,7 @@ export function AdherentAdhesionPage() {
             <AlertTriangle size={24} />
           </div>
           <h3>Aucune adhésion enregistrée</h3>
-          <p>Aucune adhésion n’est associée à votre compte pour le moment.</p>
+          <p>Aucune adhésion n'est associée à votre compte pour le moment.</p>
         </section>
       )}
 
@@ -175,35 +150,6 @@ export function AdherentAdhesionPage() {
           emptyDescription="Aucune période active à afficher pour le moment."
         />
       </section>
-
-      <Modal
-        open={cancelOpen}
-        onClose={() => setCancelOpen(false)}
-        title="Annuler mon adhésion"
-        description="Cette action met fin à votre adhésion mensuelle."
-        footer={(
-          <div className="adh-account-modal-actions">
-            <Button variant="secondary" onClick={() => setCancelOpen(false)} disabled={cancelMutation.isPending}>
-              Garder mon adhésion
-            </Button>
-            <Button
-              variant="danger"
-              onClick={() => cancelMutation.mutate()}
-              isLoading={cancelMutation.isPending}
-            >
-              Confirmer l’annulation
-            </Button>
-          </div>
-        )}
-      >
-        <div className="adh-account-confirm">
-          <p>
-            Confirmez-vous l’annulation de votre adhésion à l’Amicale SRT ?
-            Le prélèvement mensuel de <strong>{formatCurrency(adhesion?.montantCotisation ?? 0)}</strong> sera arrêté au prochain cycle.
-          </p>
-          {cancelMutation.isError && <span>Une erreur est survenue. Veuillez réessayer.</span>}
-        </div>
-      </Modal>
     </div>
   );
 }

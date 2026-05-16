@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Outlet } from 'react-router-dom';
-import { Sidebar } from './Sidebar';
-import { Topbar } from './Topbar';
+import { Sidebar } from '../../../shared/layout/Sidebar';
+import { Topbar } from '../../../shared/layout/Topbar';
 import './AdminLayout.css';
 
 export function AdminLayout() {

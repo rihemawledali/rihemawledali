@@ -10,7 +10,6 @@ import { SignupPage } from '../features/auth/pages/SignupPage';
 import { ForgotPasswordPage } from '../features/auth/pages/ForgotPasswordPage';
 import { ResetPasswordPage } from '../features/auth/pages/ResetPasswordPage';
 import { PendingApprovalPage } from '../features/auth/pages/PendingApprovalPage';
-import { ManagerDashboard } from './pages/dashboards/ManagerDashboard';
 import { TreasurerLayout } from '../features/treasurer/layout/TreasurerLayout';
 import { TreasurerDashboardPage } from '../features/treasurer/dashboard';
 import { TreasurerPretsPage } from '../features/treasurer/prets';
@@ -19,7 +18,7 @@ import { TreasurerRetenuesPage, TreasurerRetenueDetailPage } from '../features/t
 import { TreasurerTresoreriePage } from '../features/treasurer/tresorerie';
 import { TreasurerProfilPage } from '../features/treasurer/profile';
 import { TreasurerConventionsPage } from '../features/treasurer/conventions-demande';
-import { AdminLayout } from '../shared/layout/AdminLayout';
+import { AdminLayout } from '../features/admin/layout';
 import { AdherentLayout } from '../features/adherent/layout/AdherentLayout';
 import { AdherentDashboardPage, AdherentProfilePage } from '../features/adherent/profile';
 import { AdherentAdhesionPage } from '../features/adherent/adhesion';
@@ -37,9 +36,9 @@ import { AdminDemandesAdhesionPage } from '../features/admin/adhesions';
 import { UsersPage } from '../features/admin/users';
 import { SuppliersPage } from '../features/admin/suppliers';
 import { ConventionsPage } from '../features/admin/conventions';
-import { PaiementsPage } from '../features/finance/PaiementsPage';
-import { FacturesPage } from '../features/finance/FacturesPage';
-import { HistoriquePage } from '../features/finance/HistoriquePage';
+import { PaiementsPage } from '../features/treasurer/paiements';
+import { FacturesPage } from '../features/treasurer/factures';
+import { HistoriquePage } from '../features/treasurer/historique';
 import { BonsCommandePage, BonCommandeDetailPage, TicketsPage } from '../features/admin/offers';
 
 export function AppRouter() {
@@ -85,11 +84,6 @@ export function AppRouter() {
           <Route path="historique"         element={<HistoriquePage />} />
           <Route path="profil"             element={<TreasurerProfilPage />} />
         </Route>
-      </Route>
-
-      {/* ---- Protected Routes: Manager ---- */}
-      <Route element={<ProtectedRoute allowedRoles={['manager']} />}>
-        <Route path="/manager/dashboard" element={<ManagerDashboard />} />
       </Route>
 
       {/* ---- Protected Routes: Adherent ---- */}

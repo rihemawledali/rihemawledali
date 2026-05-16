@@ -23,8 +23,7 @@ public class TreasurerAdherentController {
 
     @GetMapping
     public ResponseEntity<List<UserDto>> list() {
-        List<UserDto> adherents = userRepository.findAll().stream()
-                .filter(user -> user.getRole() == Role.ADHERENT)
+        List<UserDto> adherents = userRepository.findAllByRoleOrderByIdAsc(Role.ADHERENT).stream()
                 .map(UserDto::from)
                 .toList();
         return ResponseEntity.ok(adherents);

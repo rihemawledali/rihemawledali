@@ -27,7 +27,6 @@ public class ConventionAdherentService {
     private final ConventionDemandeRepository demandeRepository;
     private final AttachmentRepository attachmentRepository;
 
-    /** Mirrors getAdherentConventionStatus from the frontend. */
     public static String adherentStatus(Convention conv,
                                         Map<Long, ConventionDemande> myDemandesByConvId,
                                         LocalDate today) {
@@ -47,7 +46,7 @@ public class ConventionAdherentService {
     public List<ConventionAdherentDto> listConventions(User user) {
         LocalDate today = LocalDate.now();
         Map<Long, ConventionDemande> mine = mineByConvention(user);
-        return conventionRepository.findAll().stream()
+        return conventionRepository.findAllByOrderByDateDebutDescIdDesc().stream()
                 .map(c -> ConventionAdherentDto.from(c, adherentStatus(c, mine, today)))
                 .toList();
     }

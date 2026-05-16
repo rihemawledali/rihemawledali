@@ -1,0 +1,1 @@
+export { FacturesPage } from './FacturesPage';

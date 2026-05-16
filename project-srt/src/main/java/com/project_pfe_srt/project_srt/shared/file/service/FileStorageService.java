@@ -85,7 +85,7 @@ public class FileStorageService {
     @Transactional(readOnly = true)
     public StoredFile load(Long attachmentId, User currentUser) {
         Attachment attachment = attachmentRepository.findById(attachmentId)
-                .orElseThrow(() -> NotFoundException.of("PiÃ¨ce jointe"));
+                .orElseThrow(() -> NotFoundException.of("Pièce jointe"));
         ensureCanDownload(attachment, currentUser);
 
         Path stored = Paths.get(attachment.getStoragePath()).toAbsolutePath().normalize();
@@ -99,7 +99,7 @@ public class FileStorageService {
         try {
             return new StoredFile(attachment, Files.readAllBytes(stored));
         } catch (IOException e) {
-            throw new IllegalStateException("Ã‰chec de lecture du fichier.", e);
+            throw new IllegalStateException("Échec de lecture du fichier.", e);
         }
     }
 
@@ -111,7 +111,7 @@ public class FileStorageService {
         }
         String contentType = normalizeContentType(file.getContentType());
         if (!allowedContentTypeSet().contains(contentType)) {
-            throw new IllegalArgumentException("Type de fichier non autorisÃ©. Formats acceptÃ©s : PDF, JPG, PNG.");
+            throw new IllegalArgumentException("Type de fichier non autorisé. Formats acceptés : PDF, JPG, PNG.");
         }
     }
 
@@ -132,7 +132,7 @@ public class FileStorageService {
         if (attachment.getUploadedBy() != null && attachment.getUploadedBy().equals(currentUser.getId())) {
             return;
         }
-        throw new AccessDeniedException("PiÃ¨ce jointe non autorisÃ©e.");
+        throw new AccessDeniedException("Pièce jointe non autorisée.");
     }
 
     private static String cleanFileName(String originalFilename) {

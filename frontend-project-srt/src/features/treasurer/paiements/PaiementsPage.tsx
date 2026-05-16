@@ -5,25 +5,24 @@ import {
   Plus, Pencil, Trash2, CheckCircle2, Ban, Eye, CreditCard,
   Building2, HeartHandshake, MoreHorizontal,
 } from 'lucide-react';
-import { PageHeader } from '../../shared/layout/PageHeader';
-import { Button } from '../../shared/ui/Button';
-import { DataTable, type Column } from '../../shared/data/DataTable';
-import { Modal } from '../../shared/data/Modal';
-import { ConfirmDialog } from '../../shared/data/ConfirmDialog';
-import { Pagination } from '../../shared/data/Pagination';
-import { SearchInput } from '../../shared/data/SearchInput';
-import { FilterBar, SelectFilter } from '../../shared/data/FilterBar';
-import { StatusBadge } from '../../shared/data/StatusBadge';
-import { useToast } from '../../shared/feedback/useToast';
-import { facturesApi, paiementsApi } from './financeApi';
-import { indemnitesWorkflow } from './financeApi';
+import { PageHeader } from '../../../shared/layout/PageHeader';
+import { Button } from '../../../shared/ui/Button';
+import { DataTable, type Column } from '../../../shared/data/DataTable';
+import { Modal } from '../../../shared/data/Modal';
+import { ConfirmDialog } from '../../../shared/data/ConfirmDialog';
+import { Pagination } from '../../../shared/data/Pagination';
+import { SearchInput } from '../../../shared/data/SearchInput';
+import { FilterBar, SelectFilter } from '../../../shared/data/FilterBar';
+import { StatusBadge } from '../../../shared/data/StatusBadge';
+import { useToast } from '../../../shared/feedback/useToast';
+import { facturesApi, indemnitesWorkflow, paiementsApi } from './api';
 import { PaiementForm } from './PaiementForm';
 import { PayFactureForm } from './PayFactureForm';
 import { PayIndemniteForm } from './PayIndemniteForm';
-import { formatCurrency, formatDateTime } from '../../shared/lib/formatters';
-import type { Facture, Indemnite, Paiement, TypePaiement } from '../../shared/types/domain';
-import type { PaiementFormValues } from '../../shared/validators';
-import '../../shared/layout/CrudPage.css';
+import { formatCurrency, formatDateTime } from '../../../shared/lib/formatters';
+import type { Facture, Indemnite, Paiement, TypePaiement } from '../../../shared/types/domain';
+import type { PaiementFormValues } from '../../../shared/validators';
+import '../../../shared/layout/CrudPage.css';
 
 const MODE_LABEL: Record<string, string> = {
   virement: 'Virement', cheque: 'Chèque', especes: 'Espèces', carte: 'Carte',

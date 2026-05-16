@@ -36,7 +36,7 @@ public class TreasuryLedger {
 
     /** Sum of all comptes soldes. */
     public double soldeTotal() {
-        return compteRepository.findAll().stream()
+        return compteRepository.findAllByOrderByIdAsc().stream()
                 .mapToDouble(c -> c.getSolde() == null ? 0d : c.getSolde())
                 .sum();
     }
@@ -67,8 +67,8 @@ public class TreasuryLedger {
                                             String modePaiement,
                                             String statut,
                                             String utilisateur) {
-        double abs = Math.abs(amount);
-        CompteBancaire c = resolveCompte(compteBancaireId);
+        double abs = requirePositiveAmount(amount);
+        CompteBancaire c = resolveRequiredCompte(compteBancaireId);
         double current = c.getSolde() == null ? 0d : c.getSolde();
         if (current < abs) {
             throw new IllegalArgumentException(
@@ -107,8 +107,8 @@ public class TreasuryLedger {
                                             String description,
                                             String reference,
                                             String utilisateur) {
-        double abs = Math.abs(amount);
-        CompteBancaire c = resolveCompte(compteBancaireId);
+        double abs = requirePositiveAmount(amount);
+        CompteBancaire c = resolveRequiredCompte(compteBancaireId);
         double current = c.getSolde() == null ? 0d : c.getSolde();
         c.setSolde(current + abs);
         compteRepository.save(c);
@@ -135,9 +135,7 @@ public class TreasuryLedger {
     @Transactional
     public void reverseByReference(String reference) {
         if (reference == null) return;
-        var rows = historiqueRepository.findAll().stream()
-                .filter(h -> reference.equals(h.getReference()))
-                .toList();
+        var rows = historiqueRepository.findByReferenceOrderByDateDesc(reference);
         if (rows.isEmpty()) return;
 
         for (HistoriqueTresorerie h : rows) {
@@ -151,5 +149,20 @@ public class TreasuryLedger {
             }
             historiqueRepository.delete(h);
         }
+    }
+
+    private CompteBancaire resolveRequiredCompte(Long compteBancaireId) {
+        if (compteBancaireId == null) {
+            throw new IllegalArgumentException("Compte bancaire obligatoire.");
+        }
+        return resolveCompte(compteBancaireId);
+    }
+
+    private static double requirePositiveAmount(double amount) {
+        double abs = Math.abs(amount);
+        if (abs <= 0d) {
+            throw new IllegalArgumentException("Montant invalide.");
+        }
+        return abs;
     }
 }

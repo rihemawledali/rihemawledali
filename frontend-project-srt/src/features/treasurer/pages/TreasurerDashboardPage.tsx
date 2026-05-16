@@ -47,7 +47,7 @@ import type {
   PendingRequest,
   PendingRequestType,
   TreasurerStats,
-} from '../api/treasurerMockData';
+} from '../api/treasurerDashboardTypes';
 import './TreasurerDashboardPage.css';
 
 const REQUEST_TYPE_LABEL: Record<PendingRequestType, string> = {

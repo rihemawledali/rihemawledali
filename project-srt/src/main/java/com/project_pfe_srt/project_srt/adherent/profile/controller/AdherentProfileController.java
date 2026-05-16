@@ -1,5 +1,6 @@
 package com.project_pfe_srt.project_srt.adherent.profile.controller;
 
+import com.project_pfe_srt.project_srt.adherent.profile.dto.AdherentProfileDto;
 import com.project_pfe_srt.project_srt.adherent.profile.dto.ChangePasswordRequest;
 import com.project_pfe_srt.project_srt.adherent.profile.dto.ProfileUpdateRequest;
 import com.project_pfe_srt.project_srt.adherent.profile.service.AdherentProfileService;
@@ -22,17 +23,17 @@ public class AdherentProfileController {
     private final AuthUtils authUtils;
 
     @GetMapping
-    public Object getProfile() {
+    public AdherentProfileDto getProfile() {
         return profileService.getProfileDto(authUtils.currentAdherent());
     }
 
     @PutMapping
-    public Object updateProfile(@RequestBody ProfileUpdateRequest req) {
+    public AdherentProfileDto updateProfile(@RequestBody ProfileUpdateRequest req) {
         return profileService.update(authUtils.currentAdherent(), req);
     }
 
     @PostMapping("/password")
-    public Object changePassword(@Valid @RequestBody ChangePasswordRequest req) {
+    public Map<String, Boolean> changePassword(@Valid @RequestBody ChangePasswordRequest req) {
         profileService.changePassword(authUtils.currentAdherent(), req);
         return Map.of("ok", true);
     }

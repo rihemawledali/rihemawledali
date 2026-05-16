@@ -3,7 +3,7 @@
    ============================================ */
 
 import type { ConventionType, Fournisseur, PageQuery, PageResult } from '../../../shared/types/domain';
-import { get, post, put, del } from '../../../shared/lib/apiClient';
+import { get, post, put, del } from '../../../shared/api/apiClient';
 
 interface BackendFournisseurDto {
   id: string;

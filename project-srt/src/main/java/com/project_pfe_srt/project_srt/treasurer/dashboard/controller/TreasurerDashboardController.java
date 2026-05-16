@@ -1,5 +1,6 @@
 package com.project_pfe_srt.project_srt.treasurer.dashboard.controller;
 
+import com.project_pfe_srt.project_srt.treasurer.dashboard.dto.TreasurerStatsDto;
 import com.project_pfe_srt.project_srt.treasurer.dashboard.service.TreasurerDashboardService;
 
 import lombok.RequiredArgsConstructor;
@@ -18,7 +19,7 @@ public class TreasurerDashboardController {
     private final TreasurerDashboardService service;
 
     @GetMapping("/stats")
-    public ResponseEntity<?> stats() {
+    public ResponseEntity<TreasurerStatsDto> stats() {
         return ResponseEntity.ok(service.stats());
     }
 }

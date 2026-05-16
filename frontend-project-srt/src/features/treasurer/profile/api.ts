@@ -1,4 +1,4 @@
-import { get, post, put } from '../../../shared/lib/apiClient';
+import { get, post, put } from '../../../shared/api/apiClient';
 import type { User } from '../../auth/types/auth.types';
 
 export interface AccountProfileUpdatePayload {

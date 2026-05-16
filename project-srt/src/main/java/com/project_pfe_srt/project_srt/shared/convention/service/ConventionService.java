@@ -35,7 +35,7 @@ public class ConventionService {
 
     @Transactional(readOnly = true)
     public List<ConventionDto> list() {
-        return conventionRepository.findAll().stream()
+        return conventionRepository.findAllByOrderByDateDebutDescIdDesc().stream()
                 .map(ConventionDto::from)
                 .toList();
     }

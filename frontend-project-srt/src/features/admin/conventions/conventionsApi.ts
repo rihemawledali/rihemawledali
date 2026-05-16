@@ -5,7 +5,7 @@
 import type {
   Convention, ConventionStatus, ConventionType, ModeAvantage, PageQuery, PageResult,
 } from '../../../shared/types/domain';
-import { get, post, put, del } from '../../../shared/lib/apiClient';
+import { get, post, put, del } from '../../../shared/api/apiClient';
 
 interface BackendConventionDto {
   id: string;

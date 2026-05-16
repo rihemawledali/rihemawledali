@@ -2,10 +2,7 @@ package com.project_pfe_srt.project_srt.treasurer.workflow.dto;
 
 import lombok.*;
 
-/**
- * Generic body used by validation endpoints that need a free-text reason
- * (rejet, annulation, refus). All fields are optional — empty body is OK.
- */
+/** Body used by rejection endpoints. The motif is optional; an empty body is OK. */
 @Getter
 @Setter
 @NoArgsConstructor
@@ -13,5 +10,4 @@ import lombok.*;
 @Builder
 public class WorkflowDecisionRequest {
     private String motif;
-    private String commentaire;
 }

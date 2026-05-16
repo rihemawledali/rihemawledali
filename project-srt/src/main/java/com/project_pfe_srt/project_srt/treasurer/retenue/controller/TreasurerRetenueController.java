@@ -2,6 +2,7 @@ package com.project_pfe_srt.project_srt.treasurer.retenue.controller;
 
 import com.project_pfe_srt.project_srt.common.util.AuthUtils;
 import com.project_pfe_srt.project_srt.treasurer.retenue.dto.RetenueGenerateRequest;
+import com.project_pfe_srt.project_srt.treasurer.retenue.dto.RetenueMensuelleDto;
 import com.project_pfe_srt.project_srt.treasurer.retenue.service.RetenueService;
 
 import lombok.RequiredArgsConstructor;
@@ -13,6 +14,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -30,7 +32,7 @@ public class TreasurerRetenueController {
     private final AuthUtils authUtils;
 
     @GetMapping
-    public Object list(
+    public List<RetenueMensuelleDto> list(
             @RequestParam(required = false) Integer mois,
             @RequestParam(required = false) Integer annee) {
         return (mois != null && annee != null)
@@ -39,35 +41,26 @@ public class TreasurerRetenueController {
     }
 
     @GetMapping("/{id}")
-    public Object get(@PathVariable Long id) {
+    public RetenueMensuelleDto get(@PathVariable Long id) {
         return service.getById(id);
     }
 
-    /**
-     * Idempotent monthly generation: refreshes lines for every adhérent
-     * for the given (mois, annee). Defaults to the current month when
-     * omitted.
-     */
     @PostMapping("/generate")
-    public Object generate(@RequestBody(required = false) RetenueGenerateRequest req) {
+    public List<RetenueMensuelleDto> generate(@RequestBody(required = false) RetenueGenerateRequest req) {
         Integer m = req == null ? null : req.getMois();
         Integer y = req == null ? null : req.getAnnee();
         return service.generate(m, y);
     }
 
-    /**
-     * Advance / revert a master + its lignes to a target statut. Allowed
-     * transitions: {@code GENEREE ⇄ EXPORTEE}.
-     */
     @PutMapping("/{id}/statut")
-    public Object setStatut(@PathVariable Long id, @RequestBody Map<String, String> body) {
+    public RetenueMensuelleDto setStatut(@PathVariable Long id, @RequestBody Map<String, String> body) {
         String target = body == null ? null : body.get("statut");
         return service.setStatut(id, target, authUtils.currentDisplayName());
     }
 
     /** Update one ligne's statut (GENEREE | EN_ATTENTE | PRELEVEE | ANNULEE). */
     @PutMapping("/{retenueId}/lignes/{ligneId}/statut")
-    public Object setLigneStatut(@PathVariable Long retenueId,
+    public RetenueMensuelleDto setLigneStatut(@PathVariable Long retenueId,
                                  @PathVariable Long ligneId,
                                  @RequestBody Map<String, String> body) {
         String target = body == null ? null : body.get("statut");
@@ -76,13 +69,13 @@ public class TreasurerRetenueController {
 
     /** Force a single retenue to recompute its lignes from live data. */
     @PostMapping("/{id}/regenerate")
-    public Object regenerate(@PathVariable Long id) {
+    public RetenueMensuelleDto regenerate(@PathVariable Long id) {
         return service.regenerate(id);
     }
 
     /** Recent retenues for one adhérent. */
     @GetMapping("/history/{adherentId}")
-    public Object historyForAdherent(@PathVariable Long adherentId) {
+    public List<RetenueMensuelleDto> historyForAdherent(@PathVariable Long adherentId) {
         return service.historyForAdherent(adherentId);
     }
 

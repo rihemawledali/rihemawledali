@@ -1,5 +1,5 @@
 import { paginate } from '../../../shared/lib/paginate';
-import { get, put } from '../../../shared/lib/apiClient';
+import { get, put } from '../../../shared/api/apiClient';
 import type { Adhesion, AdhesionStatus, PageQuery } from '../../../shared/types/domain';
 
 export interface AdhesionRow extends Adhesion {

@@ -31,21 +31,9 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
-
-/**
- * Retenue mensuelle = somme des montants à retenir sur la paie d'un
- * adhérent pour un mois donné (cotisation + échéances de prêts +
- * tickets restaurant).
- *
- * <p>Master workflow: <code>GENEREE ⇄ EXPORTEE</code>. Exporting just
- * emits a CSV and stamps {@code dateExport}; rollback clears it. There
- * is no trésorerie ledger side-effect attached to these transitions.</p>
- */
 @Service
 @RequiredArgsConstructor
 public class RetenueService {
-
-    // ---- statut vocabularies --------------------------------------------
 
     private static final String GENEREE = "GENEREE";
     private static final String EXPORTEE = "EXPORTEE";
@@ -112,9 +100,7 @@ public class RetenueService {
     public List<RetenueMensuelleDto> generate(Integer mois, Integer annee) {
         Period period = Period.coerce(mois, annee);
 
-        List<User> adherents = userRepository.findAll().stream()
-                .filter(u -> u.getRole() == Role.ADHERENT)
-                .toList();
+        List<User> adherents = userRepository.findAllByRoleOrderByIdAsc(Role.ADHERENT);
 
         List<RetenueMensuelle> generated = new ArrayList<>(adherents.size());
         for (User u : adherents) {
@@ -147,7 +133,7 @@ public class RetenueService {
     public RetenueMensuelleDto regenerate(Long id) {
         RetenueMensuelle r = findMaster(id);
         if (r.getAdherent() == null) {
-            throw new IllegalArgumentException("Retenue sans adhérent — régénération impossible.");
+            throw new IllegalArgumentException("Retenue sans adhérent - régénération impossible.");
         }
         rollbackToGenereeIfExported(r);
         RetenueMensuelle refreshed = upsertOne(r.getAdherent(), r.getMois(), r.getAnnee());

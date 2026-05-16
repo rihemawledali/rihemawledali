@@ -10,7 +10,7 @@ export const userSchema = z.object({
   nom: z.string().min(2, 'Nom trop court'),
   email: z.string().email('Email invalide'),
   telephone: z.string().regex(phoneRegex, 'Téléphone invalide'),
-  role: z.enum(['admin', 'treasurer', 'manager', 'adherent']),
+  role: z.enum(['admin', 'treasurer', 'adherent']),
   status: z.enum(['actif', 'inactif', 'suspendu']),
   matricule: z.string().optional(),
   // Optional on update; required on create (enforced in the form)

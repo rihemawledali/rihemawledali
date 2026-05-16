@@ -27,9 +27,9 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<?> login(@Valid @RequestBody LoginRequest request) {
+    public ResponseEntity<Object> login(@Valid @RequestBody LoginRequest request) {
         try {
-            return ResponseEntity.ok(authService.login(request));
+            return ResponseEntity.ok((Object) authService.login(request));
         } catch (DisabledException e) {
             return ResponseEntity.status(403).body(Map.of(
                     "error", "Votre compte est en attente de validation par le trésorier.",

@@ -1,6 +1,7 @@
 package com.project_pfe_srt.project_srt.common.account.controller;
 
 import com.project_pfe_srt.project_srt.common.account.dto.AccountPasswordRequest;
+import com.project_pfe_srt.project_srt.common.account.dto.AccountProfileDto;
 import com.project_pfe_srt.project_srt.common.account.dto.AccountProfileUpdateRequest;
 import com.project_pfe_srt.project_srt.common.account.service.AccountProfileService;
 import com.project_pfe_srt.project_srt.common.util.AuthUtils;
@@ -28,17 +29,17 @@ public class AccountProfileController {
     private final AuthUtils authUtils;
 
     @GetMapping
-    public ResponseEntity<?> getProfile() {
+    public ResponseEntity<AccountProfileDto> getProfile() {
         return ResponseEntity.ok(accountProfileService.getProfile(authUtils.currentUser()));
     }
 
     @PutMapping
-    public ResponseEntity<?> updateProfile(@Valid @RequestBody AccountProfileUpdateRequest request) {
+    public ResponseEntity<AccountProfileDto> updateProfile(@Valid @RequestBody AccountProfileUpdateRequest request) {
         return ResponseEntity.ok(accountProfileService.updateProfile(authUtils.currentUser(), request));
     }
 
     @PostMapping("/password")
-    public ResponseEntity<?> changePassword(@Valid @RequestBody AccountPasswordRequest request) {
+    public ResponseEntity<Map<String, Boolean>> changePassword(@Valid @RequestBody AccountPasswordRequest request) {
         accountProfileService.changePassword(authUtils.currentUser(), request);
         return ResponseEntity.ok(Map.of("ok", true));
     }

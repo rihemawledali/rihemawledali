@@ -4,11 +4,8 @@
    Conventions are handled by conventionsApi.ts.
    ============================================ */
 
-import { get, post } from '../../../shared/lib/apiClient';
+import { get, post } from '../../../shared/api/apiClient';
 import type { TicketRestaurant } from '../../../shared/types/domain';
-import { mockTicketsRestaurant, delay } from '../shared/mockData';
-
-const USE_MOCKS = false;
 
 export interface OffresData {
   tickets: TicketRestaurant[];
@@ -16,9 +13,6 @@ export interface OffresData {
 
 export const offresApi = {
   async getOffres(): Promise<OffresData> {
-    if (USE_MOCKS) {
-      return delay({ tickets: mockTicketsRestaurant }, 400);
-    }
     const { data } = await get<OffresData>('/api/adherent/offres');
     return data;
   },
