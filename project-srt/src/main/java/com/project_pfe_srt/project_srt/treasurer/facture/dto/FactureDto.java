@@ -19,6 +19,9 @@ public class FactureDto {
     private String dateEmission;
     private String dateEcheance;
     private String description;
+    private String sourceType;
+    private Integer mois;
+    private Integer annee;
     private String createdAt;
 
     public static FactureDto from(Facture f) {
@@ -34,6 +37,9 @@ public class FactureDto {
                 .dateEmission(f.getDateEmission() == null ? null : f.getDateEmission().toString())
                 .dateEcheance(f.getDateEcheance() == null ? null : f.getDateEcheance().toString())
                 .description(f.getDescription())
+                .sourceType(f.getSourceType())
+                .mois(f.getMois())
+                .annee(f.getAnnee())
                 .createdAt(f.getCreatedAt() == null ? null : f.getCreatedAt().toString())
                 .build();
     }

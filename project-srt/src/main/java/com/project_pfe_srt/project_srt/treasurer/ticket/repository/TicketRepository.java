@@ -8,6 +8,8 @@ import java.util.List;
 
 public interface TicketRepository extends JpaRepository<TicketRestaurant, Long> {
     List<TicketRestaurant> findByAdherentIdOrderByDateEmissionDesc(Long adherentId);
+    List<TicketRestaurant> findByAdherentIdAndAssignmentBatchIdAndStatutOrderByNumeroAsc(
+            Long adherentId, String assignmentBatchId, String statut);
     long countByAdherentIdAndStatut(Long adherentId, String statut);
     List<TicketRestaurant> findAllByOrderByDateEmissionDesc();
     boolean existsByNumero(String numero);

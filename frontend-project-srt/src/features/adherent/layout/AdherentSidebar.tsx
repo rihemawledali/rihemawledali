@@ -4,7 +4,7 @@
 
 import { NavLink, useLocation } from 'react-router-dom';
 import {
-  LayoutDashboard, User, BadgeCheck, Banknote, HeartHandshake, Tag, History, LogOut, ChevronsLeft,
+  LayoutDashboard, User, BadgeCheck, Banknote, HeartHandshake, Tag, LogOut, ChevronsLeft,
   Handshake, FileClock,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
@@ -27,7 +27,7 @@ const NAV_GROUPS: NavGroup[] = [
   {
     items: [
       { to: '/adherent/dashboard',   label: 'Tableau de bord',    icon: LayoutDashboard },
-      { to: '/adherent/profil',      label: 'Mon profil',         icon: User },
+      { to: '/adherent/profile',     label: 'Mon profil',         icon: User },
       { to: '/adherent/adhesion',    label: 'Mon adhésion',       icon: BadgeCheck },
       { to: '/adherent/prets',       label: 'Mes prêts',          icon: Banknote },
       { to: '/adherent/indemnites',  label: 'Mes indemnités',     icon: HeartHandshake },
@@ -39,11 +39,6 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { to: '/adherent/conventions',                label: 'Offres et conventions',     icon: Handshake },
       { to: '/adherent/conventions/mes-demandes',   label: 'Mes demandes',              icon: FileClock },
-    ],
-  },
-  {
-    items: [
-      { to: '/adherent/historique', label: 'Historique financier', icon: History },
     ],
   },
 ];

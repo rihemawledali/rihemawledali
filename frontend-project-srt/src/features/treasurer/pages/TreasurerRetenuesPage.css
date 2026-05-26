@@ -257,6 +257,11 @@
   border-color: var(--color-primary-100);
 }
 
+.retenue-breakdown-mini--success {
+  background: var(--color-success-50);
+  border-color: var(--color-success-100);
+}
+
 .retenue-breakdown-mini.is-muted {
   background: var(--color-surface);
 }

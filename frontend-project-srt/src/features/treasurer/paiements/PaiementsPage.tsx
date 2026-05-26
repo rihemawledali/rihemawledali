@@ -15,7 +15,8 @@ import { SearchInput } from '../../../shared/data/SearchInput';
 import { FilterBar, SelectFilter } from '../../../shared/data/FilterBar';
 import { StatusBadge } from '../../../shared/data/StatusBadge';
 import { useToast } from '../../../shared/feedback/useToast';
-import { facturesApi, indemnitesWorkflow, paiementsApi } from './api';
+import { facturesApi, paiementsApi } from './api';
+import { treasurerIndemnitesApi } from '../indemnites/api';
 import { PaiementForm } from './PaiementForm';
 import { PayFactureForm } from './PayFactureForm';
 import { PayIndemniteForm } from './PayIndemniteForm';
@@ -91,7 +92,7 @@ export function PaiementsPage() {
     if (factureId) {
       facturesApi.getById(factureId).then((f) => { if (f) setPayingFacture(f); });
     } else if (indemniteId) {
-      indemnitesWorkflow.getById(indemniteId).then((i) => { if (i) setPayingIndemnite(i); });
+      treasurerIndemnitesApi.getById(indemniteId).then((i) => { if (i) setPayingIndemnite(i); });
     }
   }, [searchParams]);
 

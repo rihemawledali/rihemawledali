@@ -12,20 +12,18 @@ import { ResetPasswordPage } from '../features/auth/pages/ResetPasswordPage';
 import { PendingApprovalPage } from '../features/auth/pages/PendingApprovalPage';
 import { TreasurerLayout } from '../features/treasurer/layout/TreasurerLayout';
 import { TreasurerDashboardPage } from '../features/treasurer/dashboard';
-import { TreasurerPretsPage } from '../features/treasurer/prets';
+import { TreasurerPretDetailPage, TreasurerPretsPage } from '../features/treasurer/prets';
 import { TreasurerIndemnitesPage } from '../features/treasurer/indemnites';
 import { TreasurerRetenuesPage, TreasurerRetenueDetailPage } from '../features/treasurer/retenues';
 import { TreasurerTresoreriePage } from '../features/treasurer/tresorerie';
-import { TreasurerProfilPage } from '../features/treasurer/profile';
 import { TreasurerConventionsPage } from '../features/treasurer/conventions-demande';
 import { AdminLayout } from '../features/admin/layout';
 import { AdherentLayout } from '../features/adherent/layout/AdherentLayout';
-import { AdherentDashboardPage, AdherentProfilePage } from '../features/adherent/profile';
+import { AdherentDashboardPage } from '../features/adherent/profile';
 import { AdherentAdhesionPage } from '../features/adherent/adhesion';
 import { AdherentPretsPage } from '../features/adherent/prets';
 import { AdherentIndemnitesPage } from '../features/adherent/indemnites';
 import { AdherentOffresPage } from '../features/adherent/offres';
-import { AdherentHistoriquePage } from '../features/adherent/historique';
 import {
   AdherentConventionsListPage,
   AdherentConventionDetailsPage,
@@ -40,6 +38,8 @@ import { PaiementsPage } from '../features/treasurer/paiements';
 import { FacturesPage } from '../features/treasurer/factures';
 import { HistoriquePage } from '../features/treasurer/historique';
 import { BonsCommandePage, BonCommandeDetailPage, TicketsPage } from '../features/admin/offers';
+import { Profile } from '../pages/Profile';
+import { useAuth } from '../features/auth/hooks/useAuth';
 
 export function AppRouter() {
   return (
@@ -53,6 +53,11 @@ export function AppRouter() {
         <Route path="/pending-approval" element={<PendingApprovalPage />} />
       </Route>
 
+      {/* ---- Shared Protected Profile Redirect ---- */}
+      <Route element={<ProtectedRoute allowedRoles={['admin', 'treasurer', 'adherent']} />}>
+        <Route path="/profile" element={<ProfileRedirect />} />
+      </Route>
+
       {/* ---- Protected Routes: Admin (full dashboard) ---- */}
       <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
         <Route path="/admin" element={<AdminLayout />}>
@@ -62,6 +67,8 @@ export function AppRouter() {
           <Route path="utilisateurs" element={<UsersPage />} />
           <Route path="fournisseurs" element={<SuppliersPage />} />
           <Route path="conventions" element={<ConventionsPage />} />
+          <Route path="profile" element={<Profile />} />
+          <Route path="profil" element={<Navigate to="/admin/profile" replace />} />
         </Route>
       </Route>
 
@@ -71,6 +78,7 @@ export function AppRouter() {
           <Route index element={<Navigate to="/treasurer/dashboard" replace />} />
           <Route path="dashboard"          element={<TreasurerDashboardPage />} />
           <Route path="prets"              element={<TreasurerPretsPage />} />
+          <Route path="prets/:id"           element={<TreasurerPretDetailPage />} />
           <Route path="indemnites"         element={<TreasurerIndemnitesPage />} />
           <Route path="conventions"        element={<TreasurerConventionsPage />} />
           <Route path="retenues"           element={<TreasurerRetenuesPage />} />
@@ -82,7 +90,8 @@ export function AppRouter() {
           <Route path="bons-commande/:id"  element={<BonCommandeDetailPage />} />
           <Route path="tresorerie"         element={<TreasurerTresoreriePage />} />
           <Route path="historique"         element={<HistoriquePage />} />
-          <Route path="profil"             element={<TreasurerProfilPage />} />
+          <Route path="profile"            element={<Profile />} />
+          <Route path="profil"             element={<Navigate to="/treasurer/profile" replace />} />
         </Route>
       </Route>
 
@@ -91,7 +100,8 @@ export function AppRouter() {
         <Route path="/adherent" element={<AdherentLayout />}>
           <Route index element={<Navigate to="/adherent/dashboard" replace />} />
           <Route path="dashboard" element={<AdherentDashboardPage />} />
-          <Route path="profil" element={<AdherentProfilePage />} />
+          <Route path="profile" element={<Profile />} />
+          <Route path="profil" element={<Navigate to="/adherent/profile" replace />} />
           <Route path="adhesion" element={<AdherentAdhesionPage />} />
           <Route path="prets" element={<AdherentPretsPage />} />
           <Route path="indemnites" element={<AdherentIndemnitesPage />} />
@@ -100,7 +110,6 @@ export function AppRouter() {
           <Route path="conventions/mes-demandes" element={<AdherentMesDemandesConventionsPage />} />
           <Route path="conventions/historique" element={<Navigate to="/adherent/conventions/mes-demandes" replace />} />
           <Route path="conventions/:id" element={<AdherentConventionDetailsPage />} />
-          <Route path="historique" element={<AdherentHistoriquePage />} />
         </Route>
       </Route>
 
@@ -111,6 +120,18 @@ export function AppRouter() {
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>
   );
+}
+
+function ProfileRedirect() {
+  const { user } = useAuth();
+
+  if (user?.role === 'admin') {
+    return <Navigate to="/admin/profile" replace />;
+  }
+  if (user?.role === 'treasurer') {
+    return <Navigate to="/treasurer/profile" replace />;
+  }
+  return <Navigate to="/adherent/profile" replace />;
 }
 
 /* Simple unauthorized page */

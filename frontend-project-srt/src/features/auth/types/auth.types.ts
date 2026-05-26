@@ -36,7 +36,8 @@ export interface ForgotPasswordPayload {
 }
 
 export interface ResetPasswordPayload {
-  token: string;
+  email: string;
+  code: string;
   password: string;
   confirmPassword: string;
 }
@@ -52,7 +53,7 @@ export interface AuthContextType extends AuthState {
   signup: (payload: SignupPayload) => Promise<void>;
   logout: () => void;
   forgotPassword: (email: string) => Promise<void>;
-  resetPassword: (token: string, password: string) => Promise<void>;
+  resetPassword: (email: string, code: string, password: string) => Promise<void>;
   updateUser: (user: User, token?: string) => void;
 }
 

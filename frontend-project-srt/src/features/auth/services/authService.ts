@@ -73,17 +73,19 @@ export async function signupService(data: SignupPayload): Promise<User> {
 }
 
 export async function forgotPasswordService(email: string): Promise<void> {
-  // Not implemented in backend yet - just succeed silently
-  void email;
+  await post<{ message: string }>('/api/auth/forgot-password', { email });
 }
 
 export async function resetPasswordService(
-  token: string,
+  email: string,
+  code: string,
   newPassword: string
 ): Promise<void> {
-  // Not implemented in backend yet
-  void token;
-  void newPassword;
+  await post<{ message: string }>('/api/auth/reset-password', {
+    email,
+    code,
+    newPassword,
+  });
 }
 
 export function getCurrentUser(): User | null {

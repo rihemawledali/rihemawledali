@@ -3,7 +3,7 @@
    ============================================ */
 
 import type {
-  Convention, ConventionStatus, ConventionType, ModeAvantage, PageQuery, PageResult,
+  Convention, ConventionStatus, ConventionType, PageQuery, PageResult,
 } from '../../../shared/types/domain';
 import { get, post, put, del } from '../../../shared/api/apiClient';
 
@@ -18,10 +18,14 @@ interface BackendConventionDto {
   statut: string;
   description: string | null;
   typeConvention?: string | null;
-  modeAvantage?: string | null;
-  tauxReduction?: number | null;
-  montantReduction?: number | null;
-  descriptionAvantage?: string | null;
+  typeAvantage?: string | null;
+  pourcentageAdherent?: number | null;
+  montantAvantage?: number | null;
+  nombreMoisRetenue?: number | null;
+  quantiteDisponible?: number | null;
+  autoriseAyantsDroit?: boolean | null;
+  documentConventionId?: string | null;
+  documentConventionNom?: string | null;
 }
 
 interface BackendConventionRequest {
@@ -33,10 +37,13 @@ interface BackendConventionRequest {
   statut?: string;
   description?: string;
   typeConvention?: string;
-  modeAvantage?: string;
-  tauxReduction?: number | null;
-  montantReduction?: number | null;
-  descriptionAvantage?: string;
+  typeAvantage?: string;
+  pourcentageAdherent?: number;
+  montantAvantage?: number;
+  nombreMoisRetenue?: number;
+  quantiteDisponible?: number;
+  autoriseAyantsDroit?: boolean;
+  documentConventionId?: number;
 }
 
 function fromDto(dto: BackendConventionDto): Convention {
@@ -51,10 +58,14 @@ function fromDto(dto: BackendConventionDto): Convention {
     statut: dto.statut as ConventionStatus,
     description: dto.description ?? undefined,
     typeConvention: dto.typeConvention ?? undefined,
-    modeAvantage: (dto.modeAvantage ?? undefined) as ModeAvantage | undefined,
-    tauxReduction: dto.tauxReduction ?? undefined,
-    montantReduction: dto.montantReduction ?? undefined,
-    descriptionAvantage: dto.descriptionAvantage ?? undefined,
+    typeAvantage: (dto.typeAvantage ?? undefined) as Convention['typeAvantage'],
+    pourcentageAdherent: dto.pourcentageAdherent ?? undefined,
+    montantAvantage: dto.montantAvantage ?? undefined,
+    nombreMoisRetenue: dto.nombreMoisRetenue ?? undefined,
+    quantiteDisponible: dto.quantiteDisponible ?? undefined,
+    autoriseAyantsDroit: dto.autoriseAyantsDroit ?? undefined,
+    documentConventionId: dto.documentConventionId ?? undefined,
+    documentConventionNom: dto.documentConventionNom ?? undefined,
   };
 }
 
@@ -69,10 +80,13 @@ function toRequest(c: Partial<Convention>): BackendConventionRequest {
   if (c.statut !== undefined) r.statut = c.statut;
   if (c.description !== undefined) r.description = c.description;
   if (c.typeConvention !== undefined) r.typeConvention = c.typeConvention;
-  if (c.modeAvantage !== undefined) r.modeAvantage = c.modeAvantage;
-  if (c.tauxReduction !== undefined) r.tauxReduction = c.tauxReduction;
-  if (c.montantReduction !== undefined) r.montantReduction = c.montantReduction;
-  if (c.descriptionAvantage !== undefined) r.descriptionAvantage = c.descriptionAvantage;
+  if (c.typeAvantage !== undefined) r.typeAvantage = c.typeAvantage;
+  if (c.pourcentageAdherent !== undefined) r.pourcentageAdherent = c.pourcentageAdherent;
+  if (c.montantAvantage !== undefined) r.montantAvantage = c.montantAvantage;
+  if (c.nombreMoisRetenue !== undefined) r.nombreMoisRetenue = c.nombreMoisRetenue;
+  if (c.quantiteDisponible !== undefined) r.quantiteDisponible = c.quantiteDisponible;
+  if (c.autoriseAyantsDroit !== undefined) r.autoriseAyantsDroit = c.autoriseAyantsDroit;
+  if (c.documentConventionId !== undefined) r.documentConventionId = Number(c.documentConventionId);
   return r;
 }
 

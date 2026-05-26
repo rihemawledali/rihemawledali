@@ -11,6 +11,7 @@ public class TicketRestaurantRequest {
     private String numero;
     private String typeBon;       // restaurant | cafeteria
     private Double montant;
+    private Integer quantite;
     private String statut;
     private Long adherentId;
     private String dateEmission;  // ISO yyyy-MM-dd

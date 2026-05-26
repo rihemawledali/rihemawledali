@@ -135,10 +135,29 @@ export interface TicketRestaurant {
   numero: string;
   typeBon: TicketType;
   montant: number;
+  quantite: number;
+  montantTotal: number;
   statut: BonStatus;
   adherentId?: string;
   adherentNom?: string;
   adherentMatricule?: string;
+  bonCommandeId?: string;
+  bonCommandeNumero?: string;
+  assignmentBatchId?: string;
+  dateEmission: string;
+  dateAttribution?: string;
+  dateDecision?: string;
+}
+
+export interface TicketAssignment {
+  id: string;
+  firstNumero: string;
+  lastNumero: string;
+  typeBon: TicketType;
+  statut: BonStatus;
+  quantite: number;
+  montantUnitaire: number;
+  montantTotal: number;
   bonCommandeId?: string;
   bonCommandeNumero?: string;
   dateEmission: string;
@@ -155,14 +174,11 @@ export interface TicketAssignPayload {
 export type ConventionType = 'sante' | 'restauration' | 'transport' | 'loisir' | 'commerce' | 'education';
 export type ConventionStatus = 'active' | 'expiree' | 'en_negociation' | 'suspendue';
 
-/**
- * Mode d'avantage applied by a Convention.
- * - REMISE_POURCENTAGE  : discount expressed as a % (`tauxReduction`)
- * - REMISE_MONTANT_FIXE : fixed-amount discount (`montantReduction`)
- */
-export type ModeAvantage =
-  | 'REMISE_POURCENTAGE'
-  | 'REMISE_MONTANT_FIXE';
+export type TypeAvantage =
+  | 'REMISE_DIRECTE'
+  | 'ACHAT_TRANCHE'
+  | 'ABONNEMENT'
+  | 'BON_ACHAT';
 
 export interface Convention {
   id: string;
@@ -174,8 +190,7 @@ export interface Convention {
   /**
    * Legacy global discount (%). The DB column is now nullable but the API
    * coalesces `null → 0` so consumers can treat this as a number.
-   * The real benefit is described by `modeAvantage` + `tauxReduction` /
-   * `montantReduction`.
+   * The real benefit is described by the TypeAvantage-specific fields.
    */
   remise: number;
   statut: ConventionStatus;
@@ -195,6 +210,8 @@ export interface Convention {
   logoUrl?: string;
   /** True when the current adherent has joined the convention (UI only) */
   joined?: boolean;
+  /** Status computed by the adherent convention API for the current user. */
+  adherentStatus?: ConventionAdherentStatus;
 
   /**
    * Total price of the financed offer (in TND).
@@ -207,17 +224,16 @@ export interface Convention {
   /** Fixed number of monthly tranches the offer is split into. */
   nbTranches?: number;
 
-  // ----- Mode d'avantage -----
   /** Free-text sub-type (e.g. partenariat, cadre, offre ponctuelle). */
   typeConvention?: string;
-  /** Mode d'avantage enum value (see {@link ModeAvantage}). */
-  modeAvantage?: ModeAvantage;
-  /** Discount percentage when {@link modeAvantage} is `REMISE_POURCENTAGE`. */
-  tauxReduction?: number;
-  /** Fixed amount when {@link modeAvantage} is `REMISE_MONTANT_FIXE` or `SUBVENTION_AMICALE`. */
-  montantReduction?: number;
-  /** Free-text advantage description (required for `PRIX_NEGOCIE` / `AUTRE`). */
-  descriptionAvantage?: string;
+  typeAvantage?: TypeAvantage;
+  pourcentageAdherent?: number;
+  montantAvantage?: number;
+  nombreMoisRetenue?: number;
+  quantiteDisponible?: number;
+  autoriseAyantsDroit?: boolean;
+  documentConventionId?: string;
+  documentConventionNom?: string;
 }
 
 /**
@@ -235,7 +251,20 @@ export type ConventionAdherentStatus =
   | 'expiree'
   | 'non_disponible';
 
-export type ConventionDemandeStatut = 'en_attente' | 'validee' | 'refusee' | 'annulee';
+export type ConventionDemandeStatut =
+  | 'en_attente'
+  | 'validee'
+  | 'refusee'
+  | 'annulee'
+  | 'SOUMISE'
+  | 'APPROUVEE'
+  | 'EN_COURS'
+  | 'JUSTIFIEE'
+  | 'VALIDEE'
+  | 'FACTUREE'
+  | 'PAYEE'
+  | 'REFUSEE'
+  | 'ANNULEE';
 
 export interface ConventionDemande {
   id: string;
@@ -264,6 +293,21 @@ export interface ConventionDemande {
   montantOffreSnapshot?: number;
   /** Snapshot of `Convention.nbTranches` taken at validation time. */
   nbTranchesSnapshot?: number;
+  typeAvantage?: TypeAvantage;
+  montantAvantage?: number;
+  pourcentageAdherent?: number;
+  nombreMoisRetenue?: number;
+  factureId?: string;
+  factureNumero?: string;
+  factureMois?: number;
+  factureAnnee?: number;
+  montantTotal?: number;
+  montantAdherent?: number;
+  montantAmicale?: number;
+  retenueMoisDebut?: number;
+  retenueAnneeDebut?: number;
+  retenueNombreMois?: number;
+  retenueMontantMensuel?: number;
 }
 
 export interface Fournisseur {
@@ -293,7 +337,11 @@ export type FactureStatus =
   | 'partielle'
   | 'en_retard'
   | 'payee'
-  | 'annulee';
+  | 'annulee'
+  | 'GENEREE'
+  | 'VALIDEE'
+  | 'EN_PAIEMENT'
+  | 'PAYEE';
 export interface Facture {
   id: string;
   numero: string;
@@ -307,6 +355,9 @@ export interface Facture {
   /** Spec field — alias of `dateEmission` when omitted. */
   dateFacture?: string;
   description?: string;
+  sourceType?: 'MANUEL' | 'CONVENTION';
+  mois?: number;
+  annee?: number;
 }
 
 export type PaiementMode = 'virement' | 'cheque' | 'especes' | 'carte';

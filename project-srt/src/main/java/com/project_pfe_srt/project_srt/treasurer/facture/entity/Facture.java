@@ -53,6 +53,15 @@ public class Facture {
     @Column(length = 1000)
     private String description;
 
+    /** MANUEL | CONVENTION */
+    @Builder.Default
+    @Column(name = "source_type")
+    private String sourceType = "MANUEL";
+
+    private Integer mois;
+
+    private Integer annee;
+
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 

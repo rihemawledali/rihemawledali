@@ -21,6 +21,8 @@ export function getAdherentConventionStatus(
   demandes: ConventionDemande[],
   today: Date = new Date()
 ): ConventionAdherentStatus {
+  if (convention.adherentStatus) return convention.adherentStatus;
+
   const fin = new Date(convention.dateFin);
   if (fin < today || convention.statut === 'expiree') return 'expiree';
   if (convention.statut === 'suspendue' || convention.statut === 'en_negociation') {
@@ -28,8 +30,8 @@ export function getAdherentConventionStatus(
   }
 
   const myDemande = demandes.find((d) => d.conventionId === convention.id);
-  if (myDemande?.statut === 'validee') return 'active';
-  if (myDemande?.statut === 'en_attente') return 'deja_demandee';
+  if (['validee', 'APPROUVEE', 'EN_COURS', 'JUSTIFIEE', 'VALIDEE', 'FACTUREE', 'PAYEE'].includes(myDemande?.statut ?? '')) return 'active';
+  if (['en_attente', 'SOUMISE'].includes(myDemande?.statut ?? '')) return 'deja_demandee';
   return 'disponible';
 }
 

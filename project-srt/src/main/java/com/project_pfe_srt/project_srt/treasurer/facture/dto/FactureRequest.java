@@ -15,4 +15,7 @@ public class FactureRequest {
     private String dateEmission;   // ISO yyyy-MM-dd
     private String dateEcheance;   // ISO yyyy-MM-dd
     private String description;
+    private String sourceType;
+    private Integer mois;
+    private Integer annee;
 }

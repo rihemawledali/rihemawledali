@@ -2,9 +2,6 @@ package com.project_pfe_srt.project_srt.adherent.profile.service;
 
 import com.project_pfe_srt.project_srt.adherent.adhesion.dto.AdhesionDto;
 import com.project_pfe_srt.project_srt.adherent.adhesion.service.AdhesionService;
-import com.project_pfe_srt.project_srt.adherent.historique.dto.HistoriqueDto;
-import com.project_pfe_srt.project_srt.adherent.historique.entity.HistoriqueFinanciere;
-import com.project_pfe_srt.project_srt.adherent.historique.repository.HistoriqueRepository;
 import com.project_pfe_srt.project_srt.adherent.indemnite.repository.IndemniteRepository;
 import com.project_pfe_srt.project_srt.adherent.pret.dto.PretDto;
 import com.project_pfe_srt.project_srt.adherent.pret.entity.PretSocial;
@@ -17,11 +14,6 @@ import com.project_pfe_srt.project_srt.treasurer.ticket.repository.TicketReposit
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDate;
-import java.time.YearMonth;
-import java.util.ArrayList;
-import java.util.List;
-
 @Service
 @RequiredArgsConstructor
 public class DashboardService {
@@ -31,7 +23,6 @@ public class DashboardService {
     private final PretRepository pretRepository;
     private final IndemniteRepository indemniteRepository;
     private final TicketRepository ticketRepository;
-    private final HistoriqueRepository historiqueRepository;
 
     public DashboardDto build(User user) {
         AdherentProfileDto profile = profileService.getProfileDto(user);
@@ -47,41 +38,12 @@ public class DashboardService {
         long availableOffers = ticketRepository
                 .countByAdherentIdAndStatut(user.getId(), "attribue");
 
-        List<HistoriqueFinanciere> all = historiqueRepository
-                .findByAdherentIdOrderByDateDesc(user.getId());
-
-        List<HistoriqueDto> recent = all.stream()
-                .limit(5)
-                .map(HistoriqueDto::from)
-                .toList();
-
-        // 12-month sliding window of cumulative net amount.
-        YearMonth thisMonth = YearMonth.now();
-        List<DashboardDto.MonthPoint> chart = new ArrayList<>();
-        double running = 0;
-        for (int i = 11; i >= 0; i--) {
-            YearMonth ym = thisMonth.minusMonths(i);
-            LocalDate from = ym.atDay(1);
-            LocalDate to = ym.atEndOfMonth();
-            double net = all.stream()
-                    .filter(h -> !h.getDate().isBefore(from) && !h.getDate().isAfter(to))
-                    .mapToDouble(HistoriqueFinanciere::getMontant)
-                    .sum();
-            running += net;
-            chart.add(DashboardDto.MonthPoint.builder()
-                    .month(ym.toString())
-                    .solde(Math.round(running * 100.0) / 100.0)
-                    .build());
-        }
-
         return DashboardDto.builder()
                 .profile(profile)
                 .adhesion(adhesion)
                 .activeLoan(PretDto.from(activeLoan))
                 .pendingIndemnities(pendingIndemnities)
                 .availableOffers(availableOffers)
-                .recentHistory(recent)
-                .financialChart(chart)
                 .build();
     }
 }

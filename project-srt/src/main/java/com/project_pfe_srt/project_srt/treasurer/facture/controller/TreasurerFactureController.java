@@ -1,6 +1,8 @@
 package com.project_pfe_srt.project_srt.treasurer.facture.controller;
 
+import com.project_pfe_srt.project_srt.adherent.convention.dto.ConventionDemandeDto;
 import com.project_pfe_srt.project_srt.common.util.AuthUtils;
+import com.project_pfe_srt.project_srt.shared.convention.dto.ConventionFactureGenerationRequest;
 import com.project_pfe_srt.project_srt.shared.pdf.service.FacturePdfService;
 import com.project_pfe_srt.project_srt.treasurer.facture.dto.FactureDto;
 import com.project_pfe_srt.project_srt.treasurer.facture.dto.FactureRequest;
@@ -43,6 +45,29 @@ public class TreasurerFactureController {
     @PostMapping
     public FactureDto create(@RequestBody FactureRequest req) {
         return factureService.create(req);
+    }
+
+    @GetMapping("/conventions/eligible")
+    public List<ConventionDemandeDto> eligibleConventionDemandes(
+            @RequestParam Long fournisseurId,
+            @RequestParam Integer mois,
+            @RequestParam Integer annee) {
+        return factureService.eligibleConventionDemandes(fournisseurId, mois, annee);
+    }
+
+    @PostMapping("/conventions/generer")
+    public FactureDto genererConventionFacture(@RequestBody ConventionFactureGenerationRequest req) {
+        return factureService.generateConventionFacture(req);
+    }
+
+    @GetMapping("/{id}/convention-demandes")
+    public List<ConventionDemandeDto> conventionFactureDetails(@PathVariable Long id) {
+        return factureService.conventionFactureDetails(id);
+    }
+
+    @PutMapping("/{id}/valider-convention")
+    public FactureDto validerConventionFacture(@PathVariable Long id) {
+        return factureService.validerConventionFacture(id);
     }
 
     @PutMapping("/{id}")

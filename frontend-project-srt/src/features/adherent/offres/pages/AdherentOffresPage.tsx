@@ -15,7 +15,7 @@ import { StatusBadge } from '../../../../shared/data/StatusBadge';
 import { Button } from '../../../../shared/ui/Button';
 import { offresApi } from '../api';
 import { useToast } from '../../../../shared/feedback/useToast';
-import type { TicketRestaurant } from '../../../../shared/types/domain';
+import type { TicketAssignment } from '../../../../shared/types/domain';
 
 type StatusFilter = 'all' | 'attribue' | 'utilise' | 'expire';
 
@@ -30,61 +30,65 @@ export function AdherentOffresPage() {
     queryFn: () => offresApi.getOffres(),
   });
 
-  const allTickets = useMemo(() => offres?.tickets || [], [offres]);
+  const allAssignments = useMemo(() => offres?.ticketAssignments || [], [offres]);
 
-  const acceptTicket = useMutation({
-    mutationFn: (id: string) => offresApi.acceptTicket(id),
+  const acceptAssignment = useMutation({
+    mutationFn: (id: string) => offresApi.acceptTicketAssignment(id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['adherent-offres'] });
-      qc.invalidateQueries({ queryKey: ['adherent-dashboard'] });
+      qc.invalidateQueries({ queryKey: ['adherent', 'dashboard'] });
       toast.push({
-        title: 'Ticket accepte',
-        description: '50% de sa valeur sera ajoute a votre retenue mensuelle.',
+        title: 'Tickets acceptes',
+        description: '50% de leur valeur sera ajoute a votre retenue mensuelle.',
         variant: 'success',
       });
     },
     onError: (e) => toast.push({ title: e instanceof Error ? e.message : 'Erreur', variant: 'error' }),
   });
 
-  const rejectTicket = useMutation({
-    mutationFn: (id: string) => offresApi.rejectTicket(id),
+  const rejectAssignment = useMutation({
+    mutationFn: (id: string) => offresApi.rejectTicketAssignment(id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['adherent-offres'] });
-      qc.invalidateQueries({ queryKey: ['adherent-dashboard'] });
-      toast.push({ title: 'Ticket refuse', variant: 'success' });
+      qc.invalidateQueries({ queryKey: ['adherent', 'dashboard'] });
+      toast.push({ title: 'Tickets refuses', variant: 'success' });
     },
     onError: (e) => toast.push({ title: e instanceof Error ? e.message : 'Erreur', variant: 'error' }),
   });
 
   const stats = useMemo(() => {
-    const available = allTickets.filter((t) => t.statut === 'attribue');
-    const used = allTickets.filter((t) => t.statut === 'utilise');
-    const totalAvailable = available.reduce((sum, t) => sum + t.montant, 0);
+    const available = allAssignments.filter((t) => t.statut === 'attribue');
+    const used = allAssignments.filter((t) => t.statut === 'utilise');
+    const totalAvailable = available.reduce((sum, t) => sum + t.montantTotal, 0);
     return {
-      availableCount: available.length,
-      usedCount: used.length,
+      availableCount: available.reduce((sum, t) => sum + t.quantite, 0),
+      availableGroups: available.length,
+      usedCount: used.reduce((sum, t) => sum + t.quantite, 0),
       totalAvailable,
     };
-  }, [allTickets]);
+  }, [allAssignments]);
 
-  const filteredTickets = useMemo(() => {
-    if (statusFilter === 'all') return allTickets;
-    return allTickets.filter((t) => t.statut === statusFilter);
-  }, [allTickets, statusFilter]);
+  const filteredAssignments = useMemo(() => {
+    if (statusFilter === 'all') return allAssignments;
+    return allAssignments.filter((t) => t.statut === statusFilter);
+  }, [allAssignments, statusFilter]);
 
   const ticketColumns = [
     {
       key: 'numero',
-      header: 'Numéro',
-      cell: (t: TicketRestaurant) => (
-        <span style={{ fontFamily: 'monospace', fontWeight: 600 }}>{t.numero}</span>
+      header: 'Tickets',
+      cell: (t: TicketAssignment) => (
+        <span style={{ display: 'inline-flex', flexDirection: 'column', gap: 2 }}>
+          <strong style={{ fontFamily: 'monospace', fontWeight: 700 }}>{formatTicketRange(t)}</strong>
+          {t.bonCommandeNumero && <small className="cell-muted">{t.bonCommandeNumero}</small>}
+        </span>
       ),
-      width: '160px',
+      width: '210px',
     },
     {
       key: 'type',
       header: 'Type',
-      cell: (t: TicketRestaurant) => (
+      cell: (t: TicketAssignment) => (
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
           {t.typeBon === 'restaurant'
             ? <UtensilsCrossed size={14} style={{ color: '#8a92a6' }} />
@@ -95,11 +99,22 @@ export function AdherentOffresPage() {
       width: '160px',
     },
     {
+      key: 'quantite',
+      header: 'Quantite',
+      cell: (t: TicketAssignment) => (
+        <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 700 }}>
+          {t.quantite} ticket{t.quantite > 1 ? 's' : ''}
+        </span>
+      ),
+      align: 'right' as const,
+      width: '120px',
+    },
+    {
       key: 'montant',
-      header: 'Montant',
-      cell: (t: TicketRestaurant) => (
+      header: 'Total',
+      cell: (t: TicketAssignment) => (
         <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>
-          {t.montant.toFixed(2)} TND
+          {t.montantTotal.toFixed(2)} TND
         </span>
       ),
       align: 'right' as const,
@@ -107,14 +122,16 @@ export function AdherentOffresPage() {
     },
     {
       key: 'dateEmission',
-      header: 'Émis le',
-      cell: (t: TicketRestaurant) => new Date(t.dateEmission).toLocaleDateString('fr-FR'),
+      header: 'Attribue le',
+      cell: (t: TicketAssignment) => t.dateAttribution
+        ? new Date(t.dateAttribution).toLocaleDateString('fr-FR')
+        : new Date(t.dateEmission).toLocaleDateString('fr-FR'),
       width: '130px',
     },
     {
       key: 'statut',
       header: 'Statut',
-      cell: (t: TicketRestaurant) => (
+      cell: (t: TicketAssignment) => (
         <StatusBadge
           status={t.statut}
           label={t.statut === 'attribue' ? 'À accepter' : t.statut === 'utilise' ? 'Accepté' : undefined}
@@ -125,22 +142,22 @@ export function AdherentOffresPage() {
     {
       key: 'actions',
       header: 'Decision',
-      cell: (t: TicketRestaurant) => t.statut === 'attribue' ? (
+      cell: (t: TicketAssignment) => t.statut === 'attribue' ? (
         <span style={{ display: 'inline-flex', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
           <Button
             size="sm"
-            onClick={() => acceptTicket.mutate(t.id)}
-            isLoading={acceptTicket.isPending && acceptTicket.variables === t.id}
-            disabled={rejectTicket.isPending}
+            onClick={() => acceptAssignment.mutate(t.id)}
+            isLoading={acceptAssignment.isPending && acceptAssignment.variables === t.id}
+            disabled={rejectAssignment.isPending}
           >
             Accepter
           </Button>
           <Button
             size="sm"
             variant="danger"
-            onClick={() => rejectTicket.mutate(t.id)}
-            isLoading={rejectTicket.isPending && rejectTicket.variables === t.id}
-            disabled={acceptTicket.isPending}
+            onClick={() => rejectAssignment.mutate(t.id)}
+            isLoading={rejectAssignment.isPending && rejectAssignment.variables === t.id}
+            disabled={acceptAssignment.isPending}
           >
             Refuser
           </Button>
@@ -189,7 +206,7 @@ export function AdherentOffresPage() {
             <span className="adh-tile-label">Tickets à accepter</span>
           </div>
           <div className="adh-tile-value">{stats.availableCount}</div>
-          <span className="adh-tile-meta">Accepter ou refuser</span>
+          <span className="adh-tile-meta">{stats.availableGroups} attribution{stats.availableGroups > 1 ? 's' : ''} a decider</span>
         </div>
 
         <div className="adh-tile">
@@ -222,8 +239,8 @@ export function AdherentOffresPage() {
         {filters.map((f) => {
           const active = statusFilter === f.k;
           const count = f.k === 'all'
-            ? allTickets.length
-            : allTickets.filter((t) => t.statut === f.k).length;
+            ? allAssignments.reduce((sum, t) => sum + t.quantite, 0)
+            : allAssignments.filter((t) => t.statut === f.k).reduce((sum, t) => sum + t.quantite, 0);
           return (
             <button
               key={f.k}
@@ -257,19 +274,19 @@ export function AdherentOffresPage() {
       <section className="adh-card">
         <div className="adh-card-header">
           <h3 className="adh-card-title">
-            <Ticket size={16} /> Mes tickets restaurant
+            <Ticket size={16} /> Mes attributions de tickets
           </h3>
           <span className="adh-card-subtitle">
-            {filteredTickets.length} ticket{filteredTickets.length > 1 ? 's' : ''}
+            {filteredAssignments.length} attribution{filteredAssignments.length > 1 ? 's' : ''}
           </span>
         </div>
         <DataTable
           columns={ticketColumns}
-          rows={filteredTickets}
+          rows={filteredAssignments}
           rowKey={(t) => t.id}
           loading={isLoading}
-          emptyTitle="Aucun ticket"
-          emptyDescription="Vous n'avez pas encore de ticket restaurant pour ce filtre."
+          emptyTitle="Aucune attribution"
+          emptyDescription="Vous n'avez pas encore d'attribution de tickets pour ce filtre."
         />
       </section>
 
@@ -333,3 +350,9 @@ const INLINE_STYLES = `
 }
 .adh-conv-promo:hover .adh-conv-promo-arrow { transform: translateX(4px); }
 `;
+
+function formatTicketRange(ticket: TicketAssignment) {
+  return ticket.firstNumero === ticket.lastNumero
+    ? ticket.firstNumero
+    : `${ticket.firstNumero} - ${ticket.lastNumero}`;
+}

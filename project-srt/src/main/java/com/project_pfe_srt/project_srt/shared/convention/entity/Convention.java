@@ -1,6 +1,7 @@
 package com.project_pfe_srt.project_srt.shared.convention.entity;
 
 import com.project_pfe_srt.project_srt.shared.fournisseur.entity.Fournisseur;
+import com.project_pfe_srt.project_srt.shared.file.entity.Attachment;
 
 import jakarta.persistence.*;
 import lombok.*;
@@ -34,9 +35,7 @@ public class Convention {
     @Column(name = "date_fin", nullable = false)
     private LocalDate dateFin;
 
-    /** Legacy global discount in percent (0-100). Optional now: the chosen
-     *  {@link ModeAvantage} drives the actual benefit (`tauxReduction` or
-     *  `montantReduction`). Kept for backward compatibility / read-only use. */
+    /** Legacy global discount in percent (0-100). Kept for backward compatibility. */
     @Column
     private Double remise;
 
@@ -49,7 +48,7 @@ public class Convention {
     private String description;
 
     // ---------------------------------------------------------------
-    // Mode d'avantage (nouveau modele, ajout non-destructif).
+    // Type d'avantage convention.
     // Le champ legacy {@link #type} (sante/restauration/...) reste la
     // categorie metier de la convention; {@code typeConvention} decrit
     // le format du contrat (ex. partenariat, cadre, offre ponctuelle).
@@ -59,20 +58,30 @@ public class Convention {
     @Column(name = "type_convention", length = 80)
     private String typeConvention;
 
-    /** Mode d'avantage applique (voir {@link ModeAvantage}). */
     @Enumerated(EnumType.STRING)
-    @Column(name = "mode_avantage", length = 40)
-    private ModeAvantage modeAvantage;
+    @Column(name = "type_avantage", length = 40)
+    private TypeAvantage typeAvantage;
 
-    /** Taux de reduction en % (0-100) — utilise si {@code modeAvantage == REMISE_POURCENTAGE}. */
-    @Column(name = "taux_reduction")
-    private Double tauxReduction;
+    /** Part payee par l'adherent, en pourcentage du montant d'avantage. */
+    @Column(name = "pourcentage_adherent")
+    private Double pourcentageAdherent;
 
-    /** Montant de reduction / subvention — utilise si {@code modeAvantage} ∈ {REMISE_MONTANT_FIXE, SUBVENTION_AMICALE}. */
-    @Column(name = "montant_reduction")
-    private Double montantReduction;
+    /** Montant de reference: bon d'achat, abonnement mensuel, achat tranche, etc. */
+    @Column(name = "montant_avantage")
+    private Double montantAvantage;
 
-    /** Description libre de l'avantage (contexte, conditions, plafond, etc.). */
-    @Column(name = "description_avantage", length = 1000)
-    private String descriptionAvantage;
+    /** Nombre de mensualites pour ACHAT_TRANCHE. */
+    @Column(name = "nombre_mois_retenue")
+    private Integer nombreMoisRetenue;
+
+    @Column(name = "quantite_disponible")
+    private Integer quantiteDisponible;
+
+    @Builder.Default
+    @Column(name = "autorise_ayants_droit")
+    private Boolean autoriseAyantsDroit = false;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "document_convention_id")
+    private Attachment documentConvention;
 }

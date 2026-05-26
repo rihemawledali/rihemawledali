@@ -1,5 +1,7 @@
 package com.project_pfe_srt.project_srt.treasurer.retenue.service;
 
+import com.project_pfe_srt.project_srt.adherent.convention.entity.ConventionDemande;
+import com.project_pfe_srt.project_srt.adherent.convention.repository.ConventionDemandeRepository;
 import com.project_pfe_srt.project_srt.adherent.adhesion.repository.AdhesionRepository;
 import com.project_pfe_srt.project_srt.adherent.pret.entity.PretSocial;
 import com.project_pfe_srt.project_srt.adherent.pret.repository.PretRepository;
@@ -29,7 +31,9 @@ import java.time.LocalDateTime;
 import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 @Service
 @RequiredArgsConstructor
@@ -56,6 +60,7 @@ public class RetenueService {
     private final PretRepository pretRepository;
     private final PretService pretService;
     private final TicketRepository ticketRepository;
+    private final ConventionDemandeRepository conventionDemandeRepository;
 
     private RetenueCsvWriter csvWriter;
 
@@ -243,6 +248,7 @@ public class RetenueService {
         cotisationLine(adherent, mois, annee, master).ifPresent(rows::add);
         rows.addAll(pretLines(adherent, master));
         rows.addAll(ticketLines(adherent, mois, annee, master));
+        rows.addAll(conventionLines(adherent, mois, annee, master));
 
         ligneRepo.saveAll(rows);
         master.setTotalRetenu(Money.round2(sumMontants(rows)));
@@ -283,21 +289,123 @@ public class RetenueService {
 
     /** Tickets restaurant accepted in this period: adhérent pays 50%. */
     private List<RetenueLigne> ticketLines(User adherent, int mois, int annee, RetenueMensuelle master) {
-        List<RetenueLigne> out = new ArrayList<>();
+        Map<String, List<TicketRestaurant>> groupedTickets = new LinkedHashMap<>();
         for (TicketRestaurant ticket : ticketRepository.findByAdherentIdAndStatutOrderByDateDecisionDesc(adherent.getId(), "utilise")) {
             LocalDate decisionDate = ticket.getDateDecision() == null ? ticket.getDateAttribution() : ticket.getDateDecision();
             if (decisionDate == null || decisionDate.getMonthValue() != mois || decisionDate.getYear() != annee) {
                 continue;
             }
-            double retained = Money.round2(Money.orZero(ticket.getMontant()) * 0.5d);
+            groupedTickets.computeIfAbsent(ticketRetentionGroupKey(ticket), ignored -> new ArrayList<>()).add(ticket);
+        }
+
+        List<RetenueLigne> out = new ArrayList<>(groupedTickets.size());
+        for (List<TicketRestaurant> tickets : groupedTickets.values()) {
+            tickets.sort(Comparator.comparing(TicketRestaurant::getNumero));
+            double retained = Money.round2(tickets.stream()
+                    .mapToDouble(t -> Money.orZero(t.getMontant()) * ticketQuantity(t) * 0.5d)
+                    .sum());
+            TicketRestaurant first = tickets.get(0);
             out.add(RetenueLigne.builder()
                     .retenue(master).type("TICKET_RESTAURANT")
                     .montant(retained)
-                    .libelle("Ticket restaurant #" + ticket.getNumero() + " (50%)")
-                    .sourceRefId(ticket.getId())
+                    .libelle(ticketRetentionLabel(tickets))
+                    .sourceRefId(first.getId())
                     .statut(GENEREE).build());
         }
         return out;
+    }
+
+    /** Convention retenues are activated only after the consolidated supplier facture is validated. */
+    private List<RetenueLigne> conventionLines(User adherent, int mois, int annee, RetenueMensuelle master) {
+        List<RetenueLigne> out = new ArrayList<>();
+        for (ConventionDemande demande : conventionDemandeRepository.findByAdherentIdAndFactureIsNotNullOrderByIdAsc(adherent.getId())) {
+            if (!isConventionFactureValidated(demande) || !isConventionRetenueActiveForPeriod(demande, mois, annee)) {
+                continue;
+            }
+            out.add(RetenueLigne.builder()
+                    .retenue(master)
+                    .type("CONVENTION")
+                    .montant(Money.round2(demande.getRetenueMontantMensuel()))
+                    .libelle("Convention " + conventionDemandeLabel(demande))
+                    .sourceRefId(demande.getId())
+                    .statut(GENEREE)
+                    .build());
+        }
+        return out;
+    }
+
+    private static boolean isConventionFactureValidated(ConventionDemande demande) {
+        if (demande.getFacture() == null || demande.getFacture().getStatut() == null) {
+            return false;
+        }
+        String statut = demande.getFacture().getStatut();
+        return "VALIDEE".equalsIgnoreCase(statut)
+                || "EN_PAIEMENT".equalsIgnoreCase(statut)
+                || "PAYEE".equalsIgnoreCase(statut);
+    }
+
+    private static boolean isConventionRetenueActiveForPeriod(ConventionDemande demande, int mois, int annee) {
+        if (demande.getRetenueMoisDebut() == null
+                || demande.getRetenueAnneeDebut() == null
+                || demande.getRetenueNombreMois() == null
+                || demande.getRetenueMontantMensuel() == null
+                || demande.getRetenueMontantMensuel() <= 0) {
+            return false;
+        }
+        int current = annee * 12 + mois;
+        int start = demande.getRetenueAnneeDebut() * 12 + demande.getRetenueMoisDebut();
+        int endExclusive = start + demande.getRetenueNombreMois();
+        return current >= start && current < endExclusive;
+    }
+
+    private static String conventionDemandeLabel(ConventionDemande demande) {
+        String fournisseur = demande.getConvention() == null || demande.getConvention().getFournisseur() == null
+                ? ""
+                : demande.getConvention().getFournisseur().getNom();
+        return fournisseur.isBlank() ? "DEM-" + demande.getId() : fournisseur + " DEM-" + demande.getId();
+    }
+
+    private static String ticketRetentionGroupKey(TicketRestaurant ticket) {
+        if (ticket.getAssignmentBatchId() != null && !ticket.getAssignmentBatchId().isBlank()) {
+            return "batch:" + ticket.getAssignmentBatchId();
+        }
+        Long bonId = ticket.getBonCommande() == null ? null : ticket.getBonCommande().getId();
+        LocalDate decisionDate = ticket.getDateDecision() == null ? ticket.getDateAttribution() : ticket.getDateDecision();
+        if (bonId == null || decisionDate == null) {
+            return "ticket:" + ticket.getId();
+        }
+        return "legacy:"
+                + bonId + ":"
+                + decisionDate + ":"
+                + nullSafe(ticket.getTypeBon()) + ":"
+                + nullSafe(ticket.getDateAttribution());
+    }
+
+    private static String ticketRetentionLabel(List<TicketRestaurant> tickets) {
+        TicketRestaurant first = tickets.get(0);
+        TicketRestaurant last = tickets.get(tickets.size() - 1);
+        if (tickets.size() == 1) {
+            int quantity = ticketQuantity(first);
+            return quantity == 1
+                    ? "Ticket restaurant #" + first.getNumero() + " (50%)"
+                    : "Tickets restaurant #" + first.getNumero() + " (" + quantity + " tickets, 50%)";
+        }
+        int quantity = tickets.stream().mapToInt(RetenueService::ticketQuantity).sum();
+        return "Tickets restaurant #"
+                + first.getNumero()
+                + " - #"
+                + last.getNumero()
+                + " ("
+                + quantity
+                + " tickets, 50%)";
+    }
+
+    private static int ticketQuantity(TicketRestaurant ticket) {
+        return ticket.getQuantite() == null ? 1 : ticket.getQuantite();
+    }
+
+    private static String nullSafe(Object value) {
+        return value == null ? "" : value.toString();
     }
 
     // =====================================================================

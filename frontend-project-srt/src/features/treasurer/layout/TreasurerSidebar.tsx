@@ -72,7 +72,7 @@ const GROUPS: NavGroup[] = [
   {
     label: 'Compte',
     items: [
-      { to: '/treasurer/profil', label: 'Profil', icon: User },
+      { to: '/treasurer/profile', label: 'Profil', icon: User },
     ],
   },
 ];

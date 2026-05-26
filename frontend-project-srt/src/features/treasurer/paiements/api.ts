@@ -1,7 +1,6 @@
 export {
   facturesApi,
   historiqueApi,
-  indemnitesWorkflow,
   paiementsApi,
 } from './treasuryApi';
 

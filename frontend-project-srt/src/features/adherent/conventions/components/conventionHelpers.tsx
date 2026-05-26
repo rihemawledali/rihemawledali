@@ -74,6 +74,15 @@ export const DEMANDE_STATUS_LABEL: Record<ConventionDemandeStatut, string> = {
   validee: 'Validée',
   refusee: 'Refusée',
   annulee: 'Annulée',
+  SOUMISE: 'Soumise',
+  APPROUVEE: 'Approuvée',
+  EN_COURS: 'En cours',
+  JUSTIFIEE: 'Justifiée',
+  VALIDEE: 'Validée',
+  FACTUREE: 'Facturée',
+  PAYEE: 'Payée',
+  REFUSEE: 'Refusée',
+  ANNULEE: 'Annulée',
 };
 
 export const DEMANDE_STATUS_VARIANT: Record<
@@ -84,4 +93,13 @@ export const DEMANDE_STATUS_VARIANT: Record<
   validee: 'success',
   refusee: 'error',
   annulee: 'neutral',
+  SOUMISE: 'warning',
+  APPROUVEE: 'success',
+  EN_COURS: 'info',
+  JUSTIFIEE: 'info',
+  VALIDEE: 'success',
+  FACTUREE: 'info',
+  PAYEE: 'success',
+  REFUSEE: 'error',
+  ANNULEE: 'neutral',
 };

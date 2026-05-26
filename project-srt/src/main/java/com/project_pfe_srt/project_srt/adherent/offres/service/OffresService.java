@@ -1,5 +1,6 @@
 package com.project_pfe_srt.project_srt.adherent.offres.service;
 
+import com.project_pfe_srt.project_srt.adherent.offres.dto.TicketAssignmentDto;
 import com.project_pfe_srt.project_srt.auth.entity.User;
 import com.project_pfe_srt.project_srt.common.util.Repos;
 import com.project_pfe_srt.project_srt.treasurer.boncommande.entity.BonCommande;
@@ -14,12 +15,17 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
 public class OffresService {
 
+    private static final String BATCH_PREFIX = "batch_";
+    private static final String LEGACY_PREFIX = "legacy_";
     private static final String STATUT_ATTRIBUE = "attribue";
     private static final String STATUT_EN_ATTENTE = "en_attente";
     private static final String STATUT_UTILISE = "utilise";
@@ -33,6 +39,16 @@ public class OffresService {
     public List<TicketDto> listMyTickets(User user) {
         return ticketRepository.findByAdherentIdOrderByDateEmissionDesc(user.getId()).stream()
                 .map(TicketDto::from)
+                .toList();
+    }
+
+    public List<TicketAssignmentDto> listMyTicketAssignments(User user) {
+        Map<String, List<TicketRestaurant>> groups = new LinkedHashMap<>();
+        for (TicketRestaurant ticket : ticketRepository.findByAdherentIdOrderByDateEmissionDesc(user.getId())) {
+            groups.computeIfAbsent(groupId(ticket), ignored -> new ArrayList<>()).add(ticket);
+        }
+        return groups.entrySet().stream()
+                .map(entry -> TicketAssignmentDto.from(entry.getKey(), entry.getValue()))
                 .toList();
     }
 
@@ -50,12 +66,44 @@ public class OffresService {
     }
 
     @Transactional
+    public TicketAssignmentDto acceptTicketAssignment(User user, String groupId) {
+        List<TicketRestaurant> tickets = findTicketGroupWaitingForDecision(user, groupId);
+        LocalDate today = LocalDate.now();
+
+        for (TicketRestaurant ticket : tickets) {
+            ticket.setStatut(STATUT_UTILISE);
+            ticket.setDateDecision(today);
+        }
+
+        List<TicketRestaurant> saved = ticketRepository.saveAll(tickets);
+        retenueService.refreshForAdherent(user, today.getMonthValue(), today.getYear());
+        return TicketAssignmentDto.from(groupId, saved);
+    }
+
+    @Transactional
+    public TicketAssignmentDto rejectTicketAssignment(User user, String groupId) {
+        List<TicketRestaurant> tickets = findTicketGroupWaitingForDecision(user, groupId);
+        Map<BonCommande, Integer> restoredByBon = new LinkedHashMap<>();
+
+        for (TicketRestaurant ticket : tickets) {
+            if (ticket.getBonCommande() != null) {
+                restoredByBon.merge(ticket.getBonCommande(), quantityOf(ticket), Integer::sum);
+            }
+            releaseTicket(ticket);
+        }
+
+        List<TicketRestaurant> saved = ticketRepository.saveAll(tickets);
+        restoredByBon.forEach(this::restoreBonStock);
+        return TicketAssignmentDto.from(groupId, saved);
+    }
+
+    @Transactional
     public TicketDto rejectTicket(User user, Long ticketId) {
         TicketRestaurant ticket = findTicketWaitingForDecision(user, ticketId);
 
         releaseTicket(ticket);
         TicketRestaurant saved = ticketRepository.save(ticket);
-        restoreBonStock(ticket.getBonCommande());
+        restoreBonStock(ticket.getBonCommande(), quantityOf(ticket));
 
         return TicketDto.from(saved);
     }
@@ -65,6 +113,31 @@ public class OffresService {
         requireTicketAssignedToUser(ticket, user);
         requireTicketStillWaiting(ticket);
         return ticket;
+    }
+
+    private List<TicketRestaurant> findTicketGroupWaitingForDecision(User user, String groupId) {
+        if (groupId == null || groupId.isBlank()) {
+            throw new IllegalArgumentException("Groupe de tickets requis.");
+        }
+
+        List<TicketRestaurant> tickets;
+        if (groupId.startsWith(BATCH_PREFIX)) {
+            String batchId = groupId.substring(BATCH_PREFIX.length());
+            tickets = ticketRepository.findByAdherentIdAndAssignmentBatchIdAndStatutOrderByNumeroAsc(
+                    user.getId(), batchId, STATUT_ATTRIBUE);
+        } else {
+            tickets = ticketRepository.findByAdherentIdOrderByDateEmissionDesc(user.getId()).stream()
+                    .filter(ticket -> STATUT_ATTRIBUE.equalsIgnoreCase(ticket.getStatut()))
+                    .filter(ticket -> groupId(ticket).equals(groupId))
+                    .toList();
+        }
+
+        if (tickets.isEmpty()) {
+            throw new IllegalArgumentException("Ce lot de tickets n'est pas disponible pour d\u00e9cision.");
+        }
+        tickets.forEach(ticket -> requireTicketAssignedToUser(ticket, user));
+        tickets.forEach(OffresService::requireTicketStillWaiting);
+        return tickets;
     }
 
     private static void requireTicketAssignedToUser(TicketRestaurant ticket, User user) {
@@ -86,18 +159,43 @@ public class OffresService {
         ticket.setDateDecision(null);
     }
 
-    private void restoreBonStock(BonCommande bon) {
+    private void restoreBonStock(BonCommande bon, int quantity) {
         if (bon == null) {
             return;
         }
 
         int remaining = bon.getQuantiteRestante() == null ? 0 : bon.getQuantiteRestante();
-        int total = bon.getQuantiteTotale() == null ? remaining + 1 : bon.getQuantiteTotale();
-        bon.setQuantiteRestante(Math.min(total, remaining + 1));
+        int total = bon.getQuantiteTotale() == null ? remaining + quantity : bon.getQuantiteTotale();
+        bon.setQuantiteRestante(Math.min(total, remaining + quantity));
 
         if (BON_STATUT_EPUISE.equalsIgnoreCase(bon.getStatut()) && bon.getQuantiteRestante() > 0) {
             bon.setStatut(BON_STATUT_VALIDE);
         }
         bonCommandeRepository.save(bon);
+    }
+
+    private static String groupId(TicketRestaurant ticket) {
+        if (ticket.getAssignmentBatchId() != null && !ticket.getAssignmentBatchId().isBlank()) {
+            return BATCH_PREFIX + ticket.getAssignmentBatchId();
+        }
+        BonCommande bon = ticket.getBonCommande();
+        return LEGACY_PREFIX
+                + "bon-" + (bon == null ? "none" : bon.getId())
+                + "_date-" + safeDate(ticket.getDateAttribution())
+                + "_type-" + safe(ticket.getTypeBon())
+                + "_status-" + safe(ticket.getStatut())
+                + "_decision-" + safeDate(ticket.getDateDecision());
+    }
+
+    private static String safe(String value) {
+        return value == null || value.isBlank() ? "none" : value.replaceAll("[^A-Za-z0-9.-]", "-");
+    }
+
+    private static String safeDate(LocalDate value) {
+        return value == null ? "none" : value.toString();
+    }
+
+    private static int quantityOf(TicketRestaurant ticket) {
+        return ticket.getQuantite() == null ? 1 : ticket.getQuantite();
     }
 }

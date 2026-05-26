@@ -148,10 +148,10 @@ export function AdherentLayout() {
                     <div style={{ fontSize: 'var(--font-size-sm)', fontWeight: 600, color: 'var(--color-text-primary)' }}>{fullName}</div>
                     <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-secondary)' }}>{user?.email}</div>
                   </div>
-                  <button className="adherent-menu-item" onClick={() => { setUserOpen(false); navigate('/adherent/profil'); }}>
+                  <button className="adherent-menu-item" onClick={() => { setUserOpen(false); navigate('/adherent/profile'); }}>
                     <User size={16} /> Mon profil
                   </button>
-                  <button className="adherent-menu-item" onClick={() => { setUserOpen(false); navigate('/adherent/profil'); }}>
+                  <button className="adherent-menu-item" onClick={() => { setUserOpen(false); navigate('/adherent/profile'); }}>
                     <Settings size={16} /> Paramètres
                   </button>
                   <div className="adherent-menu-divider" />

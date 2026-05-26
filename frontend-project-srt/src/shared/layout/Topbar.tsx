@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Bell, Menu, LogOut, User, Settings } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../features/auth/hooks/useAuth';
 import './Topbar.css';
 
@@ -9,6 +10,7 @@ interface TopbarProps {
 
 export function Topbar({ onOpenMobileSidebar }: TopbarProps) {
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const [profileOpen, setProfileOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
@@ -24,6 +26,16 @@ export function Topbar({ onOpenMobileSidebar }: TopbarProps) {
   }, []);
 
   const initials = `${user?.firstName?.[0] ?? ''}${user?.lastName?.[0] ?? ''}`.toUpperCase();
+  const roleLabel = user?.role === 'admin'
+    ? 'Administrateur'
+    : user?.role === 'treasurer'
+    ? 'Tresorier'
+    : 'Adherent';
+  const profilePath = user?.role === 'admin'
+    ? '/admin/profile'
+    : user?.role === 'treasurer'
+    ? '/treasurer/profile'
+    : '/adherent/profile';
 
   const notifications = [
     { id: 1, title: '3 conventions arrivent à expiration', time: 'Il y a 1h', tone: 'warning' as const },
@@ -75,7 +87,7 @@ export function Topbar({ onOpenMobileSidebar }: TopbarProps) {
             <span className="topbar-avatar">{initials || 'AD'}</span>
             <span className="topbar-profile-text">
               <span className="topbar-profile-name">{user?.firstName} {user?.lastName}</span>
-              <span className="topbar-profile-role">Administrateur</span>
+              <span className="topbar-profile-role">{roleLabel}</span>
             </span>
           </button>
           {profileOpen && (
@@ -87,8 +99,12 @@ export function Topbar({ onOpenMobileSidebar }: TopbarProps) {
                   <p>{user?.email}</p>
                 </div>
               </div>
-              <button className="topbar-dropdown-item"><User size={16} />Mon profil</button>
-              <button className="topbar-dropdown-item"><Settings size={16} />Paramètres</button>
+              <button className="topbar-dropdown-item" onClick={() => { setProfileOpen(false); navigate(profilePath); }}>
+                <User size={16} />Mon profil
+              </button>
+              <button className="topbar-dropdown-item" onClick={() => { setProfileOpen(false); navigate(profilePath); }}>
+                <Settings size={16} />Paramètres
+              </button>
               <hr />
               <button className="topbar-dropdown-item is-danger" onClick={logout}>
                 <LogOut size={16} />Se déconnecter

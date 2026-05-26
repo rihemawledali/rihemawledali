@@ -1,6 +1,6 @@
 import { NavLink } from 'react-router-dom';
 import {
-  LayoutDashboard, Users, Building2, FileSignature, UserPlus, ChevronsLeft,
+  LayoutDashboard, Users, Building2, FileSignature, UserPlus, User, ChevronsLeft,
 } from 'lucide-react';
 import logoUrl from '../../assets/amicalite-srt-logo-v1.png';
 import './Sidebar.css';
@@ -26,6 +26,7 @@ interface NavGroup {
 
 const GROUPS: NavGroup[] = [
   { items: [{ to: '/admin/dashboard', label: 'Tableau de bord', icon: LayoutDashboard, end: true }] },
+  { items: [{ to: '/admin/profile', label: 'Mon profil', icon: User }] },
   {
     label: 'Gestion',
     items: [

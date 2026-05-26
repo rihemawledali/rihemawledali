@@ -90,8 +90,9 @@ export function TicketsPage() {
       qc.invalidateQueries({ queryKey: ['tickets'] });
       qc.invalidateQueries({ queryKey: ['bons-commande'] });
       setQuantite(1);
+      const assigned = created.reduce((sum, ticket) => sum + ticket.quantite, 0);
       toast.push({
-        title: `${created.length} ticket(s) attribue(s)`,
+        title: `${assigned} ticket(s) attribue(s)`,
         variant: 'success',
       });
     },
@@ -102,8 +103,8 @@ export function TicketsPage() {
     const rows = tickets.data?.items ?? [];
     return {
       visible: tickets.data?.total ?? 0,
-      libres: rows.filter((ticket) => ticket.statut === 'en_attente').length,
-      attribues: rows.filter((ticket) => ticket.statut === 'attribue').length,
+      libres: rows.filter((ticket) => ticket.statut === 'en_attente').reduce((sum, ticket) => sum + ticket.quantite, 0),
+      attribues: rows.filter((ticket) => ticket.statut === 'attribue').reduce((sum, ticket) => sum + ticket.quantite, 0),
     };
   }, [tickets.data]);
 
@@ -237,7 +238,7 @@ export function TicketsPage() {
       </section>
 
       <section className="offers-metrics">
-        <TicketMetric icon={<PackageCheck size={18} />} label="Tickets affiches" value={formatNumber(stats.visible)} tone="primary" />
+        <TicketMetric icon={<PackageCheck size={18} />} label="Attributions affichees" value={formatNumber(stats.visible)} tone="primary" />
         <TicketMetric icon={<Ticket size={18} />} label="Tickets libres" value={formatNumber(stats.libres)} tone="warning" />
         <TicketMetric icon={<UserRound size={18} />} label="Tickets attribues" value={formatNumber(stats.attribues)} tone="success" />
         <TicketMetric icon={<Search size={18} />} label="Bon actif" value={selectedBon ? selectedBon.numero : '-'} tone="info" />
@@ -284,6 +285,7 @@ function groupTicketsByAssignment(tickets: TicketRestaurant[]): TicketCountRow[]
 
   for (const ticket of tickets) {
     const key = [
+      ticket.assignmentBatchId ?? 'legacy',
       ticket.bonCommandeId ?? 'sans-bon',
       ticket.adherentId ?? 'stock',
       ticket.statut,
@@ -292,8 +294,8 @@ function groupTicketsByAssignment(tickets: TicketRestaurant[]): TicketCountRow[]
 
     const current = map.get(key);
     if (current) {
-      current.quantite += 1;
-      current.montantTotal += ticket.montant;
+      current.quantite += ticket.quantite;
+      current.montantTotal += ticket.montantTotal;
       continue;
     }
 
@@ -304,8 +306,8 @@ function groupTicketsByAssignment(tickets: TicketRestaurant[]): TicketCountRow[]
       adherentMatricule: ticket.adherentMatricule,
       statut: ticket.statut,
       dateAttribution: ticket.dateAttribution,
-      quantite: 1,
-      montantTotal: ticket.montant,
+      quantite: ticket.quantite,
+      montantTotal: ticket.montantTotal,
     });
   }
 

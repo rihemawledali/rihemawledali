@@ -1,7 +1,7 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Pencil, Trash2, CreditCard, Ban, FileDown } from 'lucide-react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Ban, CheckCircle2, CreditCard, Eye, FileDown, FilePlus2 } from 'lucide-react';
 import { PageHeader } from '../../../shared/layout/PageHeader';
 import { Button } from '../../../shared/ui/Button';
 import { DataTable, type Column } from '../../../shared/data/DataTable';
@@ -14,23 +14,28 @@ import { StatusBadge } from '../../../shared/data/StatusBadge';
 import { useToast } from '../../../shared/feedback/useToast';
 import { facturesApi } from './api';
 import { suppliersApi } from '../../admin/suppliers/suppliersApi';
-import { FactureForm } from './FactureForm';
 import { formatCurrency, formatDate, daysUntil } from '../../../shared/lib/formatters';
-import type { Facture, FactureStatus } from '../../../shared/types/domain';
-import type { FactureFormValues } from '../../../shared/validators';
+import { getConventionAvantageSummary } from '../../../shared/lib/conventionWorkflow';
+import type { Facture, FactureStatus, Fournisseur } from '../../../shared/types/domain';
+import type { ConventionDemandeRow } from '../conventions-demande/api';
 import '../../../shared/layout/CrudPage.css';
+import '../../../shared/ui/FormInput.css';
 
-const STATUT_LABEL: Record<FactureStatus, string> = {
+const STATUT_LABEL: Partial<Record<FactureStatus, string>> = {
   brouillon: 'Brouillon',
-  non_payee: 'Non payée',
-  impayee: 'Non payée',
+  non_payee: 'Non payee',
+  impayee: 'Non payee',
   partielle: 'Partielle',
   en_retard: 'En retard',
-  payee: 'Payée',
-  annulee: 'Annulée',
+  payee: 'Payee',
+  annulee: 'Annulee',
+  GENEREE: 'Generee',
+  VALIDEE: 'Validee',
+  EN_PAIEMENT: 'En paiement',
+  PAYEE: 'Payee',
 };
 
-const STATUT_TONE: Record<FactureStatus, 'success' | 'warning' | 'info' | 'error' | 'neutral'> = {
+const STATUT_TONE: Partial<Record<FactureStatus, 'success' | 'warning' | 'info' | 'error' | 'neutral'>> = {
   brouillon: 'neutral',
   non_payee: 'warning',
   impayee: 'warning',
@@ -38,7 +43,17 @@ const STATUT_TONE: Record<FactureStatus, 'success' | 'warning' | 'info' | 'error
   en_retard: 'error',
   payee: 'success',
   annulee: 'error',
+  GENEREE: 'info',
+  VALIDEE: 'success',
+  EN_PAIEMENT: 'warning',
+  PAYEE: 'success',
 };
+
+const NOW = new Date();
+const MOIS_LABELS = [
+  'Janvier', 'Fevrier', 'Mars', 'Avril', 'Mai', 'Juin',
+  'Juillet', 'Aout', 'Septembre', 'Octobre', 'Novembre', 'Decembre',
+];
 
 export function FacturesPage() {
   const qc = useQueryClient();
@@ -51,74 +66,111 @@ export function FacturesPage() {
   const [statut, setStatut] = useState('');
   const [sortBy, setSortBy] = useState('dateEcheance');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
-  const [creating, setCreating] = useState(false);
-  const [editing, setEditing] = useState<Facture | null>(null);
-  const [deleting, setDeleting] = useState<Facture | null>(null);
   const [cancelling, setCancelling] = useState<Facture | null>(null);
+  const [generating, setGenerating] = useState(false);
+  const [genFournisseurId, setGenFournisseurId] = useState('');
+  const [genMois, setGenMois] = useState(NOW.getMonth() + 1);
+  const [genAnnee, setGenAnnee] = useState(NOW.getFullYear());
+  const [selectedDemandes, setSelectedDemandes] = useState<string[]>([]);
+  const [detailFacture, setDetailFacture] = useState<Facture | null>(null);
 
   const query = useQuery({
     queryKey: ['factures', { page, search, statut, sortBy, sortDir }],
     queryFn: () => facturesApi.list({ page, size: 10, search, sortBy, sortDir, filters: { statut } }),
   });
 
-  const buildPayload = async (v: FactureFormValues): Promise<Omit<Facture, 'id'>> => {
-    const all = await suppliersApi.list({ page: 1, size: 200 });
-    const f = all.items.find((s) => s.id === v.fournisseurId);
-    return {
-      numero: v.numero, fournisseurId: v.fournisseurId, fournisseurNom: f?.nom ?? '—',
-      montant: v.montant, statut: v.statut,
-      dateEmission: new Date(v.dateEmission).toISOString(),
-      dateEcheance: new Date(v.dateEcheance).toISOString(),
-      description: v.description,
-      dateFacture: new Date(v.dateEmission).toISOString(),
-    };
-  };
+  const suppliers = useQuery({
+    queryKey: ['suppliers', 'facture-convention-options'],
+    queryFn: () => suppliersApi.list({ page: 1, size: 200 }),
+    enabled: generating,
+  });
 
-  const create = useMutation({
-    mutationFn: async (v: FactureFormValues) => facturesApi.create(await buildPayload(v)),
+  const eligible = useQuery({
+    queryKey: ['factures', 'convention-eligible', genFournisseurId, genMois, genAnnee],
+    queryFn: () => facturesApi.eligibleConventionDemandes({
+      fournisseurId: genFournisseurId,
+      mois: genMois,
+      annee: genAnnee,
+    }),
+    enabled: generating && !!genFournisseurId,
+  });
+
+  useEffect(() => {
+    setSelectedDemandes((eligible.data ?? []).map((d) => d.id));
+  }, [eligible.data]);
+
+  const generateConvention = useMutation({
+    mutationFn: () => facturesApi.generateConventionFacture({
+      fournisseurId: genFournisseurId,
+      mois: genMois,
+      annee: genAnnee,
+      demandeIds: selectedDemandes,
+    }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['factures'] });
       qc.invalidateQueries({ queryKey: ['dashboard'] });
-      setCreating(false);
-      toast.push({ title: 'Facture créée', variant: 'success' });
+      qc.invalidateQueries({ queryKey: ['treasurer', 'conventions'] });
+      qc.invalidateQueries({ queryKey: ['adherent-conventions-demandes'] });
+      setGenerating(false);
+      setSelectedDemandes([]);
+      toast.push({ title: 'Facture convention generee', variant: 'success' });
     },
+    onError: (e) => toast.push({ title: e instanceof Error ? e.message : 'Erreur', variant: 'error' }),
   });
+
   const downloadPdf = useMutation({
     mutationFn: (id: string) => facturesApi.downloadPdf(id),
     onError: (e) => toast.push({
-      title: 'Téléchargement impossible',
+      title: 'Telechargement impossible',
       description: e instanceof Error ? e.message : 'Erreur inconnue',
       variant: 'error',
     }),
   });
-  const update = useMutation({
-    mutationFn: async ({ id, v }: { id: string; v: FactureFormValues }) => facturesApi.update(id, await buildPayload(v)),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['factures'] }); setEditing(null); toast.push({ title: 'Facture mise à jour', variant: 'success' }); },
-  });
-  const remove = useMutation({
-    mutationFn: (id: string) => facturesApi.remove(id),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['factures'] }); setDeleting(null); toast.push({ title: 'Supprimée', variant: 'success' }); },
-  });
+
   const cancel = useMutation({
     mutationFn: (id: string) => facturesApi.annuler(id),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['factures'] }); setCancelling(null); toast.push({ title: 'Facture annulée', variant: 'success' }); },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['factures'] });
+      qc.invalidateQueries({ queryKey: ['treasurer', 'conventions'] });
+      qc.invalidateQueries({ queryKey: ['adherent-conventions-demandes'] });
+      setCancelling(null);
+      toast.push({ title: 'Facture annulee', variant: 'success' });
+    },
     onError: (e) => toast.push({ title: e instanceof Error ? e.message : 'Erreur', variant: 'error' }),
   });
 
-  const onSort = (k: string) => sortBy === k ? setSortDir(sortDir === 'asc' ? 'desc' : 'asc') : (setSortBy(k), setSortDir('asc'));
+  const validateConvention = useMutation({
+    mutationFn: (id: string) => facturesApi.validerConvention(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['factures'] });
+      qc.invalidateQueries({ queryKey: ['treasurer', 'retenues'] });
+      qc.invalidateQueries({ queryKey: ['treasurer', 'conventions'] });
+      qc.invalidateQueries({ queryKey: ['adherent-conventions-demandes'] });
+      toast.push({ title: 'Facture convention validee', variant: 'success' });
+    },
+    onError: (e) => toast.push({ title: e instanceof Error ? e.message : 'Erreur', variant: 'error' }),
+  });
 
+  const detailDemandes = useQuery({
+    queryKey: ['factures', 'convention-demandes', detailFacture?.id],
+    queryFn: () => facturesApi.conventionDemandes(detailFacture!.id),
+    enabled: !!detailFacture,
+  });
+
+  const onSort = (k: string) => sortBy === k ? setSortDir(sortDir === 'asc' ? 'desc' : 'asc') : (setSortBy(k), setSortDir('asc'));
   const handlePay = (f: Facture) => navigate(`${paiementsRoute}?factureId=${f.id}`);
 
   const columns: Column<Facture>[] = useMemo(() => [
-    { key: 'numero', header: 'N° facture', sortable: true, cell: (f) => <span className="cell-mono">{f.numero}</span> },
+    { key: 'numero', header: 'N facture', sortable: true, cell: (f) => <span className="cell-mono">{f.numero}</span> },
     { key: 'fournisseurNom', header: 'Fournisseur', sortable: true, cell: (f) => <strong className="cell-strong">{f.fournisseurNom}</strong> },
     { key: 'dateEmission', header: 'Date', sortable: true, cell: (f) => formatDate(f.dateEmission) },
     { key: 'montant', header: 'Montant', sortable: true, align: 'right', cell: (f) => <strong className="amount">{formatCurrency(f.montant)}</strong> },
-    { key: 'description', header: 'Description', cell: (f) => f.description ? <span style={{ color: 'var(--color-text-secondary)' }}>{f.description}</span> : <span style={{ color: 'var(--color-text-tertiary)' }}>—</span> },
-    { key: 'dateEcheance', header: 'Échéance', sortable: true, cell: (f) => {
+    { key: 'description', header: 'Description', cell: (f) => f.description ? <span style={{ color: 'var(--color-text-secondary)' }}>{f.description}</span> : <span style={{ color: 'var(--color-text-tertiary)' }}>-</span> },
+    { key: 'dateEcheance', header: 'Echeance', sortable: true, cell: (f) => {
       const d = daysUntil(f.dateEcheance);
-      const overdue = f.statut !== 'payee' && f.statut !== 'annulee' && d < 0;
-      const soon = f.statut !== 'payee' && f.statut !== 'annulee' && d >= 0 && d < 7;
+      const paid = f.statut === 'payee' || f.statut === 'PAYEE';
+      const overdue = !paid && f.statut !== 'annulee' && d < 0;
+      const soon = !paid && f.statut !== 'annulee' && d >= 0 && d < 7;
       return (
         <div className="row-stack">
           <span>{formatDate(f.dateEcheance)}</span>
@@ -137,23 +189,27 @@ export function FacturesPage() {
     <div>
       <PageHeader
         title="Factures"
-        description="Factures émises par les fournisseurs"
-        breadcrumb={['Trésorerie', 'Finance', 'Factures']}
-        actions={<Button onClick={() => setCreating(true)}><Plus size={16} />Nouvelle facture</Button>}
+        description="Factures fournisseurs consolidees depuis les conventions."
+        breadcrumb={['Tresorerie', 'Finance', 'Factures']}
+        actions={<Button onClick={() => setGenerating(true)}><FilePlus2 size={16} />Generer facture</Button>}
       />
 
       <div className="crud-toolbar">
         <FilterBar>
-          <SearchInput value={search} onChange={(v) => { setSearch(v); setPage(1); }} placeholder="Numéro, fournisseur, description..." />
+          <SearchInput value={search} onChange={(v) => { setSearch(v); setPage(1); }} placeholder="Numero, fournisseur, description..." />
           <SelectFilter label="Statut" value={statut} onChange={(v) => { setStatut(v); setPage(1); }}
             options={[
               { value: 'brouillon', label: 'Brouillon' },
-              { value: 'non_payee', label: 'Non payée' },
-              { value: 'impayee', label: 'Non payée (legacy)' },
+              { value: 'non_payee', label: 'Non payee' },
+              { value: 'impayee', label: 'Non payee (legacy)' },
               { value: 'partielle', label: 'Partielle' },
               { value: 'en_retard', label: 'En retard' },
-              { value: 'payee', label: 'Payée' },
-              { value: 'annulee', label: 'Annulée' },
+              { value: 'payee', label: 'Payee' },
+              { value: 'annulee', label: 'Annulee' },
+              { value: 'GENEREE', label: 'Generee convention' },
+              { value: 'VALIDEE', label: 'Validee convention' },
+              { value: 'EN_PAIEMENT', label: 'En paiement convention' },
+              { value: 'PAYEE', label: 'Payee convention' },
             ]} />
         </FilterBar>
       </div>
@@ -165,38 +221,39 @@ export function FacturesPage() {
         rowKey={(f) => f.id}
         sortBy={sortBy} sortDir={sortDir} onSortChange={onSort}
         emptyTitle="Aucune facture"
-        emptyDescription="Cliquez sur « Nouvelle facture » pour commencer."
+        emptyDescription="Cliquez sur Generer facture pour creer une facture convention."
         rowActions={(f) => {
-          const canPay = f.statut !== 'payee' && f.statut !== 'annulee';
-          const canCancel = f.statut !== 'payee' && f.statut !== 'annulee';
+          const paid = f.statut === 'payee' || f.statut === 'PAYEE';
+          const cancelled = f.statut === 'annulee';
+          const isConvention = f.sourceType === 'CONVENTION';
+          const canValidate = isConvention && f.statut === 'GENEREE';
+          const canPay = !paid && !cancelled && (!isConvention || f.statut === 'VALIDEE' || f.statut === 'EN_PAIEMENT');
+          const canCancel = !paid && !cancelled && (!isConvention || f.statut === 'GENEREE');
           return (
             <span className="row-actions">
+              {isConvention && (
+                <button className="icon-btn" onClick={() => setDetailFacture(f)} title="Details convention">
+                  <Eye size={15} />
+                </button>
+              )}
+              {canValidate && (
+                <button className="icon-btn icon-btn--success" onClick={() => validateConvention.mutate(f.id)} title="Valider la facture convention" disabled={validateConvention.isPending}>
+                  <CheckCircle2 size={15} />
+                </button>
+              )}
               {canPay && (
-                <button
-                  className="icon-btn icon-btn--success"
-                  onClick={() => handlePay(f)}
-                  title="Payer la facture"
-                  aria-label={`Payer la facture ${f.numero}`}
-                >
+                <button className="icon-btn icon-btn--success" onClick={() => handlePay(f)} title="Payer la facture" aria-label={`Payer la facture ${f.numero}`}>
                   <CreditCard size={15} />
                 </button>
               )}
-              <button className="icon-btn icon-btn--primary" onClick={() => setEditing(f)} title="Modifier"><Pencil size={15} /></button>
-              {f.statut === 'payee' && (
-                <button
-                  className="icon-btn"
-                  onClick={() => downloadPdf.mutate(f.id)}
-                  title="Télécharger le PDF"
-                  aria-label={`Télécharger la facture ${f.numero} en PDF`}
-                  disabled={downloadPdf.isPending}
-                >
+              {paid && (
+                <button className="icon-btn" onClick={() => downloadPdf.mutate(f.id)} title="Telecharger le PDF" aria-label={`Telecharger la facture ${f.numero} en PDF`} disabled={downloadPdf.isPending}>
                   <FileDown size={15} />
                 </button>
               )}
               {canCancel && (
                 <button className="icon-btn" onClick={() => setCancelling(f)} title="Annuler la facture"><Ban size={15} /></button>
               )}
-              <button className="icon-btn icon-btn--danger" onClick={() => setDeleting(f)} title="Supprimer"><Trash2 size={15} /></button>
             </span>
           );
         }}
@@ -208,24 +265,177 @@ export function FacturesPage() {
         </div>
       )}
 
-      <Modal open={creating} onClose={() => setCreating(false)} title="Nouvelle facture">
-        <FactureForm onCancel={() => setCreating(false)} onSubmit={(v) => create.mutateAsync(v)} submitting={create.isPending} />
+      <Modal open={generating} onClose={() => setGenerating(false)} title="Generer facture convention" size="lg">
+        <ConventionFactureGenerator
+          fournisseurs={suppliers.data?.items ?? []}
+          fournisseurId={genFournisseurId}
+          mois={genMois}
+          annee={genAnnee}
+          demandes={eligible.data ?? []}
+          selectedIds={selectedDemandes}
+          loading={eligible.isLoading}
+          submitting={generateConvention.isPending}
+          onFournisseurChange={(value) => { setGenFournisseurId(value); setSelectedDemandes([]); }}
+          onMoisChange={setGenMois}
+          onAnneeChange={setGenAnnee}
+          onToggle={(id) => setSelectedDemandes((current) => current.includes(id) ? current.filter((x) => x !== id) : [...current, id])}
+          onSubmit={() => generateConvention.mutate()}
+          onCancel={() => setGenerating(false)}
+        />
       </Modal>
-      <Modal open={!!editing} onClose={() => setEditing(null)} title="Modifier la facture">
-        {editing && <FactureForm initial={editing} onCancel={() => setEditing(null)} onSubmit={(v) => update.mutateAsync({ id: editing.id, v })} submitting={update.isPending} />}
+
+      <Modal open={!!detailFacture} onClose={() => setDetailFacture(null)} title="Details facture convention" size="lg">
+        <ConventionFactureDetails facture={detailFacture} demandes={detailDemandes.data ?? []} loading={detailDemandes.isLoading} />
       </Modal>
-      <ConfirmDialog
-        open={!!deleting} title="Supprimer cette facture ?"
-        message={`La facture ${deleting?.numero} sera supprimée.`}
-        confirmLabel="Supprimer" destructive loading={remove.isPending}
-        onCancel={() => setDeleting(null)} onConfirm={() => deleting && remove.mutate(deleting.id)}
-      />
+
       <ConfirmDialog
         open={!!cancelling} title="Annuler cette facture ?"
-        message={`La facture ${cancelling?.numero} sera marquée comme annulée. Cette action est réversible via une mise à jour manuelle.`}
+        message={`La facture ${cancelling?.numero} sera marquee comme annulee.`}
         confirmLabel="Annuler la facture" destructive loading={cancel.isPending}
         onCancel={() => setCancelling(null)} onConfirm={() => cancelling && cancel.mutate(cancelling.id)}
       />
+    </div>
+  );
+}
+
+function ConventionFactureGenerator({
+  fournisseurs,
+  fournisseurId,
+  mois,
+  annee,
+  demandes,
+  selectedIds,
+  loading,
+  submitting,
+  onFournisseurChange,
+  onMoisChange,
+  onAnneeChange,
+  onToggle,
+  onSubmit,
+  onCancel,
+}: {
+  fournisseurs: Fournisseur[];
+  fournisseurId: string;
+  mois: number;
+  annee: number;
+  demandes: ConventionDemandeRow[];
+  selectedIds: string[];
+  loading: boolean;
+  submitting: boolean;
+  onFournisseurChange: (value: string) => void;
+  onMoisChange: (value: number) => void;
+  onAnneeChange: (value: number) => void;
+  onToggle: (id: string) => void;
+  onSubmit: () => void;
+  onCancel: () => void;
+}) {
+  const totalAmicale = demandes
+    .filter((d) => selectedIds.includes(d.id))
+    .reduce((sum, d) => sum + (d.montantAmicale ?? 0), 0);
+  const years = [NOW.getFullYear() - 1, NOW.getFullYear(), NOW.getFullYear() + 1];
+
+  return (
+    <div className="form-grid">
+      <label>
+        <span className="form-input-label">Fournisseur</span>
+        <select className="form-input" value={fournisseurId} onChange={(e) => onFournisseurChange(e.target.value)}>
+          <option value="">Selectionner un fournisseur</option>
+          {fournisseurs.map((f) => <option key={f.id} value={f.id}>{f.nom}</option>)}
+        </select>
+      </label>
+      <label>
+        <span className="form-input-label">Mois</span>
+        <select className="form-input" value={mois} onChange={(e) => onMoisChange(Number(e.target.value))}>
+          {MOIS_LABELS.map((label, index) => <option key={label} value={index + 1}>{label}</option>)}
+        </select>
+      </label>
+      <label>
+        <span className="form-input-label">Annee</span>
+        <select className="form-input" value={annee} onChange={(e) => onAnneeChange(Number(e.target.value))}>
+          {years.map((year) => <option key={year} value={year}>{year}</option>)}
+        </select>
+      </label>
+
+      <div className="form-grid-full">
+        <div className="data-table-card" style={{ padding: 'var(--space-4)' }}>
+          <div className="row-stack" style={{ marginBottom: 'var(--space-3)' }}>
+            <strong className="cell-strong">Demandes approuvees</strong>
+            <span>{selectedIds.length} selectionnee(s) - total amicale {formatCurrency(totalAmicale)}</span>
+          </div>
+          {loading ? (
+            <p className="cell-muted">Chargement...</p>
+          ) : !fournisseurId ? (
+            <p className="cell-muted">Selectionnez un fournisseur pour afficher les demandes approuvees facturables.</p>
+          ) : demandes.length === 0 ? (
+            <p className="cell-muted">Aucune demande approuvee facturable pour cette selection.</p>
+          ) : (
+            <div style={{ display: 'grid', gap: 'var(--space-2)' }}>
+              {demandes.map((d) => (
+                <label key={d.id} style={{ display: 'grid', gridTemplateColumns: 'auto minmax(0, 1fr) auto', gap: 'var(--space-3)', alignItems: 'center', padding: 'var(--space-3)', border: '1px solid var(--color-border-light)', borderRadius: 8 }}>
+                  <input type="checkbox" checked={selectedIds.includes(d.id)} onChange={() => onToggle(d.id)} />
+                  <ConventionDemandeAmountSummary demande={d} />
+                  <strong className="amount" style={{ textAlign: 'right' }}>
+                    {formatCurrency(d.montantAmicale ?? 0)}
+                  </strong>
+                </label>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="form-grid-full" style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-3)' }}>
+        <Button type="button" variant="secondary" onClick={onCancel} disabled={submitting}>Annuler</Button>
+        <Button type="button" onClick={onSubmit} disabled={!fournisseurId || selectedIds.length === 0 || submitting} isLoading={submitting}>
+          Generer facture
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function ConventionDemandeAmountSummary({ demande }: { demande: ConventionDemandeRow }) {
+  const avantage = getConventionAvantageSummary(demande);
+  return (
+    <span className="row-stack">
+      <strong className="cell-strong">{demande.adherentNom}</strong>
+      <span>{demande.conventionSnapshot?.fournisseurNom ?? '-'} - {avantage.label}</span>
+      <span>
+        Total {formatCurrency(demande.montantTotal ?? 0)}
+        {' | '}
+        Adherent {formatCurrency(demande.montantAdherent ?? 0)}
+        {' | '}
+        Amicale {formatCurrency(demande.montantAmicale ?? 0)}
+      </span>
+      {demande.retenueMontantMensuel != null && demande.retenueNombreMois != null && (
+        <span>
+          Retenue {formatCurrency(demande.retenueMontantMensuel)} / mois pendant {demande.retenueNombreMois} mois
+        </span>
+      )}
+    </span>
+  );
+}
+
+function ConventionFactureDetails({ facture, demandes, loading }: { facture: Facture | null; demandes: ConventionDemandeRow[]; loading: boolean }) {
+  if (!facture) return null;
+  return (
+    <div className="row-stack" style={{ gap: 'var(--space-4)' }}>
+      <div className="data-table-card" style={{ padding: 'var(--space-4)' }}>
+        <strong className="cell-strong">{facture.numero}</strong>
+        <span>{facture.fournisseurNom} - {formatCurrency(facture.montant)}</span>
+      </div>
+      {loading ? <p className="cell-muted">Chargement...</p> : demandes.length === 0 ? (
+        <p className="cell-muted">Aucune demande rattachee a cette facture convention.</p>
+      ) : (
+        <div style={{ display: 'grid', gap: 'var(--space-2)' }}>
+          {demandes.map((d) => (
+            <div key={d.id} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: 'var(--space-3)', padding: 'var(--space-3)', border: '1px solid var(--color-border-light)', borderRadius: 8 }}>
+              <ConventionDemandeAmountSummary demande={d} />
+              <strong className="amount">{formatCurrency(d.montantAmicale ?? 0)}</strong>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

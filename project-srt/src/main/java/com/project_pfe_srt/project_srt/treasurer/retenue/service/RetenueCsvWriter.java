@@ -64,7 +64,7 @@ final class RetenueCsvWriter {
     String period(List<RetenueMensuelle> masters) {
         StringBuilder sb = new StringBuilder();
         sb.append(BOM);
-        sb.append("Adherent;Matricule;Mois;Annee;TotalCotisation;TotalPret;TotalConvention;TotalRetenu;Statut\n");
+        sb.append("Adherent;Matricule;Mois;Annee;TotalCotisation;TotalPret;TotalConvention;TotalTicket;TotalRetenu;Statut\n");
 
         for (RetenueMensuelle r : masters) {
             List<RetenueLigne> lignes = ligneRepo.findByRetenueIdOrderByIdAsc(r.getId());
@@ -77,6 +77,7 @@ final class RetenueCsvWriter {
             sb.append(formatMontant(totals.cotisation)).append(SEPARATOR);
             sb.append(formatMontant(totals.pret)).append(SEPARATOR);
             sb.append(formatMontant(totals.convention)).append(SEPARATOR);
+            sb.append(formatMontant(totals.ticket)).append(SEPARATOR);
             sb.append(formatMontant(r.getTotalRetenu())).append(SEPARATOR);
             appendField(sb, r.getStatut());
             sb.append('\n');
@@ -95,7 +96,8 @@ final class RetenueCsvWriter {
             switch (type) {
                 case "COTISATION" -> t.cotisation += v;
                 case "PRET" -> t.pret += v;
-                case "CONVENTION", "TICKET_RESTAURANT" -> t.convention += v;
+                case "CONVENTION" -> t.convention += v;
+                case "TICKET_RESTAURANT" -> t.ticket += v;
                 default -> { /* ignored on purpose */ }
             }
         }
@@ -130,5 +132,6 @@ final class RetenueCsvWriter {
         double cotisation;
         double pret;
         double convention;
+        double ticket;
     }
 }

@@ -1,5 +1,6 @@
 package com.project_pfe_srt.project_srt.treasurer.paiement.service;
 
+import com.project_pfe_srt.project_srt.adherent.convention.repository.ConventionDemandeRepository;
 import com.project_pfe_srt.project_srt.adherent.indemnite.entity.Indemnite;
 import com.project_pfe_srt.project_srt.adherent.indemnite.repository.IndemniteRepository;
 import com.project_pfe_srt.project_srt.common.util.Repos;
@@ -66,6 +67,7 @@ public class PaiementService {
     private final FactureRepository factureRepository;
     private final IndemniteRepository indemniteRepository;
     private final TreasuryLedger ledger;
+    private final ConventionDemandeRepository conventionDemandeRepository;
 
     // =====================================================================
     // Read
@@ -163,6 +165,12 @@ public class PaiementService {
     public PaiementDto payFacture(Long factureId, PaiementRequest req, String currentUserName) {
         if (req == null) req = new PaiementRequest();
         Facture f = Repos.findOrThrow(factureRepository, factureId, "Facture");
+        if ("PAYEE".equalsIgnoreCase(f.getStatut())) throw new IllegalArgumentException("Facture deja payee.");
+        if ("CONVENTION".equalsIgnoreCase(f.getSourceType())
+                && !"VALIDEE".equalsIgnoreCase(f.getStatut())
+                && !"EN_PAIEMENT".equalsIgnoreCase(f.getStatut())) {
+            throw new IllegalArgumentException("La facture convention doit etre validee avant paiement.");
+        }
         if ("payee".equalsIgnoreCase(f.getStatut())) throw new IllegalArgumentException("Facture déjà payée.");
         if ("annulee".equalsIgnoreCase(f.getStatut())) throw new IllegalArgumentException("Facture annulée.");
 
@@ -170,8 +178,9 @@ public class PaiementService {
         PaiementDto created = createInternal(req, currentUserName, true);
 
         if (STATUT_REUSSI.equalsIgnoreCase(created.getStatut())) {
-            f.setStatut("payee");
+            f.setStatut(paidFactureStatus(f));
             factureRepository.save(f);
+            markConventionDemandesPaid(f);
         }
         return created;
     }
@@ -286,8 +295,9 @@ public class PaiementService {
     private void markSourcePaid(Paiement paiement) {
         if (paiement.getFacture() != null) {
             Facture facture = paiement.getFacture();
-            facture.setStatut("payee");
+            facture.setStatut(paidFactureStatus(facture));
             factureRepository.save(facture);
+            markConventionDemandesPaid(facture);
         }
         if (paiement.getIndemnite() != null) {
             Indemnite indemnite = paiement.getIndemnite();
@@ -298,6 +308,21 @@ public class PaiementService {
 
     private static boolean isBlank(String s) {
         return s == null || s.isBlank();
+    }
+
+    private static String paidFactureStatus(Facture facture) {
+        return "CONVENTION".equalsIgnoreCase(facture.getSourceType()) ? "PAYEE" : "payee";
+    }
+
+    private void markConventionDemandesPaid(Facture facture) {
+        if (!"CONVENTION".equalsIgnoreCase(facture.getSourceType()) || facture.getId() == null) {
+            return;
+        }
+        var demandes = conventionDemandeRepository.findByFactureIdOrderByIdAsc(facture.getId());
+        for (var demande : demandes) {
+            demande.setStatut("PAYEE");
+        }
+        conventionDemandeRepository.saveAll(demandes);
     }
 
     /** Builds the historique row + decrements the compte for a successful paiement. */

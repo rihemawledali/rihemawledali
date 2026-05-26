@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
+import { User, Mail, Hash, Phone, Users } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { AuthLayout } from '../components/AuthLayout';
 import { FormInput } from '../../../shared/ui/FormInput';
@@ -86,16 +87,17 @@ export function SignupPage() {
   };
 
   return (
-    <AuthLayout>
-      <h1 className="auth-title text-gradient-link">Créer un compte</h1>
+    <AuthLayout variant="signup">
+      <div className="auth-page auth-page--signup">
+        <h1 className="auth-title text-gradient-link">Créer un compte</h1>
 
-      {serverError && (
-        <div className="auth-error-alert">
-          <Alert variant="error" dismissible onDismiss={() => setServerError('')}>
-            {serverError}
-          </Alert>
-        </div>
-      )}
+        {serverError && (
+          <div className="auth-error-alert">
+            <Alert variant="error" dismissible onDismiss={() => setServerError('')}>
+              {serverError}
+            </Alert>
+          </div>
+        )}
 
       <form className="auth-form-fields" onSubmit={handleSubmit} noValidate>
         <div className="signup-section">
@@ -109,6 +111,7 @@ export function SignupPage() {
               onChange={(e) => setFullName(e.target.value)}
               error={errors.fullName}
               autoComplete="name"
+              icon={<User size={18} />}
             />
           </div>
 
@@ -122,6 +125,7 @@ export function SignupPage() {
               onChange={(e) => setEmail(e.target.value)}
               error={errors.email}
               autoComplete="email"
+              icon={<Mail size={18} />}
             />
 
             <FormInput
@@ -132,6 +136,7 @@ export function SignupPage() {
               value={matricule}
               onChange={(e) => setMatricule(e.target.value)}
               error={errors.matricule}
+              icon={<Hash size={18} />}
             />
           </div>
 
@@ -145,6 +150,7 @@ export function SignupPage() {
               onChange={(e) => setPhone(e.target.value)}
               error={errors.phone}
               autoComplete="tel"
+              icon={<Phone size={18} />}
             />
 
             <FormInput
@@ -155,15 +161,15 @@ export function SignupPage() {
               value={String(enfant)}
               onChange={(e) => setEnfant(Number(e.target.value))}
               min={0}
+              icon={<Users size={18} />}
             />
           </div>
 
-          <div className="signup-row">
+          <div className="signup-row signup-row--full">
             <div className="form-input-group">
               <label className="form-input-label">Marié(e)</label>
               <select
                 className="form-input"
-                style={{ width: '100%' }}
                 value={marie ? 'true' : 'false'}
                 onChange={(e) => setMarie(e.target.value === 'true')}
               >
@@ -171,8 +177,6 @@ export function SignupPage() {
                 <option value="true">Oui</option>
               </select>
             </div>
-            {/* Empty div to maintain grid of 2 */}
-            <div></div>
           </div>
         </div>
 
@@ -198,12 +202,12 @@ export function SignupPage() {
               autoComplete="new-password"
             />
           </div>
-          <div style={{ marginTop: '-0.5rem' }}>
+          <div className="auth-password-strength">
             <PasswordStrength password={password} />
           </div>
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+        <div className="auth-consent-block">
           <Checkbox
             label="J'accepte les conditions d'utilisation et la politique de confidentialité."
             checked={acceptedTerms}
@@ -211,7 +215,7 @@ export function SignupPage() {
             aria-invalid={Boolean(errors.acceptedTerms)}
           />
           {errors.acceptedTerms && (
-            <p style={{ color: '#b91c1c', fontSize: '0.76rem', fontWeight: 600, margin: 0, marginLeft: '1.5rem' }}>
+            <p className="auth-checkbox-error">
               {errors.acceptedTerms}
             </p>
           )}
@@ -222,9 +226,10 @@ export function SignupPage() {
         </button>
       </form>
 
-      <p className="auth-switch-text">
-        Vous avez déjà un compte ? <Link to="/login" className="text-gradient-link">Se connecter</Link>
-      </p>
+        <p className="auth-switch-text">
+          Vous avez déjà un compte ? <Link to="/login" className="text-gradient-link">Se connecter</Link>
+        </p>
+      </div>
     </AuthLayout>
   );
 }

@@ -54,8 +54,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
     await forgotPasswordService(email);
   }, []);
 
-  const resetPassword = useCallback(async (token: string, password: string) => {
-    await resetPasswordService(token, password);
+  const resetPassword = useCallback(async (email: string, code: string, password: string) => {
+    await resetPasswordService(email, code, password);
   }, []);
 
   const value: AuthContextType = {

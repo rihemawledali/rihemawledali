@@ -20,12 +20,15 @@ public class ConventionDto {
     private String statut;
     private String description;
 
-    // ----- Mode d'avantage -----
     private String typeConvention;
-    private String modeAvantage;
-    private Double tauxReduction;
-    private Double montantReduction;
-    private String descriptionAvantage;
+    private String typeAvantage;
+    private Double pourcentageAdherent;
+    private Double montantAvantage;
+    private Integer nombreMoisRetenue;
+    private Integer quantiteDisponible;
+    private Boolean autoriseAyantsDroit;
+    private String documentConventionId;
+    private String documentConventionNom;
 
     public static ConventionDto from(Convention c) {
         return ConventionDto.builder()
@@ -39,10 +42,14 @@ public class ConventionDto {
                 .statut(c.getStatut())
                 .description(c.getDescription())
                 .typeConvention(c.getTypeConvention())
-                .modeAvantage(c.getModeAvantage() == null ? null : c.getModeAvantage().name())
-                .tauxReduction(c.getTauxReduction())
-                .montantReduction(c.getMontantReduction())
-                .descriptionAvantage(c.getDescriptionAvantage())
+                .typeAvantage(c.getTypeAvantage() == null ? null : c.getTypeAvantage().name())
+                .pourcentageAdherent(c.getPourcentageAdherent())
+                .montantAvantage(c.getMontantAvantage())
+                .nombreMoisRetenue(c.getNombreMoisRetenue())
+                .quantiteDisponible(c.getQuantiteDisponible())
+                .autoriseAyantsDroit(Boolean.TRUE.equals(c.getAutoriseAyantsDroit()))
+                .documentConventionId(c.getDocumentConvention() == null ? null : c.getDocumentConvention().getId().toString())
+                .documentConventionNom(c.getDocumentConvention() == null ? null : c.getDocumentConvention().getFileName())
                 .build();
     }
 }

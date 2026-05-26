@@ -4,8 +4,6 @@ import com.project_pfe_srt.project_srt.adherent.adhesion.entity.Adhesion;
 import com.project_pfe_srt.project_srt.adherent.adhesion.repository.AdhesionRepository;
 import com.project_pfe_srt.project_srt.adherent.convention.entity.ConventionDemande;
 import com.project_pfe_srt.project_srt.adherent.convention.repository.ConventionDemandeRepository;
-import com.project_pfe_srt.project_srt.adherent.historique.entity.HistoriqueFinanciere;
-import com.project_pfe_srt.project_srt.adherent.historique.repository.HistoriqueRepository;
 import com.project_pfe_srt.project_srt.adherent.indemnite.entity.Indemnite;
 import com.project_pfe_srt.project_srt.adherent.indemnite.repository.IndemniteRepository;
 import com.project_pfe_srt.project_srt.adherent.pret.entity.PretSocial;
@@ -50,7 +48,6 @@ public class DataSeeder implements CommandLineRunner {
     private final PretRepository pretRepository;
     private final IndemniteRepository indemniteRepository;
     private final TicketRepository ticketRepository;
-    private final HistoriqueRepository historiqueRepository;
     private final FournisseurRepository fournisseurRepository;
     private final ConventionRepository conventionRepository;
     private final ConventionDemandeRepository conventionDemandeRepository;
@@ -173,33 +170,6 @@ public class DataSeeder implements CommandLineRunner {
                 .statut("utilise").adherent(adh)
                 .dateEmission(LocalDate.of(2024, 11, 15))
                 .build());
-
-        // --- Historique ---
-        historiqueRepository.save(HistoriqueFinanciere.builder()
-                .adherent(adh).type("cotisation")
-                .description("Cotisation mensuelle Janvier 2024")
-                .montant(-50.0).date(LocalDate.of(2024, 1, 15))
-                .reference("COT-2024-01").build());
-        historiqueRepository.save(HistoriqueFinanciere.builder()
-                .adherent(adh).type("pret")
-                .description("Versement prêt #1")
-                .montant(5000.0).date(LocalDate.of(2024, 6, 5))
-                .reference("PRET-001").build());
-        historiqueRepository.save(HistoriqueFinanciere.builder()
-                .adherent(adh).type("remboursement")
-                .description("Remboursement prêt #1 — Juillet")
-                .montant(-450.0).date(LocalDate.of(2024, 7, 1))
-                .reference("REM-2024-07").build());
-        historiqueRepository.save(HistoriqueFinanciere.builder()
-                .adherent(adh).type("indemnite")
-                .description("Indemnité maladie")
-                .montant(200.0).date(LocalDate.of(2024, 11, 15))
-                .reference("IND-001").build());
-        historiqueRepository.save(HistoriqueFinanciere.builder()
-                .adherent(adh).type("cotisation")
-                .description("Cotisation mensuelle Décembre 2024")
-                .montant(-50.0).date(LocalDate.of(2024, 12, 15))
-                .reference("COT-2024-12").build());
 
         // --- Fournisseurs + Conventions ---
         Fournisseur f1 = fournisseurRepository.save(Fournisseur.builder()

@@ -31,6 +31,11 @@ public class TicketRestaurant {
     @Column(nullable = false)
     private Double montant;
 
+    /** Number of tickets represented by this assignment row. */
+    @Builder.Default
+    @Column(nullable = false)
+    private Integer quantite = 1;
+
     /** en_attente | attribue | utilise | expire */
     @Builder.Default
     @Column(nullable = false)
@@ -51,6 +56,10 @@ public class TicketRestaurant {
     /** Set when the treasurer assigns the ticket to an adhérent. */
     @Column(name = "date_attribution")
     private LocalDate dateAttribution;
+
+    /** Groups tickets assigned together so the adherent decides on the quantity, not each ticket. */
+    @Column(name = "assignment_batch_id", length = 64)
+    private String assignmentBatchId;
 
     @Column(name = "date_decision")
     private LocalDate dateDecision;

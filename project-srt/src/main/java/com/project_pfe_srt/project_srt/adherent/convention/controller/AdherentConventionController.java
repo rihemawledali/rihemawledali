@@ -5,7 +5,6 @@ import com.project_pfe_srt.project_srt.adherent.convention.dto.ConventionDemande
 import com.project_pfe_srt.project_srt.adherent.convention.dto.ConventionDemandeRequest;
 import com.project_pfe_srt.project_srt.adherent.convention.service.ConventionAdherentService;
 import com.project_pfe_srt.project_srt.common.util.AuthUtils;
-
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;

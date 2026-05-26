@@ -1,8 +1,7 @@
 package com.project_pfe_srt.project_srt.admin.adhesions.controller;
 
 import com.project_pfe_srt.project_srt.adherent.adhesion.dto.AdhesionDto;
-import com.project_pfe_srt.project_srt.adherent.adhesion.service.AdhesionService;
-
+import com.project_pfe_srt.project_srt.admin.adhesions.service.AdminAdhesionsService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -19,7 +18,7 @@ import java.util.List;
 @PreAuthorize("hasRole('ADMIN')")
 public class AdminAdhesionController {
 
-    private final AdhesionService adhesionService;
+    private final AdminAdhesionsService adhesionService;
 
     @GetMapping
     public List<AdhesionDto> listAdhesions() {

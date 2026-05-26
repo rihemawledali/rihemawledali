@@ -19,12 +19,6 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Set;
 
-/**
- * Indemnité demandes lifecycle: {@code en_attente → approuvee → payee}
- * (with {@code rejetee} / {@code annulee} branches). Adhérents create
- * demandes here; the trésorier validates / rejects / pays them via
- * {@code PaiementService.payIndemnite}.
- */
 @Service
 @RequiredArgsConstructor
 public class IndemniteService {
@@ -40,104 +34,49 @@ public class IndemniteService {
     private final IndemniteRepository indemniteRepository;
     private final AttachmentRepository attachmentRepository;
 
-    // =====================================================================
-    // Read
-    // =====================================================================
-
     @Transactional(readOnly = true)
     public List<IndemniteDto> listMine(User user) {
         return indemniteRepository.findByAdherentIdOrderByDateDemandeDesc(user.getId())
                 .stream().map(IndemniteDto::from).toList();
     }
 
-    /** Treasury-side: list every indemnité, latest first. */
-    @Transactional(readOnly = true)
-    public List<IndemniteDto> listAll() {
-        return indemniteRepository.findAllByOrderByDateDemandeDesc()
-                .stream().map(IndemniteDto::from).toList();
-    }
-
-    @Transactional(readOnly = true)
-    public IndemniteDto getById(Long id) {
-        return IndemniteDto.from(findIndemnite(id));
-    }
-
-    // =====================================================================
-    // Transitions
-    // =====================================================================
-
-    /** Pending → approuvée. */
-    @Transactional
-    public IndemniteDto valider(Long id) {
-        Indemnite i = findIndemnite(id);
-        requirePending(i);
-        i.setStatut("approuvee");
-        return IndemniteDto.from(indemniteRepository.save(i));
-    }
-
-    @Transactional
-    public IndemniteDto rejeter(Long id, String motif) {
-        Indemnite i = findIndemnite(id);
-        requirePending(i);
-        i.setStatut("rejetee");
-        if (motif != null && !motif.isBlank()) i.setMotif(motif);
-        return IndemniteDto.from(indemniteRepository.save(i));
-    }
-
-    @Transactional
-    public IndemniteDto annuler(Long id) {
-        Indemnite i = findIndemnite(id);
-        if ("payee".equalsIgnoreCase(i.getStatut())) {
-            throw new IllegalArgumentException("Impossible d'annuler une indemnité déjà payée.");
-        }
-        i.setStatut("annulee");
-        return IndemniteDto.from(indemniteRepository.save(i));
-    }
-
-    // =====================================================================
-    // Create
-    // =====================================================================
-
     @Transactional
     public IndemniteDto create(User user, IndemniteRequest req) {
         if (req == null) {
             throw new IllegalArgumentException("Demande d'indemnite requise.");
         }
-        String type = Validators.requireOneOfLower(TYPES, req.getType(), "Type d'indemnité");
+
+        String type = Validators.requireOneOfLower(TYPES, req.getType(), "Type d'indemnite");
         double montant = Validators.requirePositive(req.getMontant(), "Montant");
         if (montant > MAX_MONTANT) {
             throw new IllegalArgumentException("Montant indemnite plafonne a 1000 TND.");
         }
+
         String motif = Validators.requireNonBlank(req.getMotif(), "Motif");
         if (motif.length() < MIN_MOTIF_LENGTH) {
             throw new IllegalArgumentException("Motif trop court (minimum 5 caracteres).");
         }
+
         if (indemniteRepository.existsByAdherentIdAndTypeAndStatutIn(user.getId(), type, OPEN_STATUTS)) {
             throw new IllegalArgumentException("Une indemnite de ce type est deja en cours de traitement.");
         }
-        Attachment att = req.getAttachmentId() == null
-                ? null
-                : Repos.findOrThrow(attachmentRepository, req.getAttachmentId(), "Pièce jointe");
-        ensureAttachmentBelongsToUser(att, user);
 
-        Indemnite i = Indemnite.builder()
+        Attachment attachment = req.getAttachmentId() == null
+                ? null
+                : Repos.findOrThrow(attachmentRepository, req.getAttachmentId(), "Piece jointe");
+        ensureAttachmentBelongsToUser(attachment, user);
+
+        Indemnite indemnite = Indemnite.builder()
                 .adherent(user)
                 .type(type)
                 .montant(montant)
                 .statut(STATUT_EN_ATTENTE)
                 .dateDemande(LocalDate.now())
                 .motif(motif)
-                .attachment(att)
+                .attachment(attachment)
                 .build();
-        return IndemniteDto.from(indemniteRepository.save(i));
-    }
 
-    // =====================================================================
-    // Helpers
-    // =====================================================================
-
-    private Indemnite findIndemnite(Long id) {
-        return Repos.findOrThrow(indemniteRepository, id, "Indemnité");
+        return IndemniteDto.from(indemniteRepository.save(indemnite));
     }
 
     private static void ensureAttachmentBelongsToUser(Attachment attachment, User user) {
@@ -146,13 +85,7 @@ public class IndemniteService {
         }
         Long uploadedBy = attachment.getUploadedBy();
         if (uploadedBy == null || user == null || !uploadedBy.equals(user.getId())) {
-            throw new AccessDeniedException("Pièce jointe non autorisée.");
-        }
-    }
-
-    private static void requirePending(Indemnite i) {
-        if (!STATUT_EN_ATTENTE.equalsIgnoreCase(i.getStatut())) {
-            throw new IllegalArgumentException("Indemnité non en attente.");
+            throw new AccessDeniedException("Piece jointe non autorisee.");
         }
     }
 }

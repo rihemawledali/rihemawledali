@@ -20,6 +20,7 @@ import { Button } from '../../../../shared/ui/Button';
 import { Modal } from '../../../../shared/data/Modal';
 import { StatusBadge } from '../../../../shared/data/StatusBadge';
 import { useToast } from '../../../../shared/feedback/useToast';
+import { getConventionAvantageSummary } from '../../../../shared/lib/conventionWorkflow';
 import { conventionsApi } from '../api';
 import {
   CONV_TYPE_LABEL,
@@ -33,7 +34,7 @@ import type {
 } from '../../../../shared/types/domain';
 import './AdherentConventionFollowupPages.css';
 
-type DisplayStatus = ConventionDemandeStatut | 'terminee' | 'expiree';
+type DisplayStatus = 'en_attente' | 'validee' | 'refusee' | 'annulee' | 'terminee' | 'expiree';
 
 const DISPLAY_STATUS_LABEL: Record<DisplayStatus, string> = {
   ...DEMANDE_STATUS_LABEL,
@@ -53,9 +54,30 @@ const DISPLAY_STATUS_VARIANT: Record<
 
 function computeDisplayStatus(demande: ConventionDemande, convention?: Convention): DisplayStatus {
   const isConventionExpired = convention ? new Date(convention.dateFin) < new Date() : false;
-  if (demande.statut === 'validee' && isConventionExpired) return 'terminee';
-  if (demande.statut === 'en_attente' && isConventionExpired) return 'expiree';
-  return demande.statut;
+  const normalizedStatus = normalizeDemandeStatus(demande.statut);
+  if (normalizedStatus === 'validee' && isConventionExpired) return 'terminee';
+  if (normalizedStatus === 'en_attente' && isConventionExpired) return 'expiree';
+  return normalizedStatus;
+}
+
+function normalizeDemandeStatus(status: ConventionDemandeStatut): Exclude<DisplayStatus, 'terminee' | 'expiree'> {
+  switch (status) {
+    case 'SOUMISE':
+      return 'en_attente';
+    case 'APPROUVEE':
+    case 'EN_COURS':
+    case 'JUSTIFIEE':
+    case 'VALIDEE':
+    case 'FACTUREE':
+    case 'PAYEE':
+      return 'validee';
+    case 'REFUSEE':
+      return 'refusee';
+    case 'ANNULEE':
+      return 'annulee';
+    default:
+      return status;
+  }
 }
 
 export function AdherentMesDemandesConventionsPage() {
@@ -475,10 +497,21 @@ function DemandeDetails({
   onCancel,
 }: DemandeDetailsProps) {
   const type = convention?.type || demande.conventionSnapshot?.type;
-  const discount = convention?.remise ?? demande.conventionSnapshot?.remise;
   const startDate = convention?.dateDebut || demande.conventionSnapshot?.dateDebut;
   const endDate = convention?.dateFin || demande.conventionSnapshot?.dateFin;
-  const advantage = convention?.avantage || demande.conventionSnapshot?.avantage;
+  const avantage = getConventionAvantageSummary({
+    typeAvantage: demande.typeAvantage ?? convention?.typeAvantage,
+    remise: convention?.remise ?? demande.conventionSnapshot?.remise,
+    avantage: convention?.avantage ?? demande.conventionSnapshot?.avantage,
+    montantAvantage: demande.montantAvantage ?? convention?.montantAvantage,
+    pourcentageAdherent: demande.pourcentageAdherent ?? convention?.pourcentageAdherent,
+    nombreMoisRetenue: demande.nombreMoisRetenue ?? convention?.nombreMoisRetenue,
+    montantTotal: demande.montantTotal,
+    montantAdherent: demande.montantAdherent,
+    montantAmicale: demande.montantAmicale,
+    retenueNombreMois: demande.retenueNombreMois,
+    retenueMontantMensuel: demande.retenueMontantMensuel,
+  });
 
   return (
     <div className="adh-demande-detail">
@@ -487,7 +520,10 @@ function DemandeDetails({
         {type && <DetailItem label="Type" value={CONV_TYPE_LABEL[type]} />}
         <DetailItem label="Date de demande" value={formatDate(demande.dateDemande)} />
         {demande.dateDecision && <DetailItem label="Date de décision" value={formatDate(demande.dateDecision)} />}
-        {discount != null && <DetailItem label="Avantage" value={advantage || `${discount}% de remise`} highlight />}
+        <DetailItem label="Avantage" value={avantage.title} highlight />
+        {avantage.rows
+          .filter((row) => row.label !== "Type d'avantage")
+          .map((row) => <DetailItem key={row.label} label={row.label} value={row.value} />)}
         {startDate && endDate && <DetailItem label="Validité" value={`${formatDate(startDate)} - ${formatDate(endDate)}`} />}
         <div className="adh-demande-detail-item">
           <span>Statut</span>

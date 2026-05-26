@@ -15,12 +15,15 @@ public class ConventionRequest {
     private String statut;
     private String description;
 
-    // ----- Mode d'avantage (nouveaux champs) -----
     /** Optional free-text convention kind (e.g. partenariat, cadre). */
     private String typeConvention;
-    /** One of REMISE_POURCENTAGE | REMISE_MONTANT_FIXE | SUBVENTION_AMICALE | PRIX_NEGOCIE | AUTRE. */
-    private String modeAvantage;
-    private Double tauxReduction;
-    private Double montantReduction;
-    private String descriptionAvantage;
+
+    // ----- Type d'avantage convention -----
+    private String typeAvantage;
+    private Double pourcentageAdherent;
+    private Double montantAvantage;
+    private Integer nombreMoisRetenue;
+    private Integer quantiteDisponible;
+    private Boolean autoriseAyantsDroit;
+    private Long documentConventionId;
 }

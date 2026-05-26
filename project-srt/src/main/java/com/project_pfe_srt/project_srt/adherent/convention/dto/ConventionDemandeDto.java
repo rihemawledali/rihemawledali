@@ -22,6 +22,21 @@ public class ConventionDemandeDto {
     private String commentaire;
     private String documentNom;
     private String attachmentId;
+    private String typeAvantage;
+    private Double montantAvantage;
+    private Double pourcentageAdherent;
+    private Integer nombreMoisRetenue;
+    private String factureId;
+    private String factureNumero;
+    private Integer factureMois;
+    private Integer factureAnnee;
+    private Double montantTotal;
+    private Double montantAdherent;
+    private Double montantAmicale;
+    private Integer retenueMoisDebut;
+    private Integer retenueAnneeDebut;
+    private Integer retenueNombreMois;
+    private Double retenueMontantMensuel;
 
     private ConventionSnapshot conventionSnapshot;
 
@@ -53,7 +68,7 @@ public class ConventionDemandeDto {
                     .remise(conv.getRemise())
                     .dateDebut(conv.getDateDebut().toString())
                     .dateFin(conv.getDateFin().toString())
-                    .avantage(null)
+                    .avantage(conv.getTypeAvantage() == null ? null : conv.getTypeAvantage().name())
                     .build();
         }
         return ConventionDemandeDto.builder()
@@ -68,6 +83,21 @@ public class ConventionDemandeDto {
                 .commentaire(d.getCommentaire())
                 .documentNom(a == null ? null : a.getFileName())
                 .attachmentId(a == null ? null : a.getId().toString())
+                .typeAvantage(c == null || c.getTypeAvantage() == null ? null : c.getTypeAvantage().name())
+                .montantAvantage(c == null ? null : c.getMontantAvantage())
+                .pourcentageAdherent(c == null ? null : c.getPourcentageAdherent())
+                .nombreMoisRetenue(c == null ? null : c.getNombreMoisRetenue())
+                .factureId(d.getFacture() == null ? null : d.getFacture().getId().toString())
+                .factureNumero(d.getFacture() == null ? null : d.getFacture().getNumero())
+                .factureMois(d.getFactureMois())
+                .factureAnnee(d.getFactureAnnee())
+                .montantTotal(d.getMontantTotal())
+                .montantAdherent(d.getMontantAdherent())
+                .montantAmicale(d.getMontantAmicale())
+                .retenueMoisDebut(d.getRetenueMoisDebut())
+                .retenueAnneeDebut(d.getRetenueAnneeDebut())
+                .retenueNombreMois(d.getRetenueNombreMois())
+                .retenueMontantMensuel(d.getRetenueMontantMensuel())
                 .conventionSnapshot(snap)
                 .build();
     }

@@ -8,15 +8,17 @@
    ============================================ */
 
 import { paginate } from '../../../shared/lib/paginate';
+import {
+  normalizeConventionDemandeStatus,
+  type ConventionDemandeDisplayStatus,
+} from '../../../shared/lib/conventionWorkflow';
 import { get, post, put, del, downloadBlob, triggerBlobDownload } from '../../../shared/api/apiClient';
 import type {
   PretSocial, CompteBancaire, PageQuery,
   HistoriqueFinanciere, PaiementMode,
-  Indemnite, IndemniteType, IndemniteStatus,
-  PretStatus,
+  PretStatus, PretRemboursementStatus,
   HistoriqueSourceType, PaiementStatus,
 } from '../../../shared/types/domain';
-import { paiementsApi as _paiementsApi } from '../paiements/api';
 
 // =============================================================
 // Prêts list
@@ -35,6 +37,18 @@ interface PretDtoBE {
   motif?: string | null;
   documentNom?: string | null;
   documentSize?: number | null;
+  remboursements?: PretRemboursementDtoBE[] | null;
+}
+
+interface PretRemboursementDtoBE {
+  id: string;
+  retenueId?: string | null;
+  mois?: number | null;
+  annee?: number | null;
+  dateRetenue?: string | null;
+  montant: number;
+  statut: string;
+  libelle?: string | null;
 }
 
 function mapPret(p: PretDtoBE): PretSocial {
@@ -51,6 +65,16 @@ function mapPret(p: PretDtoBE): PretSocial {
     motif: p.motif ?? undefined,
     documentNom: p.documentNom ?? undefined,
     documentSize: p.documentSize ?? undefined,
+    remboursements: (p.remboursements ?? []).map((r) => ({
+      id: r.id,
+      retenueId: r.retenueId ?? undefined,
+      mois: r.mois ?? undefined,
+      annee: r.annee ?? undefined,
+      dateRetenue: r.dateRetenue ?? undefined,
+      montant: r.montant,
+      statut: r.statut as PretRemboursementStatus,
+      libelle: r.libelle ?? undefined,
+    })),
   };
 }
 
@@ -78,77 +102,14 @@ export const treasurerPretsApi = {
     );
     return mapPret(data);
   },
+  askAi: async (id: string, question?: string): Promise<{ answer: string }> => {
+    const { data } = await post<{ answer: string }>(`/api/treasurer/prets/${id}/ask-ai`, {
+      question,
+    });
+    return data;
+  },
 };
 
-// =============================================================
-// Indemnités — list + workflow + payment
-// =============================================================
-
-interface IndemniteDtoBE {
-  id: string;
-  adherentId: string;
-  adherentNom: string;
-  type: IndemniteType;
-  montant: number;
-  statut: IndemniteStatus;
-  dateDemande: string;
-  motif?: string | null;
-  documentNom?: string | null;
-  documentSize?: number | null;
-  attachmentId?: string | null;
-}
-
-function mapIndemnite(i: IndemniteDtoBE): Indemnite {
-  return {
-    id: i.id,
-    adherentId: i.adherentId,
-    adherentNom: i.adherentNom,
-    type: i.type,
-    montant: i.montant,
-    statut: i.statut,
-    dateDemande: i.dateDemande,
-    motif: i.motif ?? undefined,
-    documentNom: i.documentNom ?? undefined,
-    documentSize: i.documentSize ?? undefined,
-  };
-}
-
-export const treasurerIndemnitesApi = {
-  list: async (q?: PageQuery) => {
-    const { data } = await get<IndemniteDtoBE[]>('/api/treasurer/indemnites');
-    return paginate<Indemnite>(data.map(mapIndemnite), q, ['adherentNom', 'type', 'statut', 'motif']);
-  },
-  getById: async (id: string): Promise<Indemnite | undefined> => {
-    try {
-      const { data } = await get<IndemniteDtoBE>(`/api/treasurer/indemnites/${id}`);
-      return mapIndemnite(data);
-    } catch {
-      return undefined;
-    }
-  },
-  valider: async (id: string): Promise<Indemnite> => {
-    const { data } = await put<IndemniteDtoBE>(`/api/treasurer/indemnites/${id}/valider`, {});
-    return mapIndemnite(data);
-  },
-  rejeter: async (id: string, motif?: string): Promise<Indemnite> => {
-    const { data } = await put<IndemniteDtoBE>(
-      `/api/treasurer/indemnites/${id}/rejeter`,
-      motif ? { motif } : {},
-    );
-    return mapIndemnite(data);
-  },
-  annuler: async (id: string): Promise<Indemnite> => {
-    const { data } = await put<IndemniteDtoBE>(`/api/treasurer/indemnites/${id}/annuler`, {});
-    return mapIndemnite(data);
-  },
-  /** Pay a validated indemnité (creates Paiement + SORTIE historique). */
-  payer: (
-    id: string,
-    payload: { montant: number; mode: PaiementMode; compteBancaireId: string; description?: string; reference?: string },
-  ) => _paiementsApi.payIndemnite(id, payload),
-};
-
-// =============================================================
 // Retenues mensuelles — master / detail
 // =============================================================
 
@@ -180,6 +141,7 @@ export interface RetenueMensuelle {
   totalCotisation: number;
   totalPret: number;
   totalConvention: number;
+  totalTicket: number;
   totalRetenu: number;
   statut: RetenueMensuelleStatut;
   dateGeneration: string;
@@ -241,11 +203,13 @@ function mapMaster(r: RetenueMensuelleDtoBE): RetenueMensuelle {
   let cot = 0;
   let pret = 0;
   let conv = 0;
+  let ticket = 0;
   for (const l of lignes) {
     if (l.statut === 'ANNULEE') continue;
     if (l.typeSource === 'COTISATION') cot += l.montant;
     else if (l.typeSource === 'PRET') pret += l.montant;
-    else if (l.typeSource === 'CONVENTION' || l.typeSource === 'TICKET_RESTAURANT') conv += l.montant;
+    else if (l.typeSource === 'CONVENTION') conv += l.montant;
+    else if (l.typeSource === 'TICKET_RESTAURANT') ticket += l.montant;
   }
   return {
     id: r.id,
@@ -256,6 +220,7 @@ function mapMaster(r: RetenueMensuelleDtoBE): RetenueMensuelle {
     totalCotisation: round2(cot),
     totalPret: round2(pret),
     totalConvention: round2(conv),
+    totalTicket: round2(ticket),
     totalRetenu: r.totalRetenu,
     statut: (r.statut as RetenueMensuelleStatut) ?? 'GENEREE',
     dateGeneration: (r.createdAt ?? '').slice(0, 10),
@@ -559,7 +524,20 @@ export const treasurerTresorerieApi = {
 // Convention demandes — treasurer workflow
 // =============================================================
 
-export type ConventionDemandeStatutBE = 'en_attente' | 'validee' | 'refusee' | 'annulee';
+export type ConventionDemandeStatutBE =
+  | 'en_attente'
+  | 'validee'
+  | 'refusee'
+  | 'annulee'
+  | 'SOUMISE'
+  | 'APPROUVEE'
+  | 'EN_COURS'
+  | 'JUSTIFIEE'
+  | 'VALIDEE'
+  | 'FACTUREE'
+  | 'PAYEE'
+  | 'REFUSEE'
+  | 'ANNULEE';
 
 export interface ConventionDemandeSnapshot {
   fournisseurNom?: string | null;
@@ -577,11 +555,27 @@ export interface ConventionDemandeRow {
   adherentNom: string;
   dateDemande: string;
   statut: ConventionDemandeStatutBE;
+  statutNormalise: ConventionDemandeDisplayStatus;
   dateDecision?: string;
   motifRefus?: string;
   commentaire?: string;
   documentNom?: string;
   attachmentId?: string;
+  typeAvantage?: string;
+  montantAvantage?: number;
+  pourcentageAdherent?: number;
+  nombreMoisRetenue?: number;
+  factureId?: string;
+  factureNumero?: string;
+  factureMois?: number;
+  factureAnnee?: number;
+  montantTotal?: number;
+  montantAdherent?: number;
+  montantAmicale?: number;
+  retenueMoisDebut?: number;
+  retenueAnneeDebut?: number;
+  retenueNombreMois?: number;
+  retenueMontantMensuel?: number;
   conventionSnapshot?: ConventionDemandeSnapshot;
 }
 
@@ -597,6 +591,21 @@ interface ConventionDemandeDtoBE {
   commentaire?: string | null;
   documentNom?: string | null;
   attachmentId?: string | null;
+  typeAvantage?: string | null;
+  montantAvantage?: number | null;
+  pourcentageAdherent?: number | null;
+  nombreMoisRetenue?: number | null;
+  factureId?: string | null;
+  factureNumero?: string | null;
+  factureMois?: number | null;
+  factureAnnee?: number | null;
+  montantTotal?: number | null;
+  montantAdherent?: number | null;
+  montantAmicale?: number | null;
+  retenueMoisDebut?: number | null;
+  retenueAnneeDebut?: number | null;
+  retenueNombreMois?: number | null;
+  retenueMontantMensuel?: number | null;
   conventionSnapshot?: ConventionDemandeSnapshot | null;
 }
 
@@ -608,11 +617,27 @@ function mapConventionDemande(d: ConventionDemandeDtoBE): ConventionDemandeRow {
     adherentNom: d.adherentNom,
     dateDemande: d.dateDemande,
     statut: (d.statut as ConventionDemandeStatutBE) ?? 'en_attente',
+    statutNormalise: normalizeConventionDemandeStatus(d.statut),
     dateDecision: d.dateDecision ?? undefined,
     motifRefus: d.motifRefus ?? undefined,
     commentaire: d.commentaire ?? undefined,
     documentNom: d.documentNom ?? undefined,
     attachmentId: d.attachmentId ?? undefined,
+    typeAvantage: d.typeAvantage ?? undefined,
+    montantAvantage: d.montantAvantage ?? undefined,
+    pourcentageAdherent: d.pourcentageAdherent ?? undefined,
+    nombreMoisRetenue: d.nombreMoisRetenue ?? undefined,
+    factureId: d.factureId ?? undefined,
+    factureNumero: d.factureNumero ?? undefined,
+    factureMois: d.factureMois ?? undefined,
+    factureAnnee: d.factureAnnee ?? undefined,
+    montantTotal: d.montantTotal ?? undefined,
+    montantAdherent: d.montantAdherent ?? undefined,
+    montantAmicale: d.montantAmicale ?? undefined,
+    retenueMoisDebut: d.retenueMoisDebut ?? undefined,
+    retenueAnneeDebut: d.retenueAnneeDebut ?? undefined,
+    retenueNombreMois: d.retenueNombreMois ?? undefined,
+    retenueMontantMensuel: d.retenueMontantMensuel ?? undefined,
     conventionSnapshot: d.conventionSnapshot ?? undefined,
   };
 }

@@ -1,10 +1,10 @@
 package com.project_pfe_srt.project_srt.treasurer.workflow.controller;
 
 import com.project_pfe_srt.project_srt.adherent.indemnite.dto.IndemniteDto;
-import com.project_pfe_srt.project_srt.adherent.indemnite.service.IndemniteService;
 import com.project_pfe_srt.project_srt.adherent.pret.dto.PretDto;
 import com.project_pfe_srt.project_srt.adherent.pret.service.PretService;
 import com.project_pfe_srt.project_srt.treasurer.workflow.dto.WorkflowDecisionRequest;
+import com.project_pfe_srt.project_srt.treasurer.workflow.service.TreasurerIndemniteService;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -24,7 +24,7 @@ import java.util.List;
 public class TreasurerWorkflowController {
 
     private final PretService pretService;
-    private final IndemniteService indemniteService;
+    private final TreasurerIndemniteService indemniteService;
 
     // ---- Prêts ---------------------------------------------------------
 

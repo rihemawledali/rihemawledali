@@ -1,6 +1,6 @@
 /* ============================================
    Treasurer - Demandes de conventions
-   Workflow: en_attente -> validee | refusee
+   Workflow: SOUMISE -> APPROUVEE | REFUSEE
    ============================================ */
 
 import { useMemo, useState, type ReactNode } from 'react';
@@ -31,32 +31,24 @@ import { Modal } from '../../../shared/data/Modal';
 import { useToast } from '../../../shared/feedback/useToast';
 import { formatDate, formatNumber } from '../../../shared/lib/formatters';
 import {
+  CONVENTION_DEMANDE_STATUS_LABEL,
+  CONVENTION_DEMANDE_STATUS_TONE,
+  formatConventionAvantageCompact,
+  getConventionAvantageSummary,
+  type ConventionDemandeDisplayStatus,
+} from '../../../shared/lib/conventionWorkflow';
+import {
   treasurerConventionsApi,
   type ConventionDemandeRow,
-  type ConventionDemandeStatutBE,
 } from '../conventions-demande/api';
 import '../../../shared/layout/CrudPage.css';
 import './TreasurerConventionsPage.css';
 
-const STATUT_LABEL: Record<ConventionDemandeStatutBE, string> = {
-  en_attente: 'En attente',
-  validee: 'Validée',
-  refusee: 'Refusée',
-  annulee: 'Annulée',
-};
-
-const STATUT_TONE: Record<ConventionDemandeStatutBE, 'warning' | 'success' | 'error' | 'neutral'> = {
-  en_attente: 'warning',
-  validee: 'success',
-  refusee: 'error',
-  annulee: 'neutral',
-};
-
-const STATUT_OPTIONS = [
-  { value: 'en_attente', label: 'En attente' },
-  { value: 'validee', label: 'Validée' },
-  { value: 'refusee', label: 'Refusée' },
-  { value: 'annulee', label: 'Annulée' },
+const STATUT_OPTIONS: { value: ConventionDemandeDisplayStatus; label: string }[] = [
+  { value: 'pending', label: 'En attente' },
+  { value: 'approved', label: 'Approuvee' },
+  { value: 'refused', label: 'Refusee' },
+  { value: 'cancelled', label: 'Annulee' },
 ];
 
 const CONV_TYPE_LABEL: Record<string, string> = {
@@ -83,7 +75,7 @@ export function TreasurerConventionsPage() {
 
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
-  const [statut, setStatut] = useState('');
+  const [statut, setStatut] = useState<ConventionDemandeDisplayStatus | ''>('');
   const [viewing, setViewing] = useState<ConventionDemandeRow | null>(null);
   const [rejecting, setRejecting] = useState<ConventionDemandeRow | null>(null);
   const [motif, setMotif] = useState('');
@@ -96,16 +88,16 @@ export function TreasurerConventionsPage() {
   const query = useQuery({
     queryKey: ['treasurer', 'conventions', { page, search, statut }],
     queryFn: () =>
-      treasurerConventionsApi.list({ page, size: 10, search, filters: { statut } }),
+      treasurerConventionsApi.list({ page, size: 10, search, filters: { statutNormalise: statut } }),
   });
 
   const stats = useMemo(() => {
     const items = all.data?.items ?? [];
     return {
       total: items.length,
-      pending: items.filter((d) => d.statut === 'en_attente').length,
-      validated: items.filter((d) => d.statut === 'validee').length,
-      refused: items.filter((d) => d.statut === 'refusee').length,
+      pending: items.filter((d) => d.statutNormalise === 'pending').length,
+      validated: items.filter((d) => d.statutNormalise === 'approved').length,
+      refused: items.filter((d) => d.statutNormalise === 'refused').length,
     };
   }, [all.data]);
 
@@ -113,6 +105,8 @@ export function TreasurerConventionsPage() {
     mutationFn: (id: string) => treasurerConventionsApi.valider(id),
     onSuccess: (d) => {
       qc.invalidateQueries({ queryKey: ['treasurer', 'conventions'] });
+      qc.invalidateQueries({ queryKey: ['factures'] });
+      qc.invalidateQueries({ queryKey: ['adherent-conventions-demandes'] });
       toast.push({
         title: `Demande ${d.id.toUpperCase()} validée`,
         variant: 'success',
@@ -127,6 +121,8 @@ export function TreasurerConventionsPage() {
       treasurerConventionsApi.refuser(id, m),
     onSuccess: (d) => {
       qc.invalidateQueries({ queryKey: ['treasurer', 'conventions'] });
+      qc.invalidateQueries({ queryKey: ['factures'] });
+      qc.invalidateQueries({ queryKey: ['adherent-conventions-demandes'] });
       setRejecting(null);
       setMotif('');
       toast.push({ title: `Demande ${d.id.toUpperCase()} refusée`, variant: 'success' });
@@ -172,9 +168,9 @@ export function TreasurerConventionsPage() {
         header: 'Statut',
         cell: (d) => (
           <StatusBadge
-            status={d.statut}
-            tone={STATUT_TONE[d.statut]}
-            label={STATUT_LABEL[d.statut]}
+            status={d.statutNormalise}
+            tone={CONVENTION_DEMANDE_STATUS_TONE[d.statutNormalise]}
+            label={CONVENTION_DEMANDE_STATUS_LABEL[d.statutNormalise]}
           />
         ),
         width: '130px',
@@ -184,7 +180,7 @@ export function TreasurerConventionsPage() {
   );
 
   const rows = query.data?.items ?? [];
-  const visiblePending = rows.filter((d) => d.statut === 'en_attente').length;
+  const visiblePending = rows.filter((d) => d.statutNormalise === 'pending').length;
 
   return (
     <div className="treasurer-conventions-page">
@@ -228,7 +224,7 @@ export function TreasurerConventionsPage() {
             <SelectFilter
               label="Statut"
               value={statut}
-              onChange={(v) => { setStatut(v); setPage(1); }}
+              onChange={(v) => { setStatut(v as ConventionDemandeDisplayStatus | ''); setPage(1); }}
               options={STATUT_OPTIONS}
             />
           </FilterBar>
@@ -243,7 +239,7 @@ export function TreasurerConventionsPage() {
           emptyDescription="Essayez un autre statut ou une autre recherche."
           actionsWidth="280px"
           rowActions={(d) => {
-            const pending = d.statut === 'en_attente';
+            const pending = d.statutNormalise === 'pending';
             return (
               <span className="convention-row-actions">
                 <Button
@@ -323,7 +319,7 @@ function ConventionCell({ row }: { row: ConventionDemandeRow }) {
       <strong>{snap.fournisseurNom ?? 'Fournisseur non renseigné'}</strong>
       <span>
         <StatusBadge status={snap.type ?? 'convention'} tone={tone} label={typeLabel} />
-        {snap.remise != null && <small>{snap.remise}% de remise</small>}
+        <small>{formatConventionAvantageCompact(row)}</small>
       </span>
     </div>
   );
@@ -370,6 +366,7 @@ function ConventionDetailModal({
 }) {
   const snap = row?.conventionSnapshot;
   const typeLabel = snap?.type ? CONV_TYPE_LABEL[snap.type] ?? snap.type : 'Non renseigné';
+  const avantage = row ? getConventionAvantageSummary(row) : null;
 
   return (
     <Modal
@@ -378,7 +375,7 @@ function ConventionDetailModal({
       title={row ? `Dossier convention - ${row.adherentNom}` : ''}
       description={row ? `Référence DEM-${row.id.toUpperCase()}` : ''}
       size="lg"
-      footer={row?.statut === 'en_attente' ? (
+      footer={row && row.statutNormalise === 'pending' ? (
         <div className="convention-modal-actions">
           <Button variant="secondary" onClick={onClose}>Fermer</Button>
           <Button variant="danger" onClick={onRefuse} disabled={validating || refusing}>
@@ -408,13 +405,17 @@ function ConventionDetailModal({
                 </div>
               </div>
             </div>
-            <StatusBadge status={row.statut} tone={STATUT_TONE[row.statut]} label={STATUT_LABEL[row.statut]} />
+            <StatusBadge
+              status={row.statutNormalise}
+              tone={CONVENTION_DEMANDE_STATUS_TONE[row.statutNormalise]}
+              label={CONVENTION_DEMANDE_STATUS_LABEL[row.statutNormalise]}
+            />
           </section>
 
           <section className="convention-detail-metrics">
             <ConventionDetailMetric icon={<Store size={16} />} label="Fournisseur" value={snap?.fournisseurNom ?? 'Non renseigné'} tone="primary" />
             <ConventionDetailMetric icon={<Tag size={16} />} label="Type" value={typeLabel} />
-            <ConventionDetailMetric icon={<Percent size={16} />} label="Remise" value={snap?.remise != null ? `${snap.remise}%` : 'Non renseignée'} tone="success" />
+            <ConventionDetailMetric icon={<Percent size={16} />} label="Avantage" value={avantage?.title ?? 'Non renseigne'} tone="success" />
           </section>
 
           <div className="convention-detail-layout">
@@ -422,15 +423,26 @@ function ConventionDetailModal({
               <DetailField label="Adhérent" value={<strong>{row.adherentNom}</strong>} />
               <DetailField label="Référence" value={<span className="cell-mono">DEM-{row.id.toUpperCase()}</span>} />
               <DetailField label="Date demande" value={formatDate(row.dateDemande)} />
-              <DetailField label="Statut" value={<StatusBadge status={row.statut} tone={STATUT_TONE[row.statut]} label={STATUT_LABEL[row.statut]} />} />
+              <DetailField
+                label="Statut"
+                value={(
+                  <StatusBadge
+                    status={row.statutNormalise}
+                    tone={CONVENTION_DEMANDE_STATUS_TONE[row.statutNormalise]}
+                    label={CONVENTION_DEMANDE_STATUS_LABEL[row.statutNormalise]}
+                  />
+                )}
+              />
+              <DetailField label="Statut technique" value={row.statut} />
               {row.dateDecision && <DetailField label="Date décision" value={formatDate(row.dateDecision)} />}
             </DetailPanel>
 
             <DetailPanel title="Convention demandée" icon={<Handshake size={16} />}>
               <DetailField label="Fournisseur" value={snap?.fournisseurNom ?? 'Non renseigné'} />
               <DetailField label="Type" value={typeLabel} />
-              <DetailField label="Remise" value={snap?.remise != null ? `${snap.remise}%` : 'Non renseignée'} />
-              <DetailField label="Avantage" value={snap?.avantage ?? 'Non renseigné'} />
+              {avantage?.rows.map((item) => (
+                <DetailField key={item.label} label={item.label} value={item.value} />
+              ))}
             </DetailPanel>
           </div>
 

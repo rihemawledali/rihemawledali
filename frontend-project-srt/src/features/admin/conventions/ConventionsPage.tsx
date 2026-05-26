@@ -30,20 +30,16 @@ const TYPE_LABEL: Record<string, string> = {
   education: 'Éducation',
 };
 
-const MODE_AVANTAGE_LABEL: Record<NonNullable<Convention['modeAvantage']>, string> = {
-  REMISE_POURCENTAGE: 'Remise %',
-  REMISE_MONTANT_FIXE: 'Remise fixe',
+const TYPE_AVANTAGE_LABEL: Record<string, string> = {
+  REMISE_DIRECTE: 'Remise directe',
+  ACHAT_TRANCHE: 'Achat tranche',
+  ABONNEMENT: 'Abonnement',
+  BON_ACHAT: "Bon d'achat",
 };
 
-function renderAvantage(convention: Convention) {
-  if (!convention.modeAvantage) return '—';
-  if (convention.modeAvantage === 'REMISE_POURCENTAGE' && convention.tauxReduction != null) {
-    return `${MODE_AVANTAGE_LABEL[convention.modeAvantage]} · ${convention.tauxReduction}%`;
-  }
-  if (convention.modeAvantage === 'REMISE_MONTANT_FIXE' && convention.montantReduction != null) {
-    return `${MODE_AVANTAGE_LABEL[convention.modeAvantage]} · ${convention.montantReduction} TND`;
-  }
-  return MODE_AVANTAGE_LABEL[convention.modeAvantage];
+function renderTypeAvantage(convention: Convention) {
+  if (!convention.typeAvantage) return '—';
+  return TYPE_AVANTAGE_LABEL[convention.typeAvantage] ?? convention.typeAvantage;
 }
 
 export function ConventionsPage() {
@@ -67,21 +63,22 @@ export function ConventionsPage() {
   const buildPayload = async (values: ConventionFormValues): Promise<Omit<Convention, 'id'>> => {
     const suppliers = await suppliersApi.list({ page: 1, size: 200 });
     const supplier = suppliers.items.find((item) => item.id === values.fournisseurId);
-    const legacyRemise = values.modeAvantage === 'REMISE_POURCENTAGE' ? (values.tauxReduction ?? 0) : 0;
-
     return {
       fournisseurId: values.fournisseurId,
       fournisseurNom: supplier?.nom ?? '—',
       type: values.type,
       dateDebut: new Date(values.dateDebut).toISOString(),
       dateFin: new Date(values.dateFin).toISOString(),
-      remise: legacyRemise,
+      remise: 0,
       statut: values.statut,
       description: values.description,
       typeConvention: values.typeConvention || undefined,
-      modeAvantage: values.modeAvantage,
-      tauxReduction: values.modeAvantage === 'REMISE_POURCENTAGE' ? values.tauxReduction : undefined,
-      montantReduction: values.modeAvantage === 'REMISE_MONTANT_FIXE' ? values.montantReduction : undefined,
+      typeAvantage: values.typeAvantage,
+      pourcentageAdherent: values.pourcentageAdherent,
+      montantAvantage: values.montantAvantage,
+      nombreMoisRetenue: values.nombreMoisRetenue,
+      quantiteDisponible: values.quantiteDisponible,
+      autoriseAyantsDroit: values.autoriseAyantsDroit,
     };
   };
 
@@ -136,7 +133,7 @@ export function ConventionsPage() {
       ),
     },
     { key: 'type', header: 'Type', sortable: true, cell: (convention) => <StatusBadge status={convention.type} tone="info" label={TYPE_LABEL[convention.type]} /> },
-    { key: 'modeAvantage', header: 'Mode d’avantage', cell: (convention) => <span className="cell-strong">{renderAvantage(convention)}</span> },
+    { key: 'typeAvantage', header: "Type d'avantage", cell: (convention) => <span className="cell-strong">{renderTypeAvantage(convention)}</span> },
     { key: 'dateDebut', header: 'Début', sortable: true, cell: (convention) => formatDate(convention.dateDebut) },
     {
       key: 'dateFin',

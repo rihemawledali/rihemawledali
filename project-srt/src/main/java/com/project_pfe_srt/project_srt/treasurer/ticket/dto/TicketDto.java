@@ -14,12 +14,15 @@ public class TicketDto {
     private String numero;
     private String typeBon;
     private Double montant;
+    private Integer quantite;
+    private Double montantTotal;
     private String statut;
     private String adherentId;
     private String adherentNom;
     private String adherentMatricule;
     private String bonCommandeId;
     private String bonCommandeNumero;
+    private String assignmentBatchId;
     private String dateEmission;
     private String dateAttribution;
     private String dateDecision;
@@ -33,6 +36,8 @@ public class TicketDto {
                 .numero(t.getNumero())
                 .typeBon(t.getTypeBon())
                 .montant(t.getMontant())
+                .quantite(t.getQuantite() == null ? 1 : t.getQuantite())
+                .montantTotal((t.getMontant() == null ? 0d : t.getMontant()) * (t.getQuantite() == null ? 1 : t.getQuantite()))
                 .statut(t.getStatut())
                 .adherentId(u == null ? null : u.getId().toString())
                 .adherentNom(u == null ? null
@@ -40,6 +45,7 @@ public class TicketDto {
                 .adherentMatricule(u == null ? null : u.getMatricule())
                 .bonCommandeId(b == null ? null : b.getId().toString())
                 .bonCommandeNumero(b == null ? null : b.getNumero())
+                .assignmentBatchId(t.getAssignmentBatchId())
                 .dateEmission(t.getDateEmission() == null ? null : t.getDateEmission().toString())
                 .dateAttribution(t.getDateAttribution() == null ? null : t.getDateAttribution().toString())
                 .dateDecision(t.getDateDecision() == null ? null : t.getDateDecision().toString())

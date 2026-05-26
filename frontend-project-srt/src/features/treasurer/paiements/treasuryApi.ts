@@ -3,7 +3,6 @@
 import type {
   Paiement,
   Facture,
-  Indemnite,
   HistoriqueFinanciere,
   PageQuery,
   TypePaiement,
@@ -12,11 +11,11 @@ import type {
   PaiementStatus,
   HistoriqueSourceType,
   FactureStatus,
-  IndemniteType,
-  IndemniteStatus,
 } from '../../../shared/types/domain';
 import { get, post, put, del, downloadBlob, triggerBlobDownload } from '../../../shared/api/apiClient';
 import { paginate } from '../../../shared/lib/paginate';
+import { normalizeConventionDemandeStatus } from '../../../shared/lib/conventionWorkflow';
+import type { ConventionDemandeRow, ConventionDemandeStatutBE } from '../api/treasurerListApi';
 
 // ---------------- DTO shapes returned by the backend ----------------
 
@@ -49,20 +48,39 @@ interface FactureDtoBE {
   dateEmission: string;
   dateEcheance: string;
   description?: string | null;
+  sourceType?: 'MANUEL' | 'CONVENTION' | null;
+  mois?: number | null;
+  annee?: number | null;
 }
 
-interface IndemniteDtoBE {
+interface ConventionDemandeDtoBE {
   id: string;
+  conventionId: string;
   adherentId: string;
   adherentNom: string;
-  type: IndemniteType;
-  montant: number;
-  statut: IndemniteStatus;
   dateDemande: string;
-  motif?: string | null;
+  statut: string;
+  dateDecision?: string | null;
+  motifRefus?: string | null;
+  commentaire?: string | null;
   documentNom?: string | null;
-  documentSize?: number | null;
   attachmentId?: string | null;
+  typeAvantage?: string | null;
+  montantAvantage?: number | null;
+  pourcentageAdherent?: number | null;
+  nombreMoisRetenue?: number | null;
+  factureId?: string | null;
+  factureNumero?: string | null;
+  factureMois?: number | null;
+  factureAnnee?: number | null;
+  montantTotal?: number | null;
+  montantAdherent?: number | null;
+  montantAmicale?: number | null;
+  retenueMoisDebut?: number | null;
+  retenueAnneeDebut?: number | null;
+  retenueNombreMois?: number | null;
+  retenueMontantMensuel?: number | null;
+  conventionSnapshot?: ConventionDemandeRow['conventionSnapshot'] | null;
 }
 
 interface HistoriqueTresorerieDtoBE {
@@ -119,21 +137,42 @@ function mapFacture(f: FactureDtoBE): Facture {
     dateEcheance: f.dateEcheance,
     dateFacture: f.dateEmission,
     description: nz(f.description),
+    sourceType: nz(f.sourceType),
+    mois: nz(f.mois),
+    annee: nz(f.annee),
   };
 }
 
-function mapIndemnite(i: IndemniteDtoBE): Indemnite {
+function mapConventionDemande(d: ConventionDemandeDtoBE): ConventionDemandeRow {
   return {
-    id: i.id,
-    adherentId: i.adherentId,
-    adherentNom: i.adherentNom,
-    type: i.type,
-    montant: i.montant,
-    statut: i.statut,
-    dateDemande: i.dateDemande,
-    motif: nz(i.motif),
-    documentNom: nz(i.documentNom),
-    documentSize: nz(i.documentSize),
+    id: d.id,
+    conventionId: d.conventionId,
+    adherentId: d.adherentId,
+    adherentNom: d.adherentNom,
+    dateDemande: d.dateDemande,
+    statut: (d.statut as ConventionDemandeStatutBE) ?? 'SOUMISE',
+    statutNormalise: normalizeConventionDemandeStatus(d.statut),
+    dateDecision: nz(d.dateDecision),
+    motifRefus: nz(d.motifRefus),
+    commentaire: nz(d.commentaire),
+    documentNom: nz(d.documentNom),
+    attachmentId: nz(d.attachmentId),
+    typeAvantage: nz(d.typeAvantage),
+    montantAvantage: nz(d.montantAvantage),
+    pourcentageAdherent: nz(d.pourcentageAdherent),
+    nombreMoisRetenue: nz(d.nombreMoisRetenue),
+    factureId: nz(d.factureId),
+    factureNumero: nz(d.factureNumero),
+    factureMois: nz(d.factureMois),
+    factureAnnee: nz(d.factureAnnee),
+    montantTotal: nz(d.montantTotal),
+    montantAdherent: nz(d.montantAdherent),
+    montantAmicale: nz(d.montantAmicale),
+    retenueMoisDebut: nz(d.retenueMoisDebut),
+    retenueAnneeDebut: nz(d.retenueAnneeDebut),
+    retenueNombreMois: nz(d.retenueNombreMois),
+    retenueMontantMensuel: nz(d.retenueMontantMensuel),
+    conventionSnapshot: nz(d.conventionSnapshot),
   };
 }
 
@@ -292,9 +331,47 @@ export const facturesApi = {
       dateEmission: data.dateEmission,
       dateEcheance: data.dateEcheance,
       description: data.description,
+      sourceType: data.sourceType,
+      mois: data.mois,
+      annee: data.annee,
     };
     const { data: out } = await post<FactureDtoBE>('/api/treasurer/factures', body);
     return mapFacture(out);
+  },
+
+  eligibleConventionDemandes: async (input: { fournisseurId: string; mois: number; annee: number }): Promise<ConventionDemandeRow[]> => {
+    const params = new URLSearchParams({
+      fournisseurId: input.fournisseurId,
+      mois: String(input.mois),
+      annee: String(input.annee),
+    });
+    const { data } = await get<ConventionDemandeDtoBE[]>(`/api/treasurer/factures/conventions/eligible?${params.toString()}`);
+    return data.map(mapConventionDemande);
+  },
+
+  generateConventionFacture: async (input: {
+    fournisseurId: string;
+    mois: number;
+    annee: number;
+    demandeIds: string[];
+  }): Promise<Facture> => {
+    const { data } = await post<FactureDtoBE>('/api/treasurer/factures/conventions/generer', {
+      fournisseurId: Number(input.fournisseurId),
+      mois: input.mois,
+      annee: input.annee,
+      demandeIds: input.demandeIds.map(Number),
+    });
+    return mapFacture(data);
+  },
+
+  conventionDemandes: async (factureId: string): Promise<ConventionDemandeRow[]> => {
+    const { data } = await get<ConventionDemandeDtoBE[]>(`/api/treasurer/factures/${factureId}/convention-demandes`);
+    return data.map(mapConventionDemande);
+  },
+
+  validerConvention: async (id: string): Promise<Facture> => {
+    const { data } = await put<FactureDtoBE>(`/api/treasurer/factures/${id}/valider-convention`, {});
+    return mapFacture(data);
   },
 
   update: async (id: string, patch: Partial<Facture>): Promise<Facture> => {
@@ -306,6 +383,9 @@ export const facturesApi = {
       dateEmission: patch.dateEmission,
       dateEcheance: patch.dateEcheance,
       description: patch.description,
+      sourceType: patch.sourceType,
+      mois: patch.mois,
+      annee: patch.annee,
     };
     const { data: out } = await put<FactureDtoBE>(`/api/treasurer/factures/${id}`, body);
     return mapFacture(out);
@@ -348,42 +428,5 @@ export const historiqueApi = {
     const { data } = await get<HistoriqueTresorerieDtoBE[]>(url);
     const items = data.map(mapHistorique);
     return paginate<HistoriqueFinanciere>(items, q, ['description', 'reference', 'utilisateur']);
-  },
-};
-
-// ---------------- indemnités helpers (cross-feature) ----------------
-
-export const indemnitesWorkflow = {
-  list: async (q?: PageQuery) => {
-    const { data } = await get<IndemniteDtoBE[]>('/api/treasurer/indemnites');
-    const items = data.map(mapIndemnite);
-    return paginate<Indemnite>(items, q, ['adherentNom', 'type', 'statut', 'motif']);
-  },
-
-  getById: async (id: string): Promise<Indemnite | undefined> => {
-    try {
-      const { data } = await get<IndemniteDtoBE>(`/api/treasurer/indemnites/${id}`);
-      return mapIndemnite(data);
-    } catch {
-      return undefined;
-    }
-  },
-
-  valider: async (id: string): Promise<Indemnite> => {
-    const { data } = await put<IndemniteDtoBE>(`/api/treasurer/indemnites/${id}/valider`, {});
-    return mapIndemnite(data);
-  },
-
-  rejeter: async (id: string, motif?: string): Promise<Indemnite> => {
-    const { data } = await put<IndemniteDtoBE>(
-      `/api/treasurer/indemnites/${id}/rejeter`,
-      motif ? { motif } : {},
-    );
-    return mapIndemnite(data);
-  },
-
-  annuler: async (id: string): Promise<Indemnite> => {
-    const { data } = await put<IndemniteDtoBE>(`/api/treasurer/indemnites/${id}/annuler`, {});
-    return mapIndemnite(data);
   },
 };

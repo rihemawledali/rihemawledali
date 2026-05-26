@@ -11,5 +11,7 @@ public interface FactureRepository extends JpaRepository<Facture, Long> {
     Optional<Facture> findByNumero(String numero);
     boolean existsByNumero(String numero);
     List<Facture> findAllByOrderByDateEmissionDesc();
+    Optional<Facture> findByFournisseurIdAndSourceTypeAndMoisAndAnnee(
+            Long fournisseurId, String sourceType, Integer mois, Integer annee);
     long countByStatut(String statut);
 }

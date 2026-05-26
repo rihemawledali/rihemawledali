@@ -31,12 +31,15 @@ public class ConventionAdherentDto {
     private String fournisseurTelephone;
     private String fournisseurEmail;
 
-    // ----- Mode d'avantage -----
     private String typeConvention;
-    private String modeAvantage;
-    private Double tauxReduction;
-    private Double montantReduction;
-    private String descriptionAvantage;
+    private String typeAvantage;
+    private Double pourcentageAdherent;
+    private Double montantAvantage;
+    private Integer nombreMoisRetenue;
+    private Integer quantiteDisponible;
+    private Boolean autoriseAyantsDroit;
+    private String documentConventionId;
+    private String documentConventionNom;
 
     public static ConventionAdherentDto from(Convention c, String adherentStatus) {
         if (c == null) return null;
@@ -57,10 +60,14 @@ public class ConventionAdherentDto {
                 .fournisseurTelephone(f == null ? null : f.getTelephone())
                 .fournisseurEmail(f == null ? null : f.getEmail())
                 .typeConvention(c.getTypeConvention())
-                .modeAvantage(c.getModeAvantage() == null ? null : c.getModeAvantage().name())
-                .tauxReduction(c.getTauxReduction())
-                .montantReduction(c.getMontantReduction())
-                .descriptionAvantage(c.getDescriptionAvantage())
+                .typeAvantage(c.getTypeAvantage() == null ? null : c.getTypeAvantage().name())
+                .pourcentageAdherent(c.getPourcentageAdherent())
+                .montantAvantage(c.getMontantAvantage())
+                .nombreMoisRetenue(c.getNombreMoisRetenue())
+                .quantiteDisponible(c.getQuantiteDisponible())
+                .autoriseAyantsDroit(Boolean.TRUE.equals(c.getAutoriseAyantsDroit()))
+                .documentConventionId(c.getDocumentConvention() == null ? null : c.getDocumentConvention().getId().toString())
+                .documentConventionNom(c.getDocumentConvention() == null ? null : c.getDocumentConvention().getFileName())
                 .build();
     }
 }

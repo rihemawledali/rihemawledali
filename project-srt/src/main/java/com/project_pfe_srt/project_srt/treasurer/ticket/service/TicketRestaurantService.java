@@ -17,18 +17,16 @@ import com.project_pfe_srt.project_srt.treasurer.ticket.repository.TicketReposit
 
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 
 /**
- * Treasury-side service for ticket restaurant CRUD + assignment. Each
- * bon de commande pre-creates its tickets in {@code en_attente}; this
- * service walks that stock to assign tickets to adhérents.
+ * Treasury-side service for ticket restaurant assignment rows. A row
+ * represents a quantity assigned from a bon to one adhérent.
  */
 @Service
 @RequiredArgsConstructor
@@ -47,7 +45,8 @@ public class TicketRestaurantService {
 
     public List<TicketDto> list() {
         return ticketRepository.findAllByOrderByDateEmissionDesc()
-                .stream().map(TicketDto::from).toList();
+                .stream().filter(TicketRestaurantService::isAssignmentRow)
+                .map(TicketDto::from).toList();
     }
 
     public TicketDto getById(Long id) {
@@ -56,7 +55,8 @@ public class TicketRestaurantService {
 
     public List<TicketDto> listByBon(Long bonCommandeId) {
         return ticketRepository.findByBonCommandeIdOrderByNumeroAsc(bonCommandeId)
-                .stream().map(TicketDto::from).toList();
+                .stream().filter(TicketRestaurantService::isAssignmentRow)
+                .map(TicketDto::from).toList();
     }
 
     // =====================================================================
@@ -64,8 +64,8 @@ public class TicketRestaurantService {
     // =====================================================================
 
     /**
-     * Assigns the next N unassigned tickets of the given (validated) bon
-     * to a single adhérent. Atomically updates the bon's
+     * Assigns a quantity of tickets from the given validated bon to a
+     * single adhérent. Atomically updates the bon's
      * {@code quantiteRestante} and flips it to {@code epuise} when stock
      * reaches zero.
      */
@@ -89,29 +89,26 @@ public class TicketRestaurantService {
             throw new IllegalArgumentException("Stock insuffisant : " + stock + " ticket(s) disponible(s).");
         }
 
-        List<TicketRestaurant> next = ticketRepository
-                .findByBonCommandeIdAndStatutOrderByNumeroAsc(
-                        bon.getId(), "en_attente", PageRequest.of(0, asked));
-        if (next.size() < asked) {
-            // Defensive: should never trigger when quantiteRestante is consistent.
-            throw new IllegalArgumentException(
-                    "Stock incohérent : seulement " + next.size() + " ticket(s) libre(s) trouvé(s).");
-        }
-
         LocalDate today = LocalDate.now();
-        List<TicketDto> result = new ArrayList<>(next.size());
-        for (TicketRestaurant t : next) {
-            t.setAdherent(adherent);
-            t.setStatut("attribue");
-            t.setDateAttribution(today);
-            result.add(TicketDto.from(ticketRepository.save(t)));
-        }
+        String assignmentBatchId = UUID.randomUUID().toString();
+        TicketRestaurant assignment = TicketRestaurant.builder()
+                .numero(nextAssignmentNumero(bon))
+                .typeBon(bon.getTypeBon())
+                .montant(bon.getValeurUnitaire())
+                .quantite(asked)
+                .statut("attribue")
+                .adherent(adherent)
+                .bonCommande(bon)
+                .dateEmission(today)
+                .dateAttribution(today)
+                .assignmentBatchId(assignmentBatchId)
+                .build();
 
         int remaining = stock - asked;
         bon.setQuantiteRestante(remaining);
         if (remaining == 0) bon.setStatut("epuise");
         bonCommandeRepository.save(bon);
-        return result;
+        return List.of(TicketDto.from(ticketRepository.save(assignment)));
     }
 
     // =====================================================================
@@ -125,6 +122,7 @@ public class TicketRestaurantService {
         }
         String type = Validators.requireOneOfLower(TYPES, req.getTypeBon(), "Type de bon");
         double montant = Validators.requirePositive(req.getMontant(), "Montant");
+        int quantite = req.getQuantite() == null ? 1 : requirePositiveQuantity(req.getQuantite());
         String statut = req.getStatut() == null
                 ? "attribue"
                 : Validators.requireOneOfLower(STATUTS, req.getStatut(), "Statut");
@@ -141,6 +139,7 @@ public class TicketRestaurantService {
                 .numero(numero)
                 .typeBon(type)
                 .montant(montant)
+                .quantite(quantite)
                 .statut(statut)
                 .adherent(adherent)
                 .dateEmission(date)
@@ -161,6 +160,9 @@ public class TicketRestaurantService {
         }
         if (req.getMontant() != null) {
             t.setMontant(Validators.requirePositive(req.getMontant(), "Montant"));
+        }
+        if (req.getQuantite() != null) {
+            t.setQuantite(requirePositiveQuantity(req.getQuantite()));
         }
         if (req.getStatut() != null) {
             t.setStatut(Validators.requireOneOfLower(STATUTS, req.getStatut(), "Statut"));
@@ -184,6 +186,21 @@ public class TicketRestaurantService {
         return Repos.findOrThrow(ticketRepository, id, "Ticket");
     }
 
+    private String nextAssignmentNumero(BonCommande bon) {
+        String numero;
+        do {
+            numero = bon.getNumero() + "-A-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+        } while (ticketRepository.existsByNumero(numero));
+        return numero;
+    }
+
+    private static int requirePositiveQuantity(Integer value) {
+        if (value == null || value <= 0) {
+            throw new IllegalArgumentException("Quantité invalide.");
+        }
+        return value;
+    }
+
     private void ensureBonReadyForAssignment(BonCommande bon) {
         String statut = bon.getStatut() == null ? "" : bon.getStatut().toLowerCase();
         if (!"valide".equals(statut)) {
@@ -202,5 +219,11 @@ public class TicketRestaurantService {
         if (user.getRole() != Role.ADHERENT) {
             throw new IllegalArgumentException("L'utilisateur n'est pas un adhérent.");
         }
+    }
+
+    private static boolean isAssignmentRow(TicketRestaurant ticket) {
+        return ticket.getAdherent() != null
+                || ticket.getDateAttribution() != null
+                || ticket.getDateDecision() != null;
     }
 }

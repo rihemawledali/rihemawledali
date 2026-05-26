@@ -14,7 +14,6 @@ import com.project_pfe_srt.project_srt.treasurer.boncommande.dto.BonCommandeRequ
 import com.project_pfe_srt.project_srt.treasurer.boncommande.entity.BonCommande;
 import com.project_pfe_srt.project_srt.treasurer.boncommande.repository.BonCommandeRepository;
 import com.project_pfe_srt.project_srt.treasurer.ticket.dto.TicketDto;
-import com.project_pfe_srt.project_srt.treasurer.ticket.entity.TicketRestaurant;
 import com.project_pfe_srt.project_srt.treasurer.ticket.repository.TicketRepository;
 
 import jakarta.transaction.Transactional;
@@ -22,15 +21,13 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
 /**
  * Manages "bon de commande" stock orders for restaurant / cafeteria
- * tickets. Creating a bon also pre-generates its tickets (in
- * {@code en_attente}, unassigned); validating the bon then opens
- * those tickets to assignment via {@link TicketRepository}.
+ * tickets. A bon stores only stock counts; ticket assignment rows are
+ * created later when the treasurer gives a quantity to an adhérent.
  */
 @Service
 @RequiredArgsConstructor
@@ -63,6 +60,7 @@ public class BonCommandeService {
         BonCommande b = findBon(id);
         List<TicketDto> tickets = ticketRepository
                 .findByBonCommandeIdOrderByNumeroAsc(b.getId()).stream()
+                .filter(BonCommandeService::isAssignmentRow)
                 .map(TicketDto::from).toList();
         return BonCommandeDetailDto.builder()
                 .bon(BonCommandeDto.from(b))
@@ -75,9 +73,8 @@ public class BonCommandeService {
     // =====================================================================
 
     /**
-     * Creates a stock-level bon and pre-generates all its tickets in
-     * {@code en_attente}. The bon itself starts in {@code brouillon} —
-     * call {@link #valider} to open tickets for assignment.
+     * Creates a stock-level bon. The bon itself starts in {@code brouillon};
+     * call {@link #valider} to open its quantity for assignment.
      */
     @Transactional
     public BonCommandeDto create(BonCommandeRequest req) {
@@ -119,7 +116,6 @@ public class BonCommandeService {
                 .dateExpiration(expiration)
                 .build());
 
-        ticketRepository.saveAll(generateTickets(saved, quantite, valeurUnitaire, typeBon, emission));
         return BonCommandeDto.from(saved);
     }
 
@@ -139,7 +135,8 @@ public class BonCommandeService {
     public BonCommandeDto update(Long id, BonCommandeRequest req) {
         BonCommande b = findBon(id);
         boolean hasAssignedTickets =
-                ticketRepository.countByBonCommandeIdAndStatut(b.getId(), "attribue") > 0;
+                ticketRepository.countByBonCommandeIdAndStatut(b.getId(), "attribue")
+                        + ticketRepository.countByBonCommandeIdAndStatut(b.getId(), "utilise") > 0;
 
         if (req.getNumero() != null && !req.getNumero().equalsIgnoreCase(b.getNumero())) {
             if (repo.existsByNumero(req.getNumero())) {
@@ -174,10 +171,11 @@ public class BonCommandeService {
     @Transactional
     public void delete(Long id) {
         BonCommande b = findBon(id);
-        long assigned = ticketRepository.countByBonCommandeIdAndStatut(b.getId(), "attribue");
+        long assigned = ticketRepository.countByBonCommandeIdAndStatut(b.getId(), "attribue")
+                + ticketRepository.countByBonCommandeIdAndStatut(b.getId(), "utilise");
         if (assigned > 0) {
             throw new IllegalArgumentException(
-                    "Impossible de supprimer : " + assigned + " ticket(s) déjà attribué(s).");
+                    "Impossible de supprimer : " + assigned + " attribution(s) déjà traitée(s).");
         }
         ticketRepository.deleteAll(ticketRepository.findByBonCommandeIdOrderByNumeroAsc(b.getId()));
         repo.deleteById(b.getId());
@@ -222,28 +220,6 @@ public class BonCommandeService {
         return quantite;
     }
 
-    /**
-     * Pre-generates {@code quantite} tickets numbered {@code <bonNumero>-0001 …}.
-     * The bon's unique numero guarantees ticket numero uniqueness.
-     */
-    private static List<TicketRestaurant> generateTickets(
-            BonCommande bon, int quantite, double valeurUnitaire,
-            String typeBon, LocalDate emission) {
-
-        List<TicketRestaurant> tickets = new ArrayList<>(quantite);
-        for (int i = 1; i <= quantite; i++) {
-            tickets.add(TicketRestaurant.builder()
-                    .numero(bon.getNumero() + "-" + String.format("%04d", i))
-                    .typeBon(typeBon)
-                    .montant(valeurUnitaire)
-                    .statut("en_attente")
-                    .bonCommande(bon)
-                    .dateEmission(emission)
-                    .build());
-        }
-        return tickets;
-    }
-
     private static String requireStatut(String value, String fallback) {
         if (value == null || value.isBlank()) return fallback;
         return Validators.requireOneOfLower(STATUTS, value, "Statut");
@@ -256,5 +232,11 @@ public class BonCommandeService {
             throw new IllegalArgumentException("Type de bon invalide (restaurant | cafeteria).");
         }
         return v;
+    }
+
+    private static boolean isAssignmentRow(com.project_pfe_srt.project_srt.treasurer.ticket.entity.TicketRestaurant ticket) {
+        return ticket.getAdherent() != null
+                || ticket.getDateAttribution() != null
+                || ticket.getDateDecision() != null;
     }
 }

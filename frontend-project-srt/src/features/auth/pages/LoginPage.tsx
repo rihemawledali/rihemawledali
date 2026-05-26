@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
+import { Mail } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { ApiError } from '../../../shared/api/apiClient';
 import { AuthLayout } from '../components/AuthLayout';
@@ -64,59 +65,60 @@ export function LoginPage() {
 
   return (
     <AuthLayout>
-      <h1 className="auth-title text-gradient-link">Connexion</h1>
+      <div className="auth-page">
+        <h1 className="auth-title text-gradient-link">Connexion</h1>
 
+        {serverError && (
+          <div className="auth-error-alert">
+            <Alert variant="error" dismissible onDismiss={() => setServerError('')}>
+              {serverError}
+            </Alert>
+          </div>
+        )}
 
-
-      {serverError && (
-        <div className="auth-error-alert">
-          <Alert variant="error" dismissible onDismiss={() => setServerError('')}>
-            {serverError}
-          </Alert>
-        </div>
-      )}
-
-      <form className="auth-form-fields" onSubmit={handleSubmit} noValidate>
-        <FormInput
-          id="login-email"
-          label="Adresse e-mail"
-          type="email"
-          placeholder=""
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          error={errors.email}
-          autoComplete="email"
-        />
-
-        <PasswordInput
-          id="login-password"
-          label="Mot de passe"
-          placeholder=""
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          error={errors.password}
-          autoComplete="current-password"
-        />
-
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Checkbox
-            label="Se souvenir de moi"
-            checked={rememberMe}
-            onChange={(e) => setRememberMe(e.target.checked)}
+        <form className="auth-form-fields" onSubmit={handleSubmit} noValidate>
+          <FormInput
+            id="login-email"
+            label="Adresse e-mail"
+            type="email"
+            placeholder=""
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            error={errors.email}
+            autoComplete="email"
+            icon={<Mail size={18} />}
           />
-          <Link to="/forgot-password" style={{ fontSize: '0.875rem', color: '#6b7280', textDecoration: 'none' }}>
-            Mot de passe oublié ?
-          </Link>
-        </div>
 
-        <button type="submit" className="auth-submit-btn gradient-primary" disabled={isLoading}>
-          Se connecter
-        </button>
-      </form>
+          <PasswordInput
+            id="login-password"
+            label="Mot de passe"
+            placeholder=""
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            error={errors.password}
+            autoComplete="current-password"
+          />
 
-      <p className="auth-switch-text">
-        Vous n'avez pas de compte ? <Link to="/signup" className="text-gradient-link">S'inscrire</Link>
-      </p>
+          <div className="auth-inline-actions">
+            <Checkbox
+              label="Se souvenir de moi"
+              checked={rememberMe}
+              onChange={(e) => setRememberMe(e.target.checked)}
+            />
+            <Link to="/forgot-password" className="text-gradient-link">
+              Mot de passe oublié ?
+            </Link>
+          </div>
+
+          <button type="submit" className="auth-submit-btn gradient-primary" disabled={isLoading}>
+            Se connecter
+          </button>
+        </form>
+
+        <p className="auth-switch-text">
+          Vous n'avez pas de compte ? <Link to="/signup" className="text-gradient-link">S'inscrire</Link>
+        </p>
+      </div>
     </AuthLayout>
   );
 }

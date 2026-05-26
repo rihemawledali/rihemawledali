@@ -3,19 +3,13 @@
    ============================================ */
 
 import { useMemo, useState, type ReactNode } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Banknote,
-  Calculator,
-  Calendar,
   Check,
   CheckCircle2,
-  Clock3,
-  Download,
   Eye,
-  FileText,
-  Hash,
-  Percent,
   WalletCards,
   X,
 } from 'lucide-react';
@@ -27,7 +21,6 @@ import { SearchInput } from '../../../shared/data/SearchInput';
 import { FilterBar, SelectFilter } from '../../../shared/data/FilterBar';
 import { Pagination } from '../../../shared/data/Pagination';
 import { ConfirmDialog } from '../../../shared/data/ConfirmDialog';
-import { Modal } from '../../../shared/data/Modal';
 import { useToast } from '../../../shared/feedback/useToast';
 import { formatCurrency, formatDate, formatNumber } from '../../../shared/lib/formatters';
 import { treasurerPretsApi } from '../prets/api';
@@ -47,11 +40,11 @@ const STATUS_OPTIONS = [
 export function TreasurerPretsPage() {
   const qc = useQueryClient();
   const toast = useToast();
+  const navigate = useNavigate();
 
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [statut, setStatut] = useState('');
-  const [selected, setSelected] = useState<PretSocial | null>(null);
   const [rejecting, setRejecting] = useState<PretSocial | null>(null);
 
   const all = useQuery({
@@ -226,10 +219,10 @@ export function TreasurerPretsPage() {
               <Button
                 variant="secondary"
                 size="sm"
-                onClick={() => setSelected(p)}
+                onClick={() => navigate(`/treasurer/prets/${p.id}`)}
                 aria-label={`Voir le prêt de ${p.adherentNom}`}
               >
-                <Eye size={14} /> Détails
+                <Eye size={14} /> Ouvrir
               </Button>
               {p.statut === 'en_attente' && (
                 <>
@@ -264,15 +257,6 @@ export function TreasurerPretsPage() {
           </div>
         )}
       </section>
-
-      <LoanDetailModal
-        loan={selected}
-        validating={valider.isPending}
-        rejecting={rejeter.isPending}
-        onClose={() => setSelected(null)}
-        onValidate={() => { if (selected) { valider.mutate(selected.id); setSelected(null); } }}
-        onReject={() => { if (selected) { setRejecting(selected); setSelected(null); } }}
-      />
 
       <ConfirmDialog
         open={!!rejecting}
@@ -336,181 +320,6 @@ function LoanMetric({
         <strong>{loading ? '...' : value}</strong>
       </div>
     </article>
-  );
-}
-
-function LoanDetailModal({
-  loan,
-  validating,
-  rejecting,
-  onClose,
-  onValidate,
-  onReject,
-}: {
-  loan: PretSocial | null;
-  validating: boolean;
-  rejecting: boolean;
-  onClose: () => void;
-  onValidate: () => void;
-  onReject: () => void;
-}) {
-  const monthlyPayment = loan
-    ? pretsApi.calculateMonthlyPayment(loan.montant, loan.duree, loan.taux)
-    : 0;
-
-  const handleDownload = () => {
-    if (!loan?.documentNom) return;
-    const blob = new Blob(
-      [`Justificatif prêt social\nRéférence : ${loan.id.toUpperCase()}\nAdhérent : ${loan.adherentNom}\n`],
-      { type: 'text/plain' },
-    );
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = loan.documentNom;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  };
-
-  return (
-    <Modal
-      open={!!loan}
-      onClose={onClose}
-      title={loan ? `Dossier prêt - ${loan.adherentNom}` : ''}
-      description={loan ? `Référence ${loan.id.toUpperCase()}` : ''}
-      size="lg"
-      footer={loan?.statut === 'en_attente' ? (
-        <div className="loan-modal-actions">
-          <Button variant="secondary" onClick={onClose}>Fermer</Button>
-          <Button variant="danger" onClick={onReject} disabled={validating || rejecting}>
-            <X size={14} /> Rejeter
-          </Button>
-          <Button
-            variant="primary"
-            onClick={onValidate}
-            disabled={validating || rejecting}
-            isLoading={validating && loan ? true : false}
-          >
-            <Check size={14} /> Valider le prêt
-          </Button>
-        </div>
-      ) : (
-        <Button variant="secondary" onClick={onClose}>Fermer</Button>
-      )}
-    >
-      {loan && (
-        <div className="loan-detail">
-          <section className="loan-detail-header">
-            <div className="loan-detail-person">
-              <span className="loan-avatar loan-avatar--xl" aria-hidden="true">{getInitials(loan.adherentNom)}</span>
-              <div>
-                <span className="loan-eyebrow">Demande de prêt social</span>
-                <h3>{loan.adherentNom}</h3>
-                <div className="loan-detail-chips">
-                  <span><Hash size={13} /> {loan.id.toUpperCase()}</span>
-                  <span><Calendar size={13} /> {formatDate(loan.dateDemande)}</span>
-                </div>
-              </div>
-            </div>
-            <StatusBadge status={loan.statut} />
-          </section>
-
-          <section className="loan-detail-metrics">
-            <LoanDetailMetric icon={<Banknote size={16} />} label="Montant demandé" value={formatCurrency(loan.montant)} tone="primary" />
-            <LoanDetailMetric icon={<Clock3 size={16} />} label="Durée" value={`${loan.duree} mois`} />
-            <LoanDetailMetric icon={<Percent size={16} />} label="Taux" value={`${loan.taux.toFixed(1)} %`} />
-            <LoanDetailMetric icon={<Calculator size={16} />} label="Mensualité estimée" value={formatCurrency(monthlyPayment)} tone="success" />
-          </section>
-
-          <div className="loan-detail-layout">
-            <DetailPanel title="Informations du dossier" icon={<FileText size={16} />}>
-              <DetailField label="Référence" value={<span className="cell-mono">{loan.id.toUpperCase()}</span>} />
-              <DetailField label="Adhérent" value={<strong>{loan.adherentNom}</strong>} />
-              <DetailField label="Date de demande" value={formatDate(loan.dateDemande)} />
-              {loan.dateAccord && <DetailField label="Date d'accord" value={formatDate(loan.dateAccord)} />}
-              <DetailField label="Statut" value={<StatusBadge status={loan.statut} />} />
-            </DetailPanel>
-
-            <DetailPanel title="Simulation de remboursement" icon={<Calculator size={16} />}>
-              <DetailField label="Capital" value={<strong>{formatCurrency(loan.montant)}</strong>} />
-              <DetailField label="Durée" value={`${loan.duree} mois`} />
-              <DetailField label="Taux appliqué" value={`${loan.taux.toFixed(1)} %`} />
-              <DetailField label="Mensualité" value={<strong>{formatCurrency(monthlyPayment)}</strong>} />
-            </DetailPanel>
-          </div>
-
-          {loan.motif && (
-            <section className="loan-note">
-              <h4>Motif / justification</h4>
-              <p>{loan.motif}</p>
-            </section>
-          )}
-
-          <section className="loan-document-card">
-            <h4>Justificatif</h4>
-            {loan.documentNom ? (
-              <div>
-                <span className="loan-document-icon"><FileText size={20} /></span>
-                <div>
-                  <strong>{loan.documentNom}</strong>
-                  {loan.documentSize != null && <small>{(loan.documentSize / 1024).toFixed(1)} Ko</small>}
-                </div>
-                <Button variant="secondary" size="sm" onClick={handleDownload}>
-                  <Download size={14} /> Télécharger
-                </Button>
-              </div>
-            ) : (
-              <p>Aucun justificatif joint à cette demande.</p>
-            )}
-          </section>
-        </div>
-      )}
-    </Modal>
-  );
-}
-
-function LoanDetailMetric({
-  icon,
-  label,
-  value,
-  tone = 'neutral',
-}: {
-  icon: ReactNode;
-  label: string;
-  value: ReactNode;
-  tone?: 'neutral' | 'primary' | 'success';
-}) {
-  return (
-    <div className={`loan-detail-metric loan-detail-metric--${tone}`}>
-      <span>{icon}</span>
-      <div>
-        <p>{label}</p>
-        <strong>{value}</strong>
-      </div>
-    </div>
-  );
-}
-
-function DetailPanel({ title, icon, children }: { title: string; icon: ReactNode; children: ReactNode }) {
-  return (
-    <section className="loan-detail-panel">
-      <header>
-        <span>{icon}</span>
-        <h4>{title}</h4>
-      </header>
-      <div className="loan-detail-list">{children}</div>
-    </section>
-  );
-}
-
-function DetailField({ label, value }: { label: string; value: ReactNode }) {
-  return (
-    <div className="loan-detail-field">
-      <span>{label}</span>
-      <div>{value}</div>
-    </div>
   );
 }
 

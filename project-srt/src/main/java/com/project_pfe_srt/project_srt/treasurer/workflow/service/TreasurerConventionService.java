@@ -12,15 +12,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.util.List;
 
-/**
- * Treasurer-facing workflow for convention demandes:
- *   en_attente -> validee   (valider)
- *   en_attente -> refusee   (refuser, optional motif)
- *
- * Validated demandes are the ones the retenue generator uses to emit
- * monthly tranche lines when the backing convention has a priced offer
- * (`montantOffre` + `nbTranches`).
- */
 @Service
 @RequiredArgsConstructor
 public class TreasurerConventionService {
@@ -40,10 +31,10 @@ public class TreasurerConventionService {
     @Transactional
     public ConventionDemandeDto valider(Long id) {
         ConventionDemande d = findOrThrow(id);
-        if (!"en_attente".equalsIgnoreCase(d.getStatut())) {
-            throw new IllegalArgumentException("Seules les demandes en attente peuvent être validées.");
+        if (!isSubmitted(d.getStatut())) {
+            throw new IllegalArgumentException("Seules les demandes soumises peuvent etre validees.");
         }
-        d.setStatut("validee");
+        d.setStatut("APPROUVEE");
         d.setDateDecision(LocalDate.now());
         d.setMotifRefus(null);
         return ConventionDemandeDto.from(demandeRepository.save(d));
@@ -52,10 +43,10 @@ public class TreasurerConventionService {
     @Transactional
     public ConventionDemandeDto refuser(Long id, String motif) {
         ConventionDemande d = findOrThrow(id);
-        if (!"en_attente".equalsIgnoreCase(d.getStatut())) {
-            throw new IllegalArgumentException("Seules les demandes en attente peuvent être refusées.");
+        if (!isSubmitted(d.getStatut())) {
+            throw new IllegalArgumentException("Seules les demandes soumises peuvent etre refusees.");
         }
-        d.setStatut("refusee");
+        d.setStatut("REFUSEE");
         d.setDateDecision(LocalDate.now());
         d.setMotifRefus(motif);
         return ConventionDemandeDto.from(demandeRepository.save(d));
@@ -63,5 +54,9 @@ public class TreasurerConventionService {
 
     private ConventionDemande findOrThrow(Long id) {
         return Repos.findOrThrow(demandeRepository, id, "Demande de convention");
+    }
+
+    private static boolean isSubmitted(String statut) {
+        return "SOUMISE".equalsIgnoreCase(statut) || "en_attente".equalsIgnoreCase(statut);
     }
 }

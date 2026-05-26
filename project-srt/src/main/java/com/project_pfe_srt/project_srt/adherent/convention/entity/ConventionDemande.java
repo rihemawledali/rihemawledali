@@ -3,6 +3,7 @@ package com.project_pfe_srt.project_srt.adherent.convention.entity;
 import com.project_pfe_srt.project_srt.auth.entity.User;
 import com.project_pfe_srt.project_srt.shared.convention.entity.Convention;
 import com.project_pfe_srt.project_srt.shared.file.entity.Attachment;
+import com.project_pfe_srt.project_srt.treasurer.facture.entity.Facture;
 
 import jakarta.persistence.*;
 import lombok.*;
@@ -33,10 +34,10 @@ public class ConventionDemande {
     @Column(name = "date_demande", nullable = false)
     private LocalDate dateDemande;
 
-    /** en_attente | validee | refusee | annulee */
+    /** SOUMISE | APPROUVEE | EN_COURS | JUSTIFIEE | VALIDEE | FACTUREE | PAYEE | REFUSEE | ANNULEE */
     @Builder.Default
     @Column(nullable = false)
-    private String statut = "en_attente";
+    private String statut = "SOUMISE";
 
     @Column(name = "date_decision")
     private LocalDate dateDecision;
@@ -50,4 +51,35 @@ public class ConventionDemande {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "attachment_id")
     private Attachment attachment;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "facture_id")
+    private Facture facture;
+
+    @Column(name = "facture_mois")
+    private Integer factureMois;
+
+    @Column(name = "facture_annee")
+    private Integer factureAnnee;
+
+    @Column(name = "montant_total")
+    private Double montantTotal;
+
+    @Column(name = "montant_adherent")
+    private Double montantAdherent;
+
+    @Column(name = "montant_amicale")
+    private Double montantAmicale;
+
+    @Column(name = "retenue_mois_debut")
+    private Integer retenueMoisDebut;
+
+    @Column(name = "retenue_annee_debut")
+    private Integer retenueAnneeDebut;
+
+    @Column(name = "retenue_nombre_mois")
+    private Integer retenueNombreMois;
+
+    @Column(name = "retenue_montant_mensuel")
+    private Double retenueMontantMensuel;
 }

@@ -7,7 +7,7 @@ import { FormSelect } from '../../../shared/ui/FormSelect';
 import { FormTextarea } from '../../../shared/ui/FormTextarea';
 import { Button } from '../../../shared/ui/Button';
 import { suppliersApi } from '../suppliers/suppliersApi';
-import type { Convention, ModeAvantage } from '../../../shared/types/domain';
+import type { Convention, TypeAvantage } from '../../../shared/types/domain';
 
 interface Props {
   initial?: Convention;
@@ -17,21 +17,19 @@ interface Props {
 }
 
 const TYPES = [
-  { value: 'sante', label: 'Santé' },
+  { value: 'sante', label: 'Sante' },
   { value: 'restauration', label: 'Restauration' },
   { value: 'transport', label: 'Transport' },
   { value: 'loisir', label: 'Loisir' },
   { value: 'commerce', label: 'Commerce' },
-  { value: 'education', label: 'Éducation' },
+  { value: 'education', label: 'Education' },
 ];
 
-/**
- * Mode d'avantage options — drives the conditional display of
- * {@code tauxReduction} or {@code montantReduction}.
- */
-const MODE_AVANTAGE_OPTIONS: { value: ModeAvantage; label: string; hint: string }[] = [
-  { value: 'REMISE_POURCENTAGE',  label: 'Remise en pourcentage', hint: 'Remise appliquée en % sur le prix' },
-  { value: 'REMISE_MONTANT_FIXE', label: 'Remise — montant fixe', hint: 'Remise exprimée en TND' },
+const TYPE_AVANTAGE_OPTIONS: { value: TypeAvantage; label: string }[] = [
+  { value: 'REMISE_DIRECTE', label: 'Remise directe' },
+  { value: 'BON_ACHAT', label: "Bon d'achat" },
+  { value: 'ACHAT_TRANCHE', label: 'Achat tranche' },
+  { value: 'ABONNEMENT', label: 'Abonnement' },
 ];
 
 export function ConventionForm({ initial, onSubmit, onCancel, submitting }: Props) {
@@ -51,13 +49,12 @@ export function ConventionForm({ initial, onSubmit, onCancel, submitting }: Prop
           statut: initial.statut,
           description: initial.description ?? '',
           typeConvention: initial.typeConvention ?? '',
-          modeAvantage:
-            initial.modeAvantage === 'REMISE_POURCENTAGE' ||
-            initial.modeAvantage === 'REMISE_MONTANT_FIXE'
-              ? initial.modeAvantage
-              : 'REMISE_POURCENTAGE',
-          tauxReduction: initial.tauxReduction,
-          montantReduction: initial.montantReduction,
+          typeAvantage: initial.typeAvantage ?? 'REMISE_DIRECTE',
+          pourcentageAdherent: initial.pourcentageAdherent,
+          montantAvantage: initial.montantAvantage,
+          nombreMoisRetenue: initial.nombreMoisRetenue,
+          quantiteDisponible: initial.quantiteDisponible,
+          autoriseAyantsDroit: initial.autoriseAyantsDroit ?? false,
         }
       : {
           fournisseurId: '',
@@ -67,16 +64,18 @@ export function ConventionForm({ initial, onSubmit, onCancel, submitting }: Prop
           statut: 'active',
           description: '',
           typeConvention: '',
-          modeAvantage: 'REMISE_POURCENTAGE',
-          tauxReduction: undefined,
-          montantReduction: undefined,
+          typeAvantage: 'REMISE_DIRECTE',
+          pourcentageAdherent: 0,
+          montantAvantage: undefined,
+          nombreMoisRetenue: undefined,
+          quantiteDisponible: undefined,
+          autoriseAyantsDroit: false,
         },
   });
 
-  const mode = useWatch({ control, name: 'modeAvantage' });
-  const showTaux = mode === 'REMISE_POURCENTAGE';
-  const showMontant = mode === 'REMISE_MONTANT_FIXE';
-  const hint = MODE_AVANTAGE_OPTIONS.find((o) => o.value === mode)?.hint;
+  const typeAvantage = useWatch({ control, name: 'typeAvantage' });
+  const hasFinancialFlow = typeAvantage !== 'REMISE_DIRECTE';
+  const isTranche = typeAvantage === 'ACHAT_TRANCHE';
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="form-grid">
@@ -85,14 +84,15 @@ export function ConventionForm({ initial, onSubmit, onCancel, submitting }: Prop
           label="Fournisseur"
           {...register('fournisseurId')}
           options={(suppliers.data?.items ?? []).map((s) => ({ value: s.id, label: s.nom }))}
-          placeholder="Sélectionnez un fournisseur"
+          placeholder="Selectionnez un fournisseur"
           error={errors.fournisseurId?.message}
         />
       </div>
-      <FormSelect label="Catégorie" {...register('type')} options={TYPES} error={errors.type?.message} />
+
+      <FormSelect label="Categorie" {...register('type')} options={TYPES} error={errors.type?.message} />
       <FormInput
         label="Type de convention (optionnel)"
-        placeholder="ex. Partenariat cadre, Offre ponctuelle…"
+        placeholder="ex. Partenariat cadre, offre ponctuelle"
         {...register('typeConvention')}
         error={errors.typeConvention?.message}
       />
@@ -101,60 +101,74 @@ export function ConventionForm({ initial, onSubmit, onCancel, submitting }: Prop
         {...register('statut')}
         options={[
           { value: 'active', label: 'Active' },
-          { value: 'expiree', label: 'Expirée' },
-          { value: 'en_negociation', label: 'En négociation' },
+          { value: 'expiree', label: 'Expiree' },
+          { value: 'en_negociation', label: 'En negociation' },
           { value: 'suspendue', label: 'Suspendue' },
         ]}
         error={errors.statut?.message}
       />
-      <FormInput label="Date début" type="date" {...register('dateDebut')} error={errors.dateDebut?.message} />
+      <FormInput label="Date debut" type="date" {...register('dateDebut')} error={errors.dateDebut?.message} />
       <FormInput label="Date fin" type="date" {...register('dateFin')} error={errors.dateFin?.message} />
 
-      {/* ----- Mode d'avantage ----- */}
       <div className="form-grid-full" style={{ borderTop: '1px solid var(--color-border)', paddingTop: 'var(--space-4)' }}>
         <FormSelect
-          label="Mode d\u2019avantage"
-          {...register('modeAvantage')}
-          options={MODE_AVANTAGE_OPTIONS.map(({ value, label }) => ({ value, label }))}
-          error={errors.modeAvantage?.message}
+          label="Type d'avantage"
+          {...register('typeAvantage')}
+          options={TYPE_AVANTAGE_OPTIONS}
+          error={errors.typeAvantage?.message}
         />
-        {hint && (
-          <p style={{
-            marginTop: 'var(--space-1)',
-            fontSize: 'var(--font-size-xs)',
-            color: 'var(--color-text-muted)',
-          }}>
-            {hint}
-          </p>
-        )}
       </div>
-      {showTaux && (
+
+      {hasFinancialFlow && (
+        <>
+          <FormInput
+            label="Montant avantage (TND)"
+            type="number"
+            step="0.01"
+            min={0}
+            {...register('montantAvantage', { valueAsNumber: true })}
+            error={errors.montantAvantage?.message}
+          />
+          <FormInput
+            label="Part adherent (%)"
+            type="number"
+            step="0.1"
+            min={0}
+            max={100}
+            {...register('pourcentageAdherent', { valueAsNumber: true })}
+            error={errors.pourcentageAdherent?.message}
+          />
+        </>
+      )}
+
+      {isTranche && (
         <FormInput
-          label="Taux de réduction (%)"
+          label="Nombre de mois de retenue"
           type="number"
-          step="0.1"
-          min={0}
-          max={100}
-          {...register('tauxReduction', { valueAsNumber: true })}
-          error={errors.tauxReduction?.message}
+          min={1}
+          {...register('nombreMoisRetenue', { valueAsNumber: true })}
+          error={errors.nombreMoisRetenue?.message}
         />
       )}
-      {showMontant && (
-        <FormInput
-          label="Montant de réduction (TND)"
-          type="number"
-          step="0.01"
-          min={0}
-          {...register('montantReduction', { valueAsNumber: true })}
-          error={errors.montantReduction?.message}
-        />
-      )}
+
+      <FormInput
+        label="Quantite disponible"
+        type="number"
+        min={0}
+        {...register('quantiteDisponible', { valueAsNumber: true })}
+        error={errors.quantiteDisponible?.message}
+      />
+      <label style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', color: 'var(--color-text-secondary)' }}>
+        <input type="checkbox" {...register('autoriseAyantsDroit')} />
+        Autoriser les ayants droit
+      </label>
+
       <div className="form-grid-full">
         <FormTextarea label="Description (optionnel)" rows={3} {...register('description')} error={errors.description?.message} />
       </div>
       <div className="form-grid-full" style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-3)' }}>
         <Button type="button" variant="secondary" onClick={onCancel} disabled={submitting}>Annuler</Button>
-        <Button type="submit" isLoading={submitting}>{initial ? 'Mettre à jour' : 'Créer'}</Button>
+        <Button type="submit" isLoading={submitting}>{initial ? 'Mettre a jour' : 'Creer'}</Button>
       </div>
     </form>
   );

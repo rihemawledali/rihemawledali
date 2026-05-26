@@ -48,12 +48,15 @@ interface TicketDtoBE {
   numero: string;
   typeBon: string;
   montant: number;
+  quantite?: number | null;
+  montantTotal?: number | null;
   statut: string;
   adherentId?: string | null;
   adherentNom?: string | null;
   adherentMatricule?: string | null;
   bonCommandeId?: string | null;
   bonCommandeNumero?: string | null;
+  assignmentBatchId?: string | null;
   dateEmission?: string | null;
   dateAttribution?: string | null;
   dateDecision?: string | null;
@@ -99,12 +102,15 @@ function mapTicket(t: TicketDtoBE): TicketRestaurant {
     numero: t.numero,
     typeBon: (t.typeBon as TicketType) ?? 'restaurant',
     montant: t.montant,
+    quantite: t.quantite ?? 1,
+    montantTotal: t.montantTotal ?? (t.montant * (t.quantite ?? 1)),
     statut: (t.statut as BonStatus) ?? 'en_attente',
     adherentId: t.adherentId ?? undefined,
     adherentNom: t.adherentNom ?? undefined,
     adherentMatricule: t.adherentMatricule ?? undefined,
     bonCommandeId: t.bonCommandeId ?? undefined,
     bonCommandeNumero: t.bonCommandeNumero ?? undefined,
+    assignmentBatchId: t.assignmentBatchId ?? undefined,
     dateEmission: t.dateEmission ?? '',
     dateAttribution: t.dateAttribution ?? undefined,
     dateDecision: t.dateDecision ?? undefined,
@@ -240,6 +246,7 @@ export const ticketsApi = {
       numero: data.numero,
       typeBon: data.typeBon,
       montant: data.montant,
+      quantite: data.quantite ?? 1,
       statut: data.statut,
       adherentId: toLong(data.adherentId),
       dateEmission: data.dateEmission,
@@ -253,6 +260,7 @@ export const ticketsApi = {
       numero: patch.numero,
       typeBon: patch.typeBon,
       montant: patch.montant,
+      quantite: patch.quantite,
       statut: patch.statut,
       adherentId: toLong(patch.adherentId),
       dateEmission: patch.dateEmission,

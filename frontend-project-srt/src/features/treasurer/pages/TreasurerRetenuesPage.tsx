@@ -241,12 +241,13 @@ export function TreasurerRetenuesPage() {
     {
       key: 'ventilation',
       header: 'Détails retenue',
-      width: '360px',
+      width: '430px',
       cell: (r) => r.totalCotisation > 0 ? (
         <div className="retenue-breakdown-cell">
           <BreakdownMini label="Cot." value={formatCurrency(r.totalCotisation)} tone="info" />
           <BreakdownMini label="Prêt" value={r.totalPret > 0 ? formatCurrency(r.totalPret) : '—'} tone="warning" muted={r.totalPret <= 0} />
           <BreakdownMini label="Conv." value={r.totalConvention > 0 ? formatCurrency(r.totalConvention) : '—'} tone="primary" muted={r.totalConvention <= 0} />
+          <BreakdownMini label="Ticket" value={r.totalTicket > 0 ? formatCurrency(r.totalTicket) : '—'} tone="success" muted={r.totalTicket <= 0} />
         </div>
       ) : (
         <div className="retenue-breakdown-cell">
@@ -258,6 +259,7 @@ export function TreasurerRetenuesPage() {
           </span>
           <BreakdownMini label="Prêt" value={r.totalPret > 0 ? formatCurrency(r.totalPret) : '—'} tone="warning" muted={r.totalPret <= 0} />
           <BreakdownMini label="Conv." value={r.totalConvention > 0 ? formatCurrency(r.totalConvention) : '—'} tone="primary" muted={r.totalConvention <= 0} />
+          <BreakdownMini label="Ticket" value={r.totalTicket > 0 ? formatCurrency(r.totalTicket) : '—'} tone="success" muted={r.totalTicket <= 0} />
         </div>
       ),
     },
@@ -590,7 +592,7 @@ function BreakdownMini({
 }: {
   label: string;
   value: string;
-  tone: 'info' | 'warning' | 'primary';
+  tone: 'info' | 'warning' | 'primary' | 'success';
   muted?: boolean;
 }) {
   return (

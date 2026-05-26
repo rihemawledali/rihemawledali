@@ -7,8 +7,10 @@ import com.project_pfe_srt.project_srt.common.util.Validators;
 import com.project_pfe_srt.project_srt.shared.convention.dto.ConventionDto;
 import com.project_pfe_srt.project_srt.shared.convention.dto.ConventionRequest;
 import com.project_pfe_srt.project_srt.shared.convention.entity.Convention;
-import com.project_pfe_srt.project_srt.shared.convention.entity.ModeAvantage;
+import com.project_pfe_srt.project_srt.shared.convention.entity.TypeAvantage;
 import com.project_pfe_srt.project_srt.shared.convention.repository.ConventionRepository;
+import com.project_pfe_srt.project_srt.shared.file.entity.Attachment;
+import com.project_pfe_srt.project_srt.shared.file.repository.AttachmentRepository;
 import com.project_pfe_srt.project_srt.shared.fournisseur.entity.Fournisseur;
 import com.project_pfe_srt.project_srt.shared.fournisseur.repository.FournisseurRepository;
 
@@ -32,6 +34,7 @@ public class ConventionService {
 
     private final ConventionRepository conventionRepository;
     private final FournisseurRepository fournisseurRepository;
+    private final AttachmentRepository attachmentRepository;
 
     @Transactional(readOnly = true)
     public List<ConventionDto> list() {
@@ -44,15 +47,14 @@ public class ConventionService {
     public ConventionDto create(ConventionRequest request) {
         Fournisseur fournisseur = requireFournisseur(parseRequiredFournisseurId(request.getFournisseurId()));
         validateRemise(request.getRemise());
-        LocalDate debut = parseDate(request.getDateDebut(), "de début");
+        LocalDate debut = parseDate(request.getDateDebut(), "de debut");
         LocalDate fin = parseDate(request.getDateFin(), "de fin");
         validateDateRange(debut, fin);
 
-        ModeAvantage mode = parseModeAvantage(request.getModeAvantage());
-        if (mode == null) {
-            throw new IllegalArgumentException("Mode d'avantage requis.");
-        }
-        AvantageFields avantage = validateAvantageFields(request, mode);
+        TypeAvantage typeAvantage = parseRequiredTypeAvantage(request.getTypeAvantage());
+        ConventionFields conventionFields = validateConventionFields(request, typeAvantage);
+        Attachment documentConvention = request.getDocumentConventionId() == null ? null
+                : requireAttachment(request.getDocumentConventionId());
 
         Convention convention = Convention.builder()
                 .fournisseur(fournisseur)
@@ -63,10 +65,13 @@ public class ConventionService {
                 .statut(requireStatut(request.getStatut(), "active"))
                 .description(request.getDescription())
                 .typeConvention(request.getTypeConvention())
-                .modeAvantage(mode)
-                .tauxReduction(avantage.tauxReduction())
-                .montantReduction(avantage.montantReduction())
-                .descriptionAvantage(avantage.descriptionAvantage())
+                .typeAvantage(typeAvantage)
+                .pourcentageAdherent(conventionFields.pourcentageAdherent())
+                .montantAvantage(conventionFields.montantAvantage())
+                .nombreMoisRetenue(conventionFields.nombreMoisRetenue())
+                .quantiteDisponible(conventionFields.quantiteDisponible())
+                .autoriseAyantsDroit(Boolean.TRUE.equals(request.getAutoriseAyantsDroit()))
+                .documentConvention(documentConvention)
                 .build();
 
         return ConventionDto.from(conventionRepository.save(convention));
@@ -83,7 +88,7 @@ public class ConventionService {
             convention.setType(requireType(request.getType()));
         }
         if (request.getDateDebut() != null) {
-            convention.setDateDebut(parseDate(request.getDateDebut(), "de début"));
+            convention.setDateDebut(parseDate(request.getDateDebut(), "de debut"));
         }
         if (request.getDateFin() != null) {
             convention.setDateFin(parseDate(request.getDateFin(), "de fin"));
@@ -101,8 +106,7 @@ public class ConventionService {
         if (request.getTypeConvention() != null) {
             convention.setTypeConvention(request.getTypeConvention());
         }
-
-        updateAvantageFields(convention, request);
+        updateConventionFields(convention, request);
         validateDateRange(convention.getDateDebut(), convention.getDateFin());
 
         return ConventionDto.from(convention);
@@ -114,7 +118,7 @@ public class ConventionService {
             throw NotFoundException.of("Convention");
         }
         conventionRepository.deleteById(id);
-        return Map.of("message", "Convention supprimée.");
+        return Map.of("message", "Convention supprimee.");
     }
 
     public static String requireType(String value) {
@@ -126,80 +130,97 @@ public class ConventionService {
         return Validators.requireOneOfLower(STATUTS, value, "Statut");
     }
 
-    public static ModeAvantage parseModeAvantage(String value) {
+    public static TypeAvantage parseTypeAvantage(String value) {
         if (value == null || value.isBlank()) {
             return null;
         }
         try {
-            return ModeAvantage.valueOf(value.trim().toUpperCase());
+            return TypeAvantage.valueOf(value.trim().toUpperCase());
         } catch (IllegalArgumentException e) {
-            throw new IllegalArgumentException("Mode d'avantage invalide.");
+            throw new IllegalArgumentException("Type d'avantage invalide.");
         }
     }
 
-    private void updateAvantageFields(Convention convention, ConventionRequest request) {
-        if (request.getModeAvantage() != null) {
-            ModeAvantage mode = parseModeAvantage(request.getModeAvantage());
-            AvantageFields merged = validateAvantageFields(
-                    request.getTauxReduction() != null ? request.getTauxReduction() : convention.getTauxReduction(),
-                    request.getMontantReduction() != null ? request.getMontantReduction() : convention.getMontantReduction(),
-                    request.getDescriptionAvantage() != null ? request.getDescriptionAvantage() : convention.getDescriptionAvantage(),
-                    mode);
-            convention.setModeAvantage(mode);
-            convention.setTauxReduction(merged.tauxReduction());
-            convention.setMontantReduction(merged.montantReduction());
-            convention.setDescriptionAvantage(merged.descriptionAvantage());
-            return;
+    private static TypeAvantage parseRequiredTypeAvantage(String value) {
+        TypeAvantage type = parseTypeAvantage(value);
+        if (type == null) {
+            throw new IllegalArgumentException("Type d'avantage requis.");
         }
+        return type;
+    }
 
-        if (request.getTauxReduction() != null) {
-            convention.setTauxReduction(request.getTauxReduction());
+    private void updateConventionFields(Convention convention, ConventionRequest request) {
+        TypeAvantage type = request.getTypeAvantage() == null
+                ? convention.getTypeAvantage()
+                : parseRequiredTypeAvantage(request.getTypeAvantage());
+        ConventionFields merged = validateConventionFields(
+                request.getPourcentageAdherent() != null ? request.getPourcentageAdherent() : convention.getPourcentageAdherent(),
+                request.getMontantAvantage() != null ? request.getMontantAvantage() : convention.getMontantAvantage(),
+                request.getNombreMoisRetenue() != null ? request.getNombreMoisRetenue() : convention.getNombreMoisRetenue(),
+                request.getQuantiteDisponible() != null ? request.getQuantiteDisponible() : convention.getQuantiteDisponible(),
+                type);
+        convention.setTypeAvantage(type);
+        convention.setPourcentageAdherent(merged.pourcentageAdherent());
+        convention.setMontantAvantage(merged.montantAvantage());
+        convention.setNombreMoisRetenue(merged.nombreMoisRetenue());
+        convention.setQuantiteDisponible(merged.quantiteDisponible());
+        if (request.getAutoriseAyantsDroit() != null) {
+            convention.setAutoriseAyantsDroit(request.getAutoriseAyantsDroit());
         }
-        if (request.getMontantReduction() != null) {
-            convention.setMontantReduction(request.getMontantReduction());
-        }
-        if (request.getDescriptionAvantage() != null) {
-            convention.setDescriptionAvantage(request.getDescriptionAvantage());
+        if (request.getDocumentConventionId() != null) {
+            convention.setDocumentConvention(requireAttachment(request.getDocumentConventionId()));
         }
     }
 
-    private static AvantageFields validateAvantageFields(ConventionRequest request, ModeAvantage mode) {
-        return validateAvantageFields(
-                request.getTauxReduction(),
-                request.getMontantReduction(),
-                request.getDescriptionAvantage(),
-                mode);
+    private static ConventionFields validateConventionFields(ConventionRequest request, TypeAvantage type) {
+        return validateConventionFields(
+                request.getPourcentageAdherent(),
+                request.getMontantAvantage(),
+                request.getNombreMoisRetenue(),
+                request.getQuantiteDisponible(),
+                type);
     }
 
-    private static AvantageFields validateAvantageFields(
-            Double tauxReduction,
-            Double montantReduction,
-            String descriptionAvantage,
-            ModeAvantage mode) {
-
-        if (mode == null) {
-            return new AvantageFields(tauxReduction, montantReduction, descriptionAvantage);
+    private static ConventionFields validateConventionFields(
+            Double pourcentageAdherent,
+            Double montantAvantage,
+            Integer nombreMoisRetenue,
+            Integer quantiteDisponible,
+            TypeAvantage type) {
+        if (quantiteDisponible != null && quantiteDisponible < 0) {
+            throw new IllegalArgumentException("Quantite disponible invalide.");
         }
-        return switch (mode) {
-            case REMISE_POURCENTAGE -> {
-                if (tauxReduction == null || tauxReduction <= 0 || tauxReduction > 100) {
-                    throw new IllegalArgumentException("Taux de reduction requis (0-100) pour une remise en pourcentage.");
-                }
-                yield new AvantageFields(tauxReduction, null, descriptionAvantage);
+        if (type == null) {
+            return new ConventionFields(pourcentageAdherent, montantAvantage, nombreMoisRetenue, quantiteDisponible);
+        }
+        return switch (type) {
+            case REMISE_DIRECTE -> new ConventionFields(0d, null, null, quantiteDisponible);
+            case BON_ACHAT, ABONNEMENT -> {
+                validateSplit(pourcentageAdherent);
+                validatePositiveAmount(montantAvantage, "Montant d'avantage");
+                yield new ConventionFields(pourcentageAdherent, montantAvantage, null, quantiteDisponible);
             }
-            case REMISE_MONTANT_FIXE, SUBVENTION_AMICALE -> {
-                if (montantReduction == null || montantReduction <= 0) {
-                    throw new IllegalArgumentException("Montant de reduction requis (> 0) pour ce mode d'avantage.");
+            case ACHAT_TRANCHE -> {
+                validateSplit(pourcentageAdherent);
+                validatePositiveAmount(montantAvantage, "Montant d'achat");
+                if (nombreMoisRetenue == null || nombreMoisRetenue <= 0) {
+                    throw new IllegalArgumentException("Nombre de mois de retenue requis pour un achat tranche.");
                 }
-                yield new AvantageFields(null, montantReduction, descriptionAvantage);
-            }
-            case PRIX_NEGOCIE, AUTRE -> {
-                if (descriptionAvantage == null || descriptionAvantage.isBlank()) {
-                    throw new IllegalArgumentException("Description de l'avantage requise pour ce mode.");
-                }
-                yield new AvantageFields(null, null, descriptionAvantage);
+                yield new ConventionFields(pourcentageAdherent, montantAvantage, nombreMoisRetenue, quantiteDisponible);
             }
         };
+    }
+
+    private static void validateSplit(Double value) {
+        if (value == null || value < 0 || value > 100) {
+            throw new IllegalArgumentException("Pourcentage adherent invalide (0 - 100).");
+        }
+    }
+
+    private static void validatePositiveAmount(Double value, String label) {
+        if (value == null || value <= 0) {
+            throw new IllegalArgumentException(label + " requis (> 0).");
+        }
     }
 
     private static LocalDate parseDate(String value, String label) {
@@ -208,7 +229,7 @@ public class ConventionService {
 
     private static void validateDateRange(LocalDate debut, LocalDate fin) {
         if (!fin.isAfter(debut)) {
-            throw new IllegalArgumentException("La date de fin doit être après la date de début.");
+            throw new IllegalArgumentException("La date de fin doit etre apres la date de debut.");
         }
     }
 
@@ -241,9 +262,14 @@ public class ConventionService {
         return Repos.findOrThrow(conventionRepository, id, "Convention");
     }
 
-    private record AvantageFields(
-            Double tauxReduction,
-            Double montantReduction,
-            String descriptionAvantage) {
+    private Attachment requireAttachment(Long id) {
+        return Repos.findOrThrow(attachmentRepository, id, "Document");
+    }
+
+    private record ConventionFields(
+            Double pourcentageAdherent,
+            Double montantAvantage,
+            Integer nombreMoisRetenue,
+            Integer quantiteDisponible) {
     }
 }
