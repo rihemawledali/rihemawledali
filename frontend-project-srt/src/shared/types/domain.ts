@@ -360,7 +360,7 @@ export interface Facture {
   annee?: number;
 }
 
-export type PaiementMode = 'virement' | 'cheque' | 'especes' | 'carte';
+export type PaiementMode = 'virement' | 'especes';
 export type PaiementStatus = 'reussi' | 'en_attente' | 'echoue' | 'rembourse';
 
 /** Type of payment — drives which beneficiary slot is used. */

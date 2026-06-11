@@ -1,8 +1,5 @@
-/* ============================================
-   Adherent Indemnites Page
-   ============================================ */
 
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { HeartHandshake, Plus, TrendingUp, CheckCircle, Clock } from 'lucide-react';
 import { PageHeader } from '../../../../shared/layout/PageHeader';
@@ -11,11 +8,12 @@ import { Modal } from '../../../../shared/data/Modal';
 import { DataTable } from '../../../../shared/data/DataTable';
 import { StatusBadge } from '../../../../shared/data/StatusBadge';
 import { useToast } from '../../../../shared/feedback/useToast';
-import { indemnitesApi } from '../api';
 import { uploadFile } from '../../../../shared/api/apiClient';
+import { indemnitesApi } from '../api';
 import { IndemniteRequestForm } from '../forms/IndemniteRequestForm';
 import type { IndemniteRequestFormValues } from '../../validators';
 import type { Indemnite } from '../../../../shared/types/domain';
+import './AdherentIndemnitesPage.css';
 
 const TYPE_LABELS: Record<string, string> = {
   maladie: 'Maladie',
@@ -27,21 +25,22 @@ const TYPE_LABELS: Record<string, string> = {
 
 export function AdherentIndemnitesPage() {
   const [creating, setCreating] = useState(false);
-  const qc = useQueryClient();
+  const queryClient = useQueryClient();
   const toast = useToast();
 
-  const { data: indemnites, isLoading } = useQuery({
+  const { data, isLoading } = useQuery({
     queryKey: ['adherent-indemnites'],
     queryFn: () => indemnitesApi.getIndemnites(),
   });
 
+  const indemnites = data ?? [];
+  const totalApprouve = getTotal(indemnites, ['approuvee', 'payee']);
+  const totalEnAttente = getTotal(indemnites, ['en_attente']);
+
   const createMutation = useMutation({
     mutationFn: async ({ values, file }: { values: IndemniteRequestFormValues; file?: File }) => {
-      let attachmentId: string | undefined;
-      if (file) {
-        const att = await uploadFile(file);
-        attachmentId = att.id;
-      }
+      const attachmentId = file ? (await uploadFile(file)).id : undefined;
+
       return indemnitesApi.createIndemnite({
         type: values.type,
         montant: values.montant,
@@ -50,115 +49,97 @@ export function AdherentIndemnitesPage() {
       });
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['adherent-indemnites'] });
+      queryClient.invalidateQueries({ queryKey: ['adherent-indemnites'] });
       setCreating(false);
-      toast.push({ title: 'Demande d\'indemnité soumise', variant: 'success' });
+      toast.push({ title: "Demande d'indemnité soumise", variant: 'success' });
     },
-    onError: (err: unknown) => {
-      const msg = err instanceof Error ? err.message : 'Échec de la demande';
-      toast.push({ title: msg, variant: 'error' });
+    onError: (error: unknown) => {
+      const message = error instanceof Error ? error.message : 'Échec de la demande';
+      toast.push({ title: message, variant: 'error' });
     },
   });
 
-  const handleCreate = async (values: IndemniteRequestFormValues, file?: File) => {
-    await createMutation.mutateAsync({ values, file });
-  };
-
-  const totalApprouve = indemnites?.filter(i => i.statut === 'approuvee' || i.statut === 'payee').reduce((s, i) => s + i.montant, 0) || 0;
-  const totalEnAttente = indemnites?.filter(i => i.statut === 'en_attente').reduce((s, i) => s + i.montant, 0) || 0;
-
   const columns = [
-    { 
-      key: 'dateDemande', 
-      header: 'Date', 
-      cell: (i: Indemnite) => new Date(i.dateDemande).toLocaleDateString('fr-FR'),
-      width: '120px'
+    {
+      key: 'dateDemande',
+      header: 'Date',
+      cell: (item: Indemnite) => new Date(item.dateDemande).toLocaleDateString('fr-FR'),
+      width: '120px',
     },
-    { 
-      key: 'type', 
-      header: 'Type', 
-      cell: (i: Indemnite) => TYPE_LABELS[i.type] || i.type,
-      width: '120px'
+    {
+      key: 'type',
+      header: 'Type',
+      cell: (item: Indemnite) => TYPE_LABELS[item.type] || item.type,
+      width: '120px',
     },
-    { key: 'motif', header: 'Motif', cell: (i: Indemnite) => i.motif || '-' },
-    { 
-      key: 'montant', 
-      header: 'Montant', 
-      cell: (i: Indemnite) => `${i.montant.toFixed(2)} TND`,
+    { key: 'motif', header: 'Motif', cell: (item: Indemnite) => item.motif || '-' },
+    {
+      key: 'montant',
+      header: 'Montant',
+      cell: (item: Indemnite) => `${item.montant.toFixed(2)} TND`,
       align: 'right' as const,
-      width: '120px'
+      width: '120px',
     },
-    { key: 'statut', header: 'Statut', cell: (i: Indemnite) => <StatusBadge status={i.statut} />, width: '130px' },
+    {
+      key: 'statut',
+      header: 'Statut',
+      cell: (item: Indemnite) => <StatusBadge status={item.statut} />,
+      width: '130px',
+    },
   ];
 
+  const handleCreate = (values: IndemniteRequestFormValues, file?: File) => {
+    return createMutation.mutateAsync({ values, file });
+  };
+
   return (
-    <div>
-      <PageHeader 
+    <div className="adherent-indemnites-page">
+      <PageHeader
         title="Mes indemnités"
         description="Consultez et demandez vos indemnités sociales"
       />
 
       {isLoading ? (
-        <div className="adherent-dashboard">
-          <div className="adherent-stats-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', marginBottom: 'var(--space-6)' }}>
-            {[...Array(3)].map((_, i) => (
-              <div key={i} className="stat-card skeleton" style={{ height: 100 }} />
-            ))}
-          </div>
-          <div className="skeleton" style={{ height: 300 }} />
-        </div>
+        <IndemnitesLoading />
       ) : (
         <>
-          <div className="adherent-stats-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', marginBottom: 'var(--space-6)' }}>
-            <div className="stat-card" style={{ background: 'var(--color-surface-primary)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', padding: 'var(--space-4)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', marginBottom: 'var(--space-3)' }}>
-                <div style={{ background: 'var(--color-success-100)', color: 'var(--color-success-600)', padding: 'var(--space-2)', borderRadius: 'var(--radius-md)' }}>
-                  <CheckCircle size={20} />
-                </div>
-                <span style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--font-size-sm)' }}>Total approuvé</span>
-              </div>
-              <div style={{ fontSize: 'var(--font-size-2xl)', fontWeight: 700, color: 'var(--color-text-primary)' }}>
-                {totalApprouve.toFixed(2)} TND
-              </div>
-            </div>
-
-            <div className="stat-card" style={{ background: 'var(--color-surface-primary)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', padding: 'var(--space-4)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', marginBottom: 'var(--space-3)' }}>
-                <div style={{ background: 'var(--color-warning-100)', color: 'var(--color-warning-600)', padding: 'var(--space-2)', borderRadius: 'var(--radius-md)' }}>
-                  <Clock size={20} />
-                </div>
-                <span style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--font-size-sm)' }}>En attente</span>
-              </div>
-              <div style={{ fontSize: 'var(--font-size-2xl)', fontWeight: 700, color: 'var(--color-text-primary)' }}>
-                {totalEnAttente.toFixed(2)} TND
-              </div>
-            </div>
-
-            <div className="stat-card" style={{ background: 'var(--color-surface-primary)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', padding: 'var(--space-4)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', marginBottom: 'var(--space-3)' }}>
-                <div style={{ background: 'var(--color-primary-100)', color: 'var(--color-primary-600)', padding: 'var(--space-2)', borderRadius: 'var(--radius-md)' }}>
-                  <TrendingUp size={20} />
-                </div>
-                <span style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--font-size-sm)' }}>Nombre de demandes</span>
-              </div>
-              <div style={{ fontSize: 'var(--font-size-2xl)', fontWeight: 700, color: 'var(--color-text-primary)' }}>
-                {indemnites?.length || 0}
-              </div>
-            </div>
+          <div className="adherent-stats-grid indemnites-stats-grid">
+            <StatCard
+              icon={<CheckCircle size={20} />}
+              label="Total approuvé"
+              value={`${totalApprouve.toFixed(2)} TND`}
+              tone="success"
+            />
+            <StatCard
+              icon={<Clock size={20} />}
+              label="En attente"
+              value={`${totalEnAttente.toFixed(2)} TND`}
+              tone="warning"
+            />
+            <StatCard
+              icon={<TrendingUp size={20} />}
+              label="Nombre de demandes"
+              value={indemnites.length}
+              tone="primary"
+            />
           </div>
 
-          <div className="adherent-adhesion-history">
-            <div className="adherent-card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3><HeartHandshake size={18} style={{ marginRight: 8 }} /> Historique des indemnités</h3>
+          <div className="adherent-adhesion-history indemnites-history">
+            <div className="adherent-card-header indemnites-history-header">
+              <h3 className="indemnites-history-title">
+                <HeartHandshake size={18} className="indemnites-title-icon" />
+                Historique des indemnités
+              </h3>
               <Button onClick={() => setCreating(true)} size="sm">
-                <Plus size={16} style={{ marginRight: 6 }} />
+                <Plus size={16} className="indemnites-button-icon" />
                 Nouvelle demande
               </Button>
             </div>
-            <DataTable 
+
+            <DataTable
               columns={columns}
-              rows={indemnites || []}
-              rowKey={(i) => i.id}
+              rows={indemnites}
+              rowKey={(item) => item.id}
               emptyTitle="Aucune indemnité"
               emptyDescription="Vous n'avez pas encore de demande d'indemnité."
             />
@@ -167,7 +148,7 @@ export function AdherentIndemnitesPage() {
       )}
 
       <Modal open={creating} onClose={() => setCreating(false)} title="Demander une indemnité">
-        <IndemniteRequestForm 
+        <IndemniteRequestForm
           onSubmit={handleCreate}
           onCancel={() => setCreating(false)}
           submitting={createMutation.isPending}
@@ -175,4 +156,40 @@ export function AdherentIndemnitesPage() {
       </Modal>
     </div>
   );
+}
+
+function IndemnitesLoading() {
+  return (
+    <div className="adherent-dashboard">
+      <div className="adherent-stats-grid indemnites-stats-grid">
+        {[0, 1, 2].map((item) => (
+          <div key={item} className="stat-card skeleton indemnites-stat-skeleton" />
+        ))}
+      </div>
+      <div className="skeleton indemnites-table-skeleton" />
+    </div>
+  );
+}
+
+function StatCard({ icon, label, value, tone }: {
+  icon: ReactNode;
+  label: string;
+  value: ReactNode;
+  tone: 'success' | 'warning' | 'primary';
+}) {
+  return (
+    <div className="stat-card indemnites-stat-card">
+      <div className="indemnites-stat-header">
+        <div className={`indemnites-stat-icon is-${tone}`}>{icon}</div>
+        <span className="indemnites-stat-label">{label}</span>
+      </div>
+      <div className="indemnites-stat-value">{value}</div>
+    </div>
+  );
+}
+
+function getTotal(items: Indemnite[], statuses: string[]) {
+  return items
+    .filter((item) => statuses.includes(item.statut))
+    .reduce((sum, item) => sum + item.montant, 0);
 }

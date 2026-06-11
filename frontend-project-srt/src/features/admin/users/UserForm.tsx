@@ -4,16 +4,8 @@ import { userSchema, type UserFormValues } from '../../../shared/validators';
 import { FormInput } from '../../../shared/ui/FormInput';
 import { FormSelect } from '../../../shared/ui/FormSelect';
 import { Button } from '../../../shared/ui/Button';
-import type { Utilisateur } from '../../../shared/types/domain';
 
-interface Props {
-  initial?: Utilisateur;
-  onSubmit: (values: UserFormValues) => Promise<unknown> | void;
-  onCancel: () => void;
-  submitting?: boolean;
-}
-
-export function UserForm({ initial, onSubmit, onCancel, submitting }: Props) {
+export function UserForm({ initial, onSubmit, onCancel, submitting }: any) {
   const isEdit = !!initial;
   const { register, handleSubmit, formState: { errors }, setError } = useForm<UserFormValues>({
     resolver: zodResolver(userSchema),
@@ -66,7 +58,7 @@ export function UserForm({ initial, onSubmit, onCancel, submitting }: Props) {
         ]}
         error={errors.status?.message}
       />
-      <div className="form-grid-full" style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-3)' }}>
+      <div className="form-grid-full admin-form-actions">
         <Button type="button" variant="secondary" onClick={onCancel} disabled={submitting}>Annuler</Button>
         <Button type="submit" isLoading={submitting}>{initial ? 'Mettre à jour' : 'Créer'}</Button>
       </div>

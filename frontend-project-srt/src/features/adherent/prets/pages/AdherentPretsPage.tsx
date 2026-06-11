@@ -14,7 +14,7 @@ import {
 import { PageHeader } from '../../../../shared/layout/PageHeader';
 import { Button } from '../../../../shared/ui/Button';
 import { Modal } from '../../../../shared/data/Modal';
-import { DataTable } from '../../../../shared/data/DataTable';
+import { DataTable, type Column } from '../../../../shared/data/DataTable';
 import { StatusBadge } from '../../../../shared/data/StatusBadge';
 import { useToast } from '../../../../shared/feedback/useToast';
 import { uploadFile } from '../../../../shared/api/apiClient';
@@ -22,7 +22,7 @@ import { pretsApi } from '../api';
 import { PretRequestForm } from '../forms/PretRequestForm';
 import type { PretRequestFormValues } from '../../validators';
 import type { PretRemboursement, PretSocial } from '../../../../shared/types/domain';
-import '../../profile/pages/AdherentAccountPages.css';
+import './AdherentPretsPage.css';
 
 interface ScheduleRow {
   num: number;
@@ -34,45 +34,6 @@ interface ScheduleRow {
   paid: boolean;
   statusClass: 'paid' | 'pending' | 'generated' | 'cancelled';
   statusLabel: string;
-}
-
-function buildSchedule(loan: PretSocial): ScheduleRow[] {
-  const monthly = pretsApi.calculateMonthlyPayment(loan.montant, loan.duree, loan.taux);
-  const monthlyRate = (loan.taux / 100) / 12;
-  const start = loan.dateAccord ? new Date(loan.dateAccord) : new Date(loan.dateDemande);
-  const today = new Date();
-  const reimbursements = [...(loan.remboursements ?? [])].sort(compareRemboursements);
-  const hasRetenueHistory = reimbursements.length > 0;
-  const rowCount = Math.max(loan.duree, reimbursements.length);
-  let remaining = loan.montant;
-
-  return Array.from({ length: rowCount }, (_, index) => {
-    const num = index + 1;
-    const reimbursement = reimbursements[index];
-    const plannedRow = index < loan.duree;
-    const interet = plannedRow ? roundCurrency(remaining * monthlyRate) : 0;
-    const capital = plannedRow ? roundCurrency(monthly - interet) : 0;
-    if (plannedRow) {
-      remaining = roundCurrency(remaining - capital);
-    }
-
-    const dueDate = new Date(start);
-    dueDate.setMonth(dueDate.getMonth() + num);
-    const fallbackPaid = !hasRetenueHistory && (loan.statut === 'rembourse' || dueDate <= today);
-    const paid = reimbursement?.statut === 'PRELEVEE' || fallbackPaid;
-
-    return {
-      num,
-      date: reimbursement?.dateRetenue ?? dueDate.toISOString().slice(0, 10),
-      echeance: reimbursement?.montant ?? roundCurrency(monthly),
-      capital,
-      interet,
-      capitalRestant: Math.max(0, remaining),
-      paid,
-      statusClass: scheduleStatusClass(reimbursement, paid),
-      statusLabel: scheduleStatusLabel(reimbursement, paid),
-    };
-  });
 }
 
 export function AdherentPretsPage() {
@@ -88,11 +49,7 @@ export function AdherentPretsPage() {
 
   const createMutation = useMutation({
     mutationFn: async ({ values, file }: { values: PretRequestFormValues; file?: File }) => {
-      let attachmentId: string | undefined;
-      if (file) {
-        const attachment = await uploadFile(file);
-        attachmentId = attachment.id;
-      }
+      const attachmentId = file ? (await uploadFile(file)).id : undefined;
 
       return pretsApi.createPret({
         montant: values.montant,
@@ -121,9 +78,7 @@ export function AdherentPretsPage() {
   const paidTotal = loans
     .filter((loan) => loan.statut === 'rembourse')
     .reduce((sum, loan) => sum + loan.montant, 0);
-  const activeMonthly = activeLoan
-    ? pretsApi.calculateMonthlyPayment(activeLoan.montant, activeLoan.duree, activeLoan.taux)
-    : 0;
+  const activeMonthly = activeLoan ? getMonthlyPayment(activeLoan) : 0;
 
   const schedule = useMemo(() => (scheduleLoan ? buildSchedule(scheduleLoan) : []), [scheduleLoan]);
   const paidRows = schedule.filter((row) => row.paid);
@@ -132,7 +87,7 @@ export function AdherentPretsPage() {
     ? (paidRows.at(-1)?.capitalRestant ?? scheduleLoan.montant)
     : 0;
 
-  const columns = [
+  const columns: Column<PretSocial>[] = [
     { key: 'id', header: 'Référence', cell: (loan: PretSocial) => loan.id, width: '130px' },
     {
       key: 'dateDemande',
@@ -162,7 +117,7 @@ export function AdherentPretsPage() {
     {
       key: 'mensualite',
       header: 'Mensualité',
-      cell: (loan: PretSocial) => formatCurrency(pretsApi.calculateMonthlyPayment(loan.montant, loan.duree, loan.taux)),
+      cell: (loan: PretSocial) => formatCurrency(getMonthlyPayment(loan)),
       align: 'right' as const,
       width: '130px',
     },
@@ -192,86 +147,28 @@ export function AdherentPretsPage() {
       />
 
       {isLoading ? (
-        <>
-          <div className="adh-loan-metrics">
-            {Array.from({ length: 3 }, (_, index) => (
-              <div key={index} className="adh-account-metric-skeleton skeleton" />
-            ))}
-          </div>
-          <div className="adh-account-table-skeleton skeleton" />
-        </>
+        <LoansLoading />
       ) : (
         <>
-          <section className="adh-loan-metrics" aria-label="Synthèse prêts">
-            <LoanMetric
-              icon={Banknote}
-              label="Prêt actif"
-              value={activeLoan ? formatCurrency(activeLoan.montant) : 'Aucun'}
-              tone="info"
-            />
-            <LoanMetric
-              icon={Calculator}
-              label="Total remboursé"
-              value={formatCurrency(paidTotal)}
-              tone="success"
-            />
-            <LoanMetric
-              icon={Clock3}
-              label="Demandes en attente"
-              value={pendingCount}
-              tone="warning"
-            />
-          </section>
+          <LoanSummary
+            activeLoan={activeLoan}
+            paidTotal={paidTotal}
+            pendingCount={pendingCount}
+          />
 
           {activeLoan && (
-            <section className="adh-loan-active-card">
-              <header className="adh-loan-active-head">
-                <div>
-                  <span className="adh-account-kicker">Prêt en cours</span>
-                  <h2>{formatCurrency(activeLoan.montant)}</h2>
-                  <p>Référence {activeLoan.id}</p>
-                </div>
-                <Button variant="secondary" size="sm" onClick={() => setScheduleLoan(activeLoan)}>
-                  <ListChecks size={15} className="adh-account-btn-icon" />
-                  Échéancier
-                </Button>
-              </header>
-
-              <div className="adh-loan-detail-grid">
-                <LoanDetail icon={Calendar} label="Date d’accord" value={activeLoan.dateAccord ? formatDate(activeLoan.dateAccord) : 'En attente'} />
-                <LoanDetail icon={WalletCards} label="Montant" value={formatCurrency(activeLoan.montant)} />
-                <LoanDetail icon={Clock3} label="Durée / taux" value={`${activeLoan.duree} mois à ${activeLoan.taux}%`} />
-                <LoanDetail icon={Calculator} label="Mensualité" value={formatCurrency(activeMonthly)} />
-              </div>
-            </section>
+            <ActiveLoanCard
+              loan={activeLoan}
+              monthlyPayment={activeMonthly}
+              onOpenSchedule={() => setScheduleLoan(activeLoan)}
+            />
           )}
 
-          <section className="adh-account-section-card">
-            <header className="adh-account-section-head">
-              <div>
-                <h3>
-                  <Banknote size={17} />
-                  Historique des prêts
-                </h3>
-                <p>{loans.length} demande{loans.length > 1 ? 's' : ''} enregistrée{loans.length > 1 ? 's' : ''}</p>
-              </div>
-            </header>
-
-            <DataTable
-              columns={columns}
-              rows={loans}
-              rowKey={(loan) => loan.id}
-              emptyTitle="Aucun prêt"
-              emptyDescription="Vous n'avez pas encore de demande de prêt."
-              rowActions={(loan) => (
-                <Button variant="secondary" size="sm" onClick={() => setScheduleLoan(loan)}>
-                  <ListChecks size={14} className="adh-account-btn-icon" />
-                  Voir
-                </Button>
-              )}
-              actionsWidth="110px"
-            />
-          </section>
+          <LoanHistory
+            loans={loans}
+            columns={columns}
+            onOpenSchedule={setScheduleLoan}
+          />
         </>
       )}
 
@@ -283,85 +180,206 @@ export function AdherentPretsPage() {
         />
       </Modal>
 
-      <Modal
-        open={!!scheduleLoan}
+      <ScheduleModal
+        loan={scheduleLoan}
+        schedule={schedule}
+        paidCount={paidCount}
+        remainingDue={remainingDue}
         onClose={() => setScheduleLoan(null)}
-        title="Échéancier de remboursement"
-        description={
-          scheduleLoan
-            ? `${scheduleLoan.id} - ${formatCurrency(scheduleLoan.montant)} sur ${scheduleLoan.duree} mois (${scheduleLoan.taux}%)`
-            : undefined
-        }
-        size="lg"
-      >
-        {scheduleLoan && (
-          <div className="adh-loan-schedule-modal">
-            <section className="adh-loan-schedule-metrics">
-              <LoanMetric
-                icon={CheckCircle2}
-                label="Mensualités payées"
-                value={`${paidCount} / ${schedule.length}`}
-                tone="success"
-              />
-              <LoanMetric
-                icon={Calculator}
-                label="Mensualité"
-                value={formatCurrency(pretsApi.calculateMonthlyPayment(scheduleLoan.montant, scheduleLoan.duree, scheduleLoan.taux))}
-                tone="info"
-              />
-              <LoanMetric
-                icon={Clock3}
-                label="Restant dû"
-                value={formatCurrency(remainingDue)}
-                tone="warning"
-              />
-            </section>
-
-            <div className="adh-loan-schedule-table">
-              <table className="adh-schedule">
-                <thead>
-                  <tr>
-                    <th>#</th>
-                    <th>Échéance</th>
-                    <th>Capital</th>
-                    <th>Intérêt</th>
-                    <th>Total</th>
-                    <th>Restant</th>
-                    <th>Statut</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {schedule.map((row) => (
-                    <tr key={row.num} className={row.paid ? 'is-paid' : ''}>
-                      <td>{row.num}</td>
-                      <td>{formatDate(row.date)}</td>
-                      <td className="num">{formatCurrency(row.capital)}</td>
-                      <td className="num">{formatCurrency(row.interet)}</td>
-                      <td className="num">{formatCurrency(row.echeance)}</td>
-                      <td className="num">{formatCurrency(row.capitalRestant)}</td>
-                      <td>
-                        <span className={`adh-schedule-status ${row.statusClass}`}>
-                          {row.statusLabel}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-      </Modal>
+      />
     </div>
   );
 }
 
-function LoanMetric({
-  icon: Icon,
-  label,
-  value,
-  tone,
-}: {
+function LoansLoading() {
+  return (
+    <>
+      <div className="adh-loan-metrics">
+        {Array.from({ length: 3 }, (_, index) => (
+          <div key={index} className="adh-account-metric-skeleton skeleton" />
+        ))}
+      </div>
+      <div className="adh-account-table-skeleton skeleton" />
+    </>
+  );
+}
+
+function LoanSummary({ activeLoan, paidTotal, pendingCount }: {
+  activeLoan?: PretSocial;
+  paidTotal: number;
+  pendingCount: number;
+}) {
+  return (
+    <section className="adh-loan-metrics" aria-label="Synthèse prêts">
+      <LoanMetric
+        icon={Banknote}
+        label="Prêt actif"
+        value={activeLoan ? formatCurrency(activeLoan.montant) : 'Aucun'}
+        tone="info"
+      />
+      <LoanMetric
+        icon={Calculator}
+        label="Total remboursé"
+        value={formatCurrency(paidTotal)}
+        tone="success"
+      />
+      <LoanMetric
+        icon={Clock3}
+        label="Demandes en attente"
+        value={pendingCount}
+        tone="warning"
+      />
+    </section>
+  );
+}
+
+function ActiveLoanCard({ loan, monthlyPayment, onOpenSchedule }: {
+  loan: PretSocial;
+  monthlyPayment: number;
+  onOpenSchedule: () => void;
+}) {
+  return (
+    <section className="adh-loan-active-card">
+      <header className="adh-loan-active-head">
+        <div>
+          <span className="adh-account-kicker">Prêt en cours</span>
+          <h2>{formatCurrency(loan.montant)}</h2>
+          <p>Référence {loan.id}</p>
+        </div>
+        <Button variant="secondary" size="sm" onClick={onOpenSchedule}>
+          <ListChecks size={15} className="adh-account-btn-icon" />
+          Échéancier
+        </Button>
+      </header>
+
+      <div className="adh-loan-detail-grid">
+        <LoanDetail icon={Calendar} label="Date d'accord" value={loan.dateAccord ? formatDate(loan.dateAccord) : 'En attente'} />
+        <LoanDetail icon={WalletCards} label="Montant" value={formatCurrency(loan.montant)} />
+        <LoanDetail icon={Clock3} label="Durée / taux" value={`${loan.duree} mois à ${loan.taux}%`} />
+        <LoanDetail icon={Calculator} label="Mensualité" value={formatCurrency(monthlyPayment)} />
+      </div>
+    </section>
+  );
+}
+
+function LoanHistory({ loans, columns, onOpenSchedule }: {
+  loans: PretSocial[];
+  columns: Column<PretSocial>[];
+  onOpenSchedule: (loan: PretSocial) => void;
+}) {
+  return (
+    <section className="adh-account-section-card">
+      <header className="adh-account-section-head">
+        <div>
+          <h3>
+            <Banknote size={17} />
+            Historique des prêts
+          </h3>
+          <p>{loans.length} demande{loans.length > 1 ? 's' : ''} enregistrée{loans.length > 1 ? 's' : ''}</p>
+        </div>
+      </header>
+
+      <DataTable
+        columns={columns}
+        rows={loans}
+        rowKey={(loan) => loan.id}
+        emptyTitle="Aucun prêt"
+        emptyDescription="Vous n'avez pas encore de demande de prêt."
+        rowActions={(loan) => (
+          <Button variant="secondary" size="sm" onClick={() => onOpenSchedule(loan)}>
+            <ListChecks size={14} className="adh-account-btn-icon" />
+            Voir
+          </Button>
+        )}
+        actionsWidth="110px"
+      />
+    </section>
+  );
+}
+
+function ScheduleModal({ loan, schedule, paidCount, remainingDue, onClose }: {
+  loan: PretSocial | null;
+  schedule: ScheduleRow[];
+  paidCount: number;
+  remainingDue: number;
+  onClose: () => void;
+}) {
+  return (
+    <Modal
+      open={!!loan}
+      onClose={onClose}
+      title="Échéancier de remboursement"
+      description={loan ? `${loan.id} - ${formatCurrency(loan.montant)} sur ${loan.duree} mois (${loan.taux}%)` : undefined}
+      size="lg"
+    >
+      {loan && (
+        <div className="adh-loan-schedule-modal">
+          <section className="adh-loan-schedule-metrics">
+            <LoanMetric
+              icon={CheckCircle2}
+              label="Mensualités payées"
+              value={`${paidCount} / ${schedule.length}`}
+              tone="success"
+            />
+            <LoanMetric
+              icon={Calculator}
+              label="Mensualité"
+              value={formatCurrency(getMonthlyPayment(loan))}
+              tone="info"
+            />
+            <LoanMetric
+              icon={Clock3}
+              label="Restant dû"
+              value={formatCurrency(remainingDue)}
+              tone="warning"
+            />
+          </section>
+
+          <ScheduleTable rows={schedule} />
+        </div>
+      )}
+    </Modal>
+  );
+}
+
+function ScheduleTable({ rows }: { rows: ScheduleRow[] }) {
+  return (
+    <div className="adh-loan-schedule-table">
+      <table className="adh-schedule">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Échéance</th>
+            <th>Capital</th>
+            <th>Intérêt</th>
+            <th>Total</th>
+            <th>Restant</th>
+            <th>Statut</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => (
+            <tr key={row.num} className={row.paid ? 'is-paid' : ''}>
+              <td>{row.num}</td>
+              <td>{formatDate(row.date)}</td>
+              <td className="num">{formatCurrency(row.capital)}</td>
+              <td className="num">{formatCurrency(row.interet)}</td>
+              <td className="num">{formatCurrency(row.echeance)}</td>
+              <td className="num">{formatCurrency(row.capitalRestant)}</td>
+              <td>
+                <span className={`adh-schedule-status ${row.statusClass}`}>
+                  {row.statusLabel}
+                </span>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function LoanMetric({ icon: Icon, label, value, tone }: {
   icon: LucideIcon;
   label: string;
   value: string | number;
@@ -394,6 +412,46 @@ function LoanDetail({ icon: Icon, label, value }: { icon: LucideIcon; label: str
   );
 }
 
+function buildSchedule(loan: PretSocial): ScheduleRow[] {
+  const monthly = getMonthlyPayment(loan);
+  const monthlyRate = (loan.taux / 100) / 12;
+  const start = loan.dateAccord ? new Date(loan.dateAccord) : new Date(loan.dateDemande);
+  const today = new Date();
+  const reimbursements = [...(loan.remboursements ?? [])].sort(compareRemboursements);
+  const hasRetenueHistory = reimbursements.length > 0;
+  const rowCount = Math.max(loan.duree, reimbursements.length);
+  let remaining = loan.montant;
+
+  return Array.from({ length: rowCount }, (_, index) => {
+    const num = index + 1;
+    const reimbursement = reimbursements[index];
+    const plannedRow = index < loan.duree;
+    const interet = plannedRow ? roundCurrency(remaining * monthlyRate) : 0;
+    const capital = plannedRow ? roundCurrency(monthly - interet) : 0;
+
+    if (plannedRow) {
+      remaining = roundCurrency(remaining - capital);
+    }
+
+    const dueDate = new Date(start);
+    dueDate.setMonth(dueDate.getMonth() + num);
+    const fallbackPaid = !hasRetenueHistory && (loan.statut === 'rembourse' || dueDate <= today);
+    const paid = reimbursement?.statut === 'PRELEVEE' || fallbackPaid;
+
+    return {
+      num,
+      date: reimbursement?.dateRetenue ?? dueDate.toISOString().slice(0, 10),
+      echeance: reimbursement?.montant ?? roundCurrency(monthly),
+      capital,
+      interet,
+      capitalRestant: Math.max(0, remaining),
+      paid,
+      statusClass: scheduleStatusClass(reimbursement, paid),
+      statusLabel: scheduleStatusLabel(reimbursement, paid),
+    };
+  });
+}
+
 function compareRemboursements(a: PretRemboursement, b: PretRemboursement) {
   const aPeriod = `${a.annee ?? 0}-${String(a.mois ?? 0).padStart(2, '0')}`;
   const bPeriod = `${b.annee ?? 0}-${String(b.mois ?? 0).padStart(2, '0')}`;
@@ -401,10 +459,7 @@ function compareRemboursements(a: PretRemboursement, b: PretRemboursement) {
   return String(a.id).localeCompare(String(b.id), undefined, { numeric: true });
 }
 
-function scheduleStatusClass(
-  reimbursement: PretRemboursement | undefined,
-  paid: boolean,
-): ScheduleRow['statusClass'] {
+function scheduleStatusClass(reimbursement: PretRemboursement | undefined, paid: boolean): ScheduleRow['statusClass'] {
   if (reimbursement?.statut === 'PRELEVEE') return 'paid';
   if (reimbursement?.statut === 'ANNULEE') return 'cancelled';
   if (reimbursement?.statut === 'GENEREE') return 'generated';
@@ -417,6 +472,10 @@ function scheduleStatusLabel(reimbursement: PretRemboursement | undefined, paid:
   if (reimbursement?.statut === 'EN_ATTENTE') return 'En attente';
   if (reimbursement?.statut === 'ANNULEE') return 'Annulée';
   return paid ? 'Payée' : 'À venir';
+}
+
+function getMonthlyPayment(loan: PretSocial) {
+  return pretsApi.calculateMonthlyPayment(loan.montant, loan.duree, loan.taux);
 }
 
 function roundCurrency(value: number) {

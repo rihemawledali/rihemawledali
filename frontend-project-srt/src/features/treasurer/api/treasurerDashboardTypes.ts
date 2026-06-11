@@ -44,6 +44,6 @@ export interface FinancialOperation {
   description: string;
   montant: number;
   date: string;
-  modePaiement: 'virement' | 'cheque' | 'espece' | 'prelevement';
+  modePaiement: 'virement' | 'espece';
   statut: 'reussi' | 'en_cours' | 'echoue';
 }

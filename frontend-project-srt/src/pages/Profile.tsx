@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   BadgeCheck,
@@ -98,13 +98,8 @@ export function Profile() {
     },
   });
 
-  const displayName = useMemo(() => {
-    const profile = profileQuery.data;
-    if (!profile) {
-      return '';
-    }
-    return `${profile.firstName} ${profile.lastName}`.trim();
-  }, [profileQuery.data]);
+  const profile = profileQuery.data;
+  const displayName = profile ? `${profile.firstName} ${profile.lastName}`.trim() : '';
 
   const set = (key: keyof FormState, value: string) => {
     setForm((current) => ({ ...current, [key]: value }));
@@ -168,7 +163,7 @@ export function Profile() {
     );
   }
 
-  if (profileQuery.isError || !profileQuery.data) {
+  if (profileQuery.isError || !profile) {
     return (
       <div className="profile-page">
         <PageHeader title="Mon profil" description="Profil introuvable." />
@@ -179,8 +174,6 @@ export function Profile() {
       </div>
     );
   }
-
-  const profile = profileQuery.data;
 
   return (
     <div className="profile-page">
@@ -219,9 +212,7 @@ export function Profile() {
             <InfoRow icon={<ShieldCheck size={16} />} label="Role" value={ROLE_LABELS[profile.role]} />
             <InfoRow icon={<BadgeCheck size={16} />} label="Statut" value={profile.status || '-'} />
             <InfoRow icon={<Calendar size={16} />} label="Cree le" value={formatDate(profile.createdAt)} />
-            {profile.matricule && (
-              <InfoRow icon={<Hash size={16} />} label="Matricule" value={profile.matricule} />
-            )}
+            <InfoRow icon={<Hash size={16} />} label="Matricule" value={profile.matricule || '-'} />
           </dl>
 
           {profile.role === 'adherent' && profile.adherent && (
@@ -308,7 +299,7 @@ export function Profile() {
   );
 }
 
-function SummaryItem({ icon, label, value }: { icon: ReactNode; label: string; value: string }) {
+function SummaryItem({ icon, label, value }: any) {
   return (
     <div className="profile-summary-item">
       <span className="profile-summary-icon">{icon}</span>
@@ -320,7 +311,7 @@ function SummaryItem({ icon, label, value }: { icon: ReactNode; label: string; v
   );
 }
 
-function InfoRow({ icon, label, value }: { icon: ReactNode; label: string; value: string }) {
+function InfoRow({ icon, label, value }: any) {
   return (
     <div className="profile-info-row">
       <dt>

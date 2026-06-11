@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Ban, CheckCircle2, CreditCard, Eye, FileDown, FilePlus2 } from 'lucide-react';
@@ -13,13 +13,14 @@ import { FilterBar, SelectFilter } from '../../../shared/data/FilterBar';
 import { StatusBadge } from '../../../shared/data/StatusBadge';
 import { useToast } from '../../../shared/feedback/useToast';
 import { facturesApi } from './api';
-import { suppliersApi } from '../../admin/suppliers/suppliersApi';
+import { suppliersApi } from '../../../shared/api/suppliersApi';
 import { formatCurrency, formatDate, daysUntil } from '../../../shared/lib/formatters';
 import { getConventionAvantageSummary } from '../../../shared/lib/conventionWorkflow';
 import type { Facture, FactureStatus, Fournisseur } from '../../../shared/types/domain';
 import type { ConventionDemandeRow } from '../conventions-demande/api';
 import '../../../shared/layout/CrudPage.css';
 import '../../../shared/ui/FormInput.css';
+import './FacturesPage.css';
 
 const STATUT_LABEL: Partial<Record<FactureStatus, string>> = {
   brouillon: 'Brouillon',
@@ -160,12 +161,12 @@ export function FacturesPage() {
   const onSort = (k: string) => sortBy === k ? setSortDir(sortDir === 'asc' ? 'desc' : 'asc') : (setSortBy(k), setSortDir('asc'));
   const handlePay = (f: Facture) => navigate(`${paiementsRoute}?factureId=${f.id}`);
 
-  const columns: Column<Facture>[] = useMemo(() => [
+  const columns: Column<Facture>[] = [
     { key: 'numero', header: 'N facture', sortable: true, cell: (f) => <span className="cell-mono">{f.numero}</span> },
     { key: 'fournisseurNom', header: 'Fournisseur', sortable: true, cell: (f) => <strong className="cell-strong">{f.fournisseurNom}</strong> },
     { key: 'dateEmission', header: 'Date', sortable: true, cell: (f) => formatDate(f.dateEmission) },
     { key: 'montant', header: 'Montant', sortable: true, align: 'right', cell: (f) => <strong className="amount">{formatCurrency(f.montant)}</strong> },
-    { key: 'description', header: 'Description', cell: (f) => f.description ? <span style={{ color: 'var(--color-text-secondary)' }}>{f.description}</span> : <span style={{ color: 'var(--color-text-tertiary)' }}>-</span> },
+    { key: 'description', header: 'Description', cell: (f) => f.description ? <span className="facture-description">{f.description}</span> : <span className="cell-muted">-</span> },
     { key: 'dateEcheance', header: 'Echeance', sortable: true, cell: (f) => {
       const d = daysUntil(f.dateEcheance);
       const paid = f.statut === 'payee' || f.statut === 'PAYEE';
@@ -174,8 +175,8 @@ export function FacturesPage() {
       return (
         <div className="row-stack">
           <span>{formatDate(f.dateEcheance)}</span>
-          {overdue && <span style={{ color: 'var(--color-error-600)' }}>{Math.abs(d)} j de retard</span>}
-          {soon && <span style={{ color: 'var(--color-warning-600)' }}>Dans {d} j</span>}
+          {overdue && <span className="facture-delay">{Math.abs(d)} j de retard</span>}
+          {soon && <span className="facture-soon">Dans {d} j</span>}
         </div>
       );
     }},
@@ -183,7 +184,17 @@ export function FacturesPage() {
       key: 'statut', header: 'Statut', sortable: true,
       cell: (f) => <StatusBadge status={f.statut} tone={STATUT_TONE[f.statut]} label={STATUT_LABEL[f.statut]} />,
     },
-  ], []);
+  ];
+
+  function changeSearch(value: string) {
+    setSearch(value);
+    setPage(1);
+  }
+
+  function changeStatus(value: string) {
+    setStatut(value);
+    setPage(1);
+  }
 
   return (
     <div>
@@ -196,8 +207,8 @@ export function FacturesPage() {
 
       <div className="crud-toolbar">
         <FilterBar>
-          <SearchInput value={search} onChange={(v) => { setSearch(v); setPage(1); }} placeholder="Numero, fournisseur, description..." />
-          <SelectFilter label="Statut" value={statut} onChange={(v) => { setStatut(v); setPage(1); }}
+          <SearchInput value={search} onChange={changeSearch} placeholder="Numero, fournisseur, description..." />
+          <SelectFilter label="Statut" value={statut} onChange={changeStatus}
             options={[
               { value: 'brouillon', label: 'Brouillon' },
               { value: 'non_payee', label: 'Non payee' },
@@ -260,7 +271,7 @@ export function FacturesPage() {
       />
 
       {query.data && query.data.total > 0 && (
-        <div className="data-table-card" style={{ marginTop: 'var(--space-3)' }}>
+        <div className="data-table-card data-table-pagination">
           <Pagination page={page} size={10} total={query.data.total} onPageChange={setPage} />
         </div>
       )}
@@ -297,7 +308,6 @@ export function FacturesPage() {
     </div>
   );
 }
-
 function ConventionFactureGenerator({
   fournisseurs,
   fournisseurId,
@@ -357,8 +367,8 @@ function ConventionFactureGenerator({
       </label>
 
       <div className="form-grid-full">
-        <div className="data-table-card" style={{ padding: 'var(--space-4)' }}>
-          <div className="row-stack" style={{ marginBottom: 'var(--space-3)' }}>
+        <div className="data-table-card facture-panel">
+          <div className="row-stack facture-panel-title">
             <strong className="cell-strong">Demandes approuvees</strong>
             <span>{selectedIds.length} selectionnee(s) - total amicale {formatCurrency(totalAmicale)}</span>
           </div>
@@ -369,12 +379,12 @@ function ConventionFactureGenerator({
           ) : demandes.length === 0 ? (
             <p className="cell-muted">Aucune demande approuvee facturable pour cette selection.</p>
           ) : (
-            <div style={{ display: 'grid', gap: 'var(--space-2)' }}>
+            <div className="facture-list">
               {demandes.map((d) => (
-                <label key={d.id} style={{ display: 'grid', gridTemplateColumns: 'auto minmax(0, 1fr) auto', gap: 'var(--space-3)', alignItems: 'center', padding: 'var(--space-3)', border: '1px solid var(--color-border-light)', borderRadius: 8 }}>
+                <label key={d.id} className="facture-select-row">
                   <input type="checkbox" checked={selectedIds.includes(d.id)} onChange={() => onToggle(d.id)} />
                   <ConventionDemandeAmountSummary demande={d} />
-                  <strong className="amount" style={{ textAlign: 'right' }}>
+                  <strong className="amount facture-amount-right">
                     {formatCurrency(d.montantAmicale ?? 0)}
                   </strong>
                 </label>
@@ -384,7 +394,7 @@ function ConventionFactureGenerator({
         </div>
       </div>
 
-      <div className="form-grid-full" style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-3)' }}>
+      <div className="form-grid-full form-actions">
         <Button type="button" variant="secondary" onClick={onCancel} disabled={submitting}>Annuler</Button>
         <Button type="button" onClick={onSubmit} disabled={!fournisseurId || selectedIds.length === 0 || submitting} isLoading={submitting}>
           Generer facture
@@ -393,7 +403,6 @@ function ConventionFactureGenerator({
     </div>
   );
 }
-
 function ConventionDemandeAmountSummary({ demande }: { demande: ConventionDemandeRow }) {
   const avantage = getConventionAvantageSummary(demande);
   return (
@@ -419,17 +428,17 @@ function ConventionDemandeAmountSummary({ demande }: { demande: ConventionDemand
 function ConventionFactureDetails({ facture, demandes, loading }: { facture: Facture | null; demandes: ConventionDemandeRow[]; loading: boolean }) {
   if (!facture) return null;
   return (
-    <div className="row-stack" style={{ gap: 'var(--space-4)' }}>
-      <div className="data-table-card" style={{ padding: 'var(--space-4)' }}>
+    <div className="row-stack facture-detail-layout">
+      <div className="data-table-card facture-panel">
         <strong className="cell-strong">{facture.numero}</strong>
         <span>{facture.fournisseurNom} - {formatCurrency(facture.montant)}</span>
       </div>
       {loading ? <p className="cell-muted">Chargement...</p> : demandes.length === 0 ? (
         <p className="cell-muted">Aucune demande rattachee a cette facture convention.</p>
       ) : (
-        <div style={{ display: 'grid', gap: 'var(--space-2)' }}>
+        <div className="facture-list">
           {demandes.map((d) => (
-            <div key={d.id} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: 'var(--space-3)', padding: 'var(--space-3)', border: '1px solid var(--color-border-light)', borderRadius: 8 }}>
+            <div key={d.id} className="facture-detail-row">
               <ConventionDemandeAmountSummary demande={d} />
               <strong className="amount">{formatCurrency(d.montantAmicale ?? 0)}</strong>
             </div>

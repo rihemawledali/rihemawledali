@@ -14,7 +14,7 @@ import java.time.LocalDate;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class AdherentProfile {
+public class  AdherentProfile {
 
     /** PK = same id as the linked User. */
     @Id

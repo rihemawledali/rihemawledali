@@ -83,11 +83,8 @@ const round0 = (n: number) => Math.round(n);
 
 function modePaiementOf(value?: string | null): FinancialOperation['modePaiement'] {
   switch ((value ?? '').toLowerCase()) {
-    case 'virement': return 'virement';
-    case 'cheque': return 'cheque';
-    case 'especes': return 'espece';
+    case 'especes':
     case 'espece': return 'espece';
-    case 'prelevement': return 'prelevement';
     default: return 'virement';
   }
 }

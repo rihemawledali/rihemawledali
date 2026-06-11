@@ -5,7 +5,7 @@
    (1 row per RetenueLigne).
    ============================================ */
 
-import { useCallback, useMemo, useState, type ReactNode } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
@@ -17,6 +17,7 @@ import { PageHeader } from '../../../shared/layout/PageHeader';
 import { DataTable, type Column } from '../../../shared/data/DataTable';
 import { StatusBadge } from '../../../shared/data/StatusBadge';
 import { Button } from '../../../shared/ui/Button';
+import { SimpleMetricCard } from '../../../shared/ui/SimpleMetricCard';
 import { SearchInput } from '../../../shared/data/SearchInput';
 import { FilterBar, SelectFilter } from '../../../shared/data/FilterBar';
 import { Pagination } from '../../../shared/data/Pagination';
@@ -67,7 +68,7 @@ const TYPE_LABEL: Record<RetenueLigneType, string> = {
   TICKET_RESTAURANT: 'Ticket restaurant',
 };
 
-const TYPE_ICON: Record<RetenueLigneType, ReactNode> = {
+const TYPE_ICON: Record<RetenueLigneType, any> = {
   COTISATION: <HandCoins size={14} />,
   PRET: <Banknote size={14} />,
   CONVENTION: <Building2 size={14} />,
@@ -109,36 +110,26 @@ export function TreasurerRetenuesPage() {
     queryFn: () => treasurerRetenuesApi.list({ page: 1, size: 1000 }),
   });
 
-  // Build the année dropdown from existing masters + current year.
-  const anneeOptions = useMemo(() => {
-    const years = new Set<number>();
-    years.add(NOW.getFullYear());
-    (all.data?.items ?? []).forEach((r) => years.add(r.annee));
-    return [...years].sort((a, b) => b - a);
-  }, [all.data]);
+  const years = new Set<number>();
+  years.add(NOW.getFullYear());
+  (all.data?.items ?? []).forEach((r) => years.add(r.annee));
+  const anneeOptions = [...years].sort((a, b) => b - a);
 
-  // ---- Stats scoped to the selected period ----
-  const stats = useMemo(() => {
-    const items = (all.data?.items ?? []).filter(
-      (r) => r.mois === periodMois && r.annee === periodAnnee,
-    );
-    const lignes = items.flatMap((r) => r.lignes ?? []);
-    const lignesActives = lignes.filter((l) => l.statut !== 'ANNULEE');
-    const sansCotisation = items.filter((r) => r.totalCotisation <= 0).length;
-    const exportees = items.filter((r) => r.statut === 'EXPORTEE').length;
-    const montantTotal = items.reduce((s, r) => s + r.totalRetenu, 0);
-    return {
-      total: items.length,
-      exportees,
-      aExporter: items.filter((r) => r.statut === 'GENEREE').length,
-      sansCotisation,
-      montantTotal,
-      lignesActives: lignesActives.length,
-      lignesEnAttente: lignes.filter((l) => l.statut === 'EN_ATTENTE').length,
-      lignesPrelevees: lignes.filter((l) => l.statut === 'PRELEVEE').length,
-      lignesAnnulees: lignes.filter((l) => l.statut === 'ANNULEE').length,
-    };
-  }, [all.data, periodMois, periodAnnee]);
+  const periodItems = (all.data?.items ?? []).filter(
+    (r) => r.mois === periodMois && r.annee === periodAnnee,
+  );
+  const periodLines = periodItems.flatMap((r) => r.lignes ?? []);
+  const stats = {
+    total: periodItems.length,
+    exportees: periodItems.filter((r) => r.statut === 'EXPORTEE').length,
+    aExporter: periodItems.filter((r) => r.statut === 'GENEREE').length,
+    sansCotisation: periodItems.filter((r) => r.totalCotisation <= 0).length,
+    montantTotal: periodItems.reduce((s, r) => s + r.totalRetenu, 0),
+    lignesActives: periodLines.filter((l) => l.statut !== 'ANNULEE').length,
+    lignesEnAttente: periodLines.filter((l) => l.statut === 'EN_ATTENTE').length,
+    lignesPrelevees: periodLines.filter((l) => l.statut === 'PRELEVEE').length,
+    lignesAnnulees: periodLines.filter((l) => l.statut === 'ANNULEE').length,
+  };
 
   const currentPeriodLabel = `${MOIS_LABELS[periodMois - 1]} ${periodAnnee}`;
 
@@ -218,12 +209,12 @@ export function TreasurerRetenuesPage() {
   });
 
   // ---- Navigation to the detail page ----
-  const openDetail = useCallback((id: string) => {
+  const openDetail = (id: string) => {
     navigate(`/treasurer/retenues/${id}`);
-  }, [navigate]);
+  };
 
   // ---- Columns: aggregated view ----
-  const groupColumns: Column<RetenueMensuelle>[] = useMemo(() => [
+  const groupColumns: Column<RetenueMensuelle>[] = [
     {
       key: 'adherentNom',
       header: 'Adhérent',
@@ -293,7 +284,7 @@ export function TreasurerRetenuesPage() {
             aria-label={`Régénérer ${r.adherentNom}`}
             title="Recalculer les lignes (cotisation + prêts)"
           >
-            <RefreshCw size={16} />
+            <RefreshCw size={18} />
           </Button>
           <Button
             variant="ghost"
@@ -303,24 +294,26 @@ export function TreasurerRetenuesPage() {
             aria-label={`Exporter ${r.adherentNom}`}
             title="Exporter (CSV)"
           >
-            <Download size={16} />
+            <Download size={18} />
           </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => openDetail(r.id)}
-            aria-label={`Voir le détail de ${r.id}`}
-            title="Voir le détail"
-          >
-            <Eye size={16} />
-          </Button>
+          <span className="retenue-row-action--view">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => openDetail(r.id)}
+              aria-label={`Voir le détail de ${r.id}`}
+              title="Voir le détail"
+            >
+              <Eye size={19} />
+            </Button>
+          </span>
         </div>
       ),
     },
-  ], [openDetail, regenerateRow, exportRow]);
+  ];
 
   // ---- Columns: flat view ----
-  const flatColumns: Column<RetenueLigneRow>[] = useMemo(() => [
+  const flatColumns: Column<RetenueLigneRow>[] = [
     {
       key: 'adherentNom',
       header: 'Adhérent',
@@ -382,18 +375,22 @@ export function TreasurerRetenuesPage() {
       align: 'right',
       width: '80px',
       cell: (r) => (
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => openDetail(r.retenueMensuelleId)}
-          aria-label={`Voir la retenue ${r.retenueMensuelleId}`}
-          title="Voir la retenue (master)"
-        >
-          <Eye size={16} />
-        </Button>
+        <div className="retenue-row-actions">
+          <span className="retenue-row-action--view">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => openDetail(r.retenueMensuelleId)}
+              aria-label={`Voir la retenue ${r.retenueMensuelleId}`}
+              title="Voir la retenue (master)"
+            >
+              <Eye size={19} />
+            </Button>
+          </span>
+        </div>
       ),
     },
-  ], [openDetail]);
+  ];
 
   // ---- Filters ----
   const masterStatutOptions = (Object.entries(MASTER_LABEL) as [RetenueMensuelleStatut, string][])
@@ -409,20 +406,24 @@ export function TreasurerRetenuesPage() {
         breadcrumb={['Trésorerie', 'Finance', 'Retenues']}
         actions={(
           <div className="retenue-header-actions">
-            <Button onClick={() => generate.mutate()} isLoading={generate.isPending}>
-              <RefreshCw size={16} />
-              Générer la période
-            </Button>
-            <Button
-              variant="secondary"
-              onClick={() => exportCurrent.mutate()}
-              isLoading={exportCurrent.isPending}
-              disabled={stats.total === 0}
-              title={stats.total === 0 ? "Aucune retenue à exporter sur cette période — cliquez d'abord sur « Générer la période »" : undefined}
-            >
-              <Download size={16} />
-              Exporter la période (CSV)
-            </Button>
+            <span className="retenue-action-shell retenue-action-shell--generate">
+              <Button onClick={() => generate.mutate()} isLoading={generate.isPending}>
+                <RefreshCw size={18} />
+                Générer la période
+              </Button>
+            </span>
+            <span className="retenue-action-shell retenue-action-shell--export">
+              <Button
+                variant="secondary"
+                onClick={() => exportCurrent.mutate()}
+                isLoading={exportCurrent.isPending}
+                disabled={stats.total === 0}
+                title={stats.total === 0 ? "Aucune retenue à exporter sur cette période — cliquez d'abord sur « Générer la période »" : undefined}
+              >
+                <Download size={18} />
+                Exporter la période (CSV)
+              </Button>
+            </span>
           </div>
         )}
       />
@@ -584,17 +585,7 @@ function loadingText(mode: ViewMode, total: number, loading?: boolean) {
   return `${formatNumber(total)} ${label}${total > 1 ? 's' : ''}`;
 }
 
-function BreakdownMini({
-  label,
-  value,
-  tone,
-  muted,
-}: {
-  label: string;
-  value: string;
-  tone: 'info' | 'warning' | 'primary' | 'success';
-  muted?: boolean;
-}) {
+function BreakdownMini({ label, value, tone, muted }: any) {
   return (
     <span className={`retenue-breakdown-mini retenue-breakdown-mini--${tone} ${muted ? 'is-muted' : ''}`}>
       <small>{label}</small>
@@ -603,26 +594,13 @@ function BreakdownMini({
   );
 }
 
-function RetenueMetric({
-  icon,
-  label,
-  value,
-  tone,
-  loading,
-}: {
-  icon: ReactNode;
-  label: string;
-  value: string;
-  tone: 'primary' | 'success' | 'warning' | 'error' | 'info';
-  loading?: boolean;
-}) {
+function RetenueMetric(props: any) {
   return (
-    <article className={`retenue-metric retenue-metric--${tone}`}>
-      <span className="retenue-metric-icon">{icon}</span>
-      <div>
-        <p>{label}</p>
-        <strong>{loading ? '...' : value}</strong>
-      </div>
-    </article>
+    <SimpleMetricCard
+      {...props}
+      className="retenue-metric"
+      tonePrefix="retenue-metric--"
+      iconClassName="retenue-metric-icon"
+    />
   );
 }

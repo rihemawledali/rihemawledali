@@ -1,45 +1,52 @@
-/* ============================================
-   Détails de la convention — Adherent Portal
-   ============================================ */
-
-import { useState, type ReactNode } from 'react';
+import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-  ArrowLeft, Building2, Mail, Phone, MapPin, User as UserIcon,
-  Calendar, Percent, FileText, Info, AlertTriangle, Handshake,
-  CheckCircle2, ListChecks, Paperclip, CreditCard,
+  ArrowLeft,
+  ArrowRight,
+  BookmarkCheck,
+  Check,
+  CheckCircle2,
+  ExternalLink,
+  FileSignature,
+  Handshake,
+  Info,
+  Mail,
+  MapPin,
+  Phone,
+  ShieldAlert,
+  User as UserIcon,
 } from 'lucide-react';
-import { getConventionAvantageSummary } from '../../../../shared/lib/conventionWorkflow';
+
 import { PageHeader } from '../../../../shared/layout/PageHeader';
 import { Button } from '../../../../shared/ui/Button';
 import { Modal } from '../../../../shared/data/Modal';
 import { StatusBadge } from '../../../../shared/data/StatusBadge';
+import { formatCurrency } from '../../../../shared/lib/formatters';
+import { getConventionAvantageSummary } from '../../../../shared/lib/conventionWorkflow';
+
 import { conventionsApi, getAdherentConventionStatus } from '../api';
 import { uploadFile } from '../../../../shared/api/apiClient';
-import { profileService, type ProfileResponse } from '../../../../services/profileService';
-import type { Adherent } from '../../../../shared/types/domain';
-import type { DemandeConventionPayload } from '../forms/DemandeConventionForm';
-import {
-  CONV_TYPE_LABEL, CONV_TYPE_ICON, CONV_TYPE_TONE,
-  ADHERENT_STATUS_LABEL, ADHERENT_STATUS_VARIANT,
-} from '../components/conventionHelpers';
-import { DemandeConventionForm } from '../forms/DemandeConventionForm';
+import { profileService } from '../../../../services/profileService';
 
-const DEFAULT_CONDITIONS = [
-  'Être un adhérent actif de l\u2019Amicale',
-  'Respecter la période de validité',
-  'Présenter une confirmation d\u2019adhésion si nécessaire',
-  'Respecter les conditions du fournisseur',
-];
+import {
+  CONV_TYPE_LABEL,
+  CONV_TYPE_TONE,
+  ADHERENT_STATUS_LABEL,
+  ADHERENT_STATUS_VARIANT,
+} from '../components/conventionHelpers';
+
+import { DemandeConventionForm } from '../forms/DemandeConventionForm';
+import './AdherentConventionDetailsPage.css';
 
 export function AdherentConventionDetailsPage() {
-  const { id = '' } = useParams<{ id: string }>();
+  const { id = '' } = useParams();
   const navigate = useNavigate();
-  const qc = useQueryClient();
+  const queryClient = useQueryClient();
+
   const [demandeOpen, setDemandeOpen] = useState(false);
-  const [submitError, setSubmitError] = useState<string | null>(null);
   const [confirmationOpen, setConfirmationOpen] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const { data: convention, isLoading } = useQuery({
     queryKey: ['adherent-convention', id],
@@ -47,59 +54,98 @@ export function AdherentConventionDetailsPage() {
     enabled: !!id,
   });
 
-  const { data: demandes } = useQuery({
+  const { data: demandes = [] } = useQuery({
     queryKey: ['adherent-conventions-demandes'],
     queryFn: () => conventionsApi.getMyDemandes(),
   });
 
   const { data: profile } = useQuery({
     queryKey: ['adherent-profile'],
-    queryFn: async () => mapProfileToAdherent(await profileService.getMe()),
+    queryFn: async () => {
+      const profile = await profileService.getMe();
+
+      return {
+        id: profile.id,
+        nom: profile.lastName,
+        prenom: profile.firstName,
+        email: profile.email,
+        telephone: profile.phone ?? '',
+        role: profile.role,
+        status: profile.status ?? 'actif',
+        matricule: profile.matricule ?? undefined,
+        createdAt: profile.createdAt ?? '',
+        salaire: profile.adherent?.salaire ?? 0,
+        enfants: profile.adherent?.enfants ?? 0,
+        marie: profile.adherent?.marie ?? false,
+        dateNaissance: profile.adherent?.dateNaissance ?? undefined,
+      };
+    },
   });
 
   const createDemandeMutation = useMutation({
-    mutationFn: async (payload: DemandeConventionPayload) => {
-      let attachmentId: string | undefined;
+    mutationFn: async (payload: any) => {
+      let attachmentId;
+
       if (payload.file) {
-        const att = await uploadFile(payload.file);
-        attachmentId = att.id;
+        const uploadedFile = await uploadFile(payload.file);
+        attachmentId = uploadedFile.id;
       }
+
       return conventionsApi.createDemande({
         conventionId: id,
         commentaire: payload.commentaire,
         attachmentId,
       });
     },
+
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['adherent-conventions-demandes'] });
-      qc.invalidateQueries({ queryKey: ['adherent-conventions'] });
+      queryClient.invalidateQueries({ queryKey: ['adherent-conventions-demandes'] });
+      queryClient.invalidateQueries({ queryKey: ['adherent-conventions'] });
+
       setDemandeOpen(false);
       setSubmitError(null);
       setConfirmationOpen(true);
     },
-    onError: (err) => {
-      setSubmitError(err instanceof Error ? err.message : 'Une erreur est survenue.');
+
+    onError: (error) => {
+      setSubmitError(
+        error instanceof Error ? error.message : 'Une erreur est survenue.'
+      );
     },
   });
 
   if (isLoading) {
     return (
-      <div>
+      <div className="adh-conv-details-page loading-state">
         <PageHeader title="Chargement…" />
-        <div className="skeleton" style={{ height: 400, borderRadius: 'var(--radius-lg)' }} />
+
+        <div className="skeleton-loader">
+          <div className="skeleton skeleton-banner" />
+          <div className="skeleton skeleton-title-card" />
+          <div className="skeleton-grid">
+            <div className="skeleton skeleton-col-left" />
+            <div className="skeleton skeleton-col-right" />
+          </div>
+        </div>
       </div>
     );
   }
 
   if (!convention) {
     return (
-      <div>
+      <div className="adh-conv-details-page error-state">
         <PageHeader title="Convention introuvable" />
-        <div className="adh-empty-card">
-          <div className="adh-empty-icon"><AlertTriangle size={28} /></div>
-          <h3>Cette convention n'existe pas ou a été retirée.</h3>
-          <Button variant="secondary" onClick={() => navigate('/adherent/conventions')} style={{ marginTop: 'var(--space-3)' }}>
-            <ArrowLeft size={14} style={{ marginRight: 6 }} />
+
+        <div className="error-card">
+          <ShieldAlert size={48} className="error-icon" />
+          <h2>Convention introuvable</h2>
+          <p>
+            La convention demandée n'existe pas ou vous n'avez pas l'autorisation
+            d'y accéder.
+          </p>
+
+          <Button variant="secondary" onClick={() => navigate('/adherent/conventions')}>
+            <ArrowLeft size={16} />
             Retour aux conventions
           </Button>
         </div>
@@ -107,872 +153,396 @@ export function AdherentConventionDetailsPage() {
     );
   }
 
-  const adherentStatus = getAdherentConventionStatus(convention, demandes || []);
-  const Icon = CONV_TYPE_ICON[convention.type];
-  const tone = CONV_TYPE_TONE[convention.type];
-
-  const today = new Date();
-  const finDate = new Date(convention.dateFin);
-  const daysLeft = Math.ceil((finDate.getTime() - today.getTime()) / 86400000);
-  const expiringSoon = daysLeft > 0 && daysLeft < 60;
-
-  const canRequest = adherentStatus === 'disponible';
-
-  const conditionsList = (convention.conditionsList && convention.conditionsList.length > 0)
-    ? convention.conditionsList
-    : DEFAULT_CONDITIONS;
+  const status = getAdherentConventionStatus(convention, demandes);
+  const canRequest = status === 'disponible';
   const avantage = getConventionAvantageSummary(convention);
-  const validityLabel = `${new Date(convention.dateDebut).toLocaleDateString('fr-FR')} - ${new Date(convention.dateFin).toLocaleDateString('fr-FR')}`;
-  const actionTitle = canRequest
-    ? 'Demande disponible'
-    : adherentStatus === 'deja_demandee'
-      ? 'Demande en cours'
-      : adherentStatus === 'active'
-        ? 'Convention active'
-        : 'Acces indisponible';
+
+  const isDirectDiscount =
+    convention.typeAvantage === 'REMISE_DIRECTE' || !convention.typeAvantage;
+
+  const totalAmount = convention.montantOffre ?? convention.montantAvantage ?? 0;
+  const pctAdherent = convention.pourcentageAdherent ?? 100;
+  const pctAmicale = 100 - pctAdherent;
+
+  const amountAdherent = (totalAmount * pctAdherent) / 100;
+  const amountAmicale = (totalAmount * pctAmicale) / 100;
 
   return (
-    <div className="adh-conv-detail">
-      <PageHeader
-        title="Dossier convention"
-        description={`${convention.fournisseurNom} - ${CONV_TYPE_LABEL[convention.type]}`}
-        breadcrumb={['Adherent', 'Conventions', convention.fournisseurNom]}
-        actions={(
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => navigate('/adherent/conventions')}
-          >
-            <ArrowLeft size={16} />
-            Retour
-          </Button>
-        )}
-      />
+    <div className="adh-conv-details-page fade-in">
+      <button
+        className="adh-conv-back-link"
+        onClick={() => navigate('/adherent/conventions')}
+      >
+        <ArrowLeft size={16} />
+        <span>Retour aux conventions</span>
+      </button>
 
-      {/* Cover banner */}
-      {convention.imageUrl && (
-        <div className="adh-conv-banner">
-          <img
-            src={convention.imageUrl}
-            alt={convention.fournisseurNom}
-            onError={(e) => { (e.currentTarget.parentElement as HTMLElement).style.display = 'none'; }}
-          />
-          <div className="adh-conv-banner-discount">{avantage.title}</div>
-        </div>
-      )}
+      <div className="adh-conv-single-page-layout">
+        <section className="adh-conv-card unified-main-card">
+          <div className="unified-header-row">
+            <div className="unified-header-text">
+              <div className="adh-conv-meta-row">
+                <span className={`tag tag-category tone-${CONV_TYPE_TONE[convention.type]}`}>
+                  {CONV_TYPE_LABEL[convention.type]}
+                </span>
 
-      <section className="adh-conv-overview-grid">
-        <div className="adh-conv-panel adh-conv-panel--main">
-          <div className="adh-conv-panel-header">
-            <div>
-              <span className="adh-conv-eyebrow">Convention fournisseur</span>
-              <h2>{convention.fournisseurNom}</h2>
-            </div>
-            <span className={`adh-conv-panel-icon tone-${tone}`}>
-              <Icon size={22} />
-            </span>
-          </div>
-
-          <strong className="adh-conv-primary-value">{avantage.title}</strong>
-          {convention.descriptionCourte && (
-            <p className="adh-conv-panel-note">{convention.descriptionCourte}</p>
-          )}
-
-          <div className="adh-conv-metric-grid">
-            <DashboardMetric
-              icon={<Percent size={16} />}
-              label="Type d'avantage"
-              value={avantage.label}
-              tone="success"
-            />
-            <DashboardMetric
-              icon={<Calendar size={16} />}
-              label="Validite"
-              value={validityLabel}
-              tone={expiringSoon ? 'warning' : 'primary'}
-            />
-            <DashboardMetric
-              icon={<Info size={16} />}
-              label="Statut"
-              value={<StatusBadge status={convention.statut} />}
-              tone="neutral"
-            />
-          </div>
-        </div>
-
-        <div className="adh-conv-panel">
-          <div className="adh-conv-panel-header">
-            <div>
-              <span className="adh-conv-eyebrow">Suivi adherent</span>
-              <h2>{actionTitle}</h2>
-            </div>
-            <StatusBadge
-              status={adherentStatus}
-              tone={ADHERENT_STATUS_VARIANT[adherentStatus]}
-              label={ADHERENT_STATUS_LABEL[adherentStatus]}
-            />
-          </div>
-
-          <div className="adh-conv-action-stack">
-            {canRequest ? (
-              <>
-                <p>La convention est disponible pour une nouvelle demande.</p>
-                <Button onClick={() => setDemandeOpen(true)} style={{ width: '100%' }}>
-                  <Handshake size={16} />
-                  Demander la convention
-                </Button>
-              </>
-            ) : adherentStatus === 'deja_demandee' ? (
-              <>
-                <p>Une demande est deja en attente de decision.</p>
-                <Button variant="secondary" onClick={() => navigate('/adherent/conventions/mes-demandes')} style={{ width: '100%' }}>
-                  Voir mes demandes
-                </Button>
-              </>
-            ) : adherentStatus === 'active' ? (
-              <p>Cette convention est active pour votre compte adherent.</p>
-            ) : (
-              <>
-                <p>Cette convention n'est pas ouverte aux demandes actuellement.</p>
-                <Button variant="secondary" onClick={() => navigate('/adherent/conventions')} style={{ width: '100%' }}>
-                  Retour aux conventions
-                </Button>
-              </>
-            )}
-          </div>
-        </div>
-      </section>
-
-      {expiringSoon && (
-        <div className="adh-alert warning" style={{ marginTop: 'var(--space-4)' }}>
-          <AlertTriangle size={18} className="adh-alert-icon" />
-          <div>
-            <strong>Cette convention expire bientôt</strong> — Plus que {daysLeft} jour(s) avant la fin de validité.
-          </div>
-        </div>
-      )}
-
-      <div className="adh-conv-grid">
-        <div className="adh-conv-main">
-          {/* Description */}
-          {convention.description && (
-            <section className="adh-conv-section">
-              <SectionHeader title="Description" subtitle="Informations communiquees par le fournisseur." icon={<FileText size={16} />} />
-              <p className="adh-conv-paragraph">{convention.description}</p>
-            </section>
-          )}
-
-          {/* Avantage */}
-          <section className="adh-conv-section">
-            <SectionHeader title="Avantage" subtitle="Synthese de la prise en charge et des montants." icon={<Percent size={16} />} />
-            <div className="adh-conv-highlight">
-              <strong>{avantage.title}</strong>
-              {avantage.subtitle && <span>{avantage.subtitle}</span>}
-            </div>
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
-                gap: 'var(--space-3)',
-                marginTop: 'var(--space-3)',
-              }}
-            >
-              {avantage.rows.map((row, index) => (
-                <FinancementCard
-                  key={row.label}
-                  label={row.label}
-                  value={row.value}
-                  icon={index === 0 ? <CreditCard size={16} /> : <Calendar size={16} />}
-                  highlight={index === 0}
+                <StatusBadge
+                  status={status}
+                  tone={ADHERENT_STATUS_VARIANT[status]}
+                  label={ADHERENT_STATUS_LABEL[status]}
                 />
-              ))}
-            </div>
-          </section>
+              </div>
 
-          {/* Conditions */}
-          <section className="adh-conv-section">
-            <SectionHeader title="Conditions" subtitle="Points a respecter avant validation." icon={<ListChecks size={16} />} />
-            <ul className="adh-conv-list">
-              {conditionsList.map((cond, i) => (
-                <li key={i}>
+              <h1>{convention.fournisseurNom}</h1>
+
+              <p className="adh-conv-tagline">
+                {convention.descriptionCourte || 'Partenaire agréé Amicale SRT'}
+              </p>
+            </div>
+
+            <div className="unified-header-actions">
+              {canRequest && (
+                <Button variant="primary" onClick={() => setDemandeOpen(true)}>
+                  <Handshake size={18} />
+                  Adhérer à la convention
+                </Button>
+              )}
+
+              {status === 'deja_demandee' && (
+                <Button
+                  variant="secondary"
+                  onClick={() => navigate('/adherent/conventions/mes-demandes')}
+                >
+                  <FileSignature size={18} />
+                  Suivre ma demande
+                </Button>
+              )}
+
+              {status === 'active' && (
+                <div className="active-benefit-badge">
                   <CheckCircle2 size={16} />
-                  <span>{cond}</span>
+                  <span>Adhésion active</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <hr className="unified-divider" />
+
+          <div className="unified-section-header">
+            <h3>Avantages financiers</h3>
+            <p>Détails des remises et conditions de prise en charge</p>
+          </div>
+
+          <div className="advantage-highlight-box">
+            <div className="highlight-label">Avantage Principal</div>
+            <h2>{avantage.title}</h2>
+            {avantage.subtitle && <p>{avantage.subtitle}</p>}
+          </div>
+
+          {isDirectDiscount ? (
+            <DirectDiscount convention={convention} />
+          ) : (
+            <PaymentDetails
+              totalAmount={totalAmount}
+              pctAdherent={pctAdherent}
+              pctAmicale={pctAmicale}
+              amountAdherent={amountAdherent}
+              amountAmicale={amountAmicale}
+              convention={convention}
+            />
+          )}
+
+          {convention.description && (
+            <>
+              <hr className="unified-divider" />
+
+              <div className="unified-section-header">
+                <h3>Description détaillée</h3>
+                <p>Présentation complète de l'offre partenaire</p>
+              </div>
+
+              <div className="description-body text-rich">
+                <p>{convention.description}</p>
+              </div>
+            </>
+          )}
+
+          <SupplierContact convention={convention} />
+
+          <hr className="unified-divider" />
+
+          <div className="unified-section-header">
+            <h3>Justificatifs requis</h3>
+            <p>Pièces justificatives à fournir pour votre dossier d'adhésion</p>
+          </div>
+
+          {convention.documentsRequis?.length > 0 ? (
+            <ul className="documents-checklist">
+              {convention.documentsRequis.map((doc: string, index: number) => (
+                <li key={index} className="checklist-item">
+                  <div className="check-bullet">
+                    <Check size={12} />
+                  </div>
+                  <span>{doc}</span>
                 </li>
               ))}
             </ul>
-          </section>
-
-          {/* Documents requis */}
-          {convention.documentsRequis && convention.documentsRequis.length > 0 && (
-            <section className="adh-conv-section">
-              <SectionHeader title="Documents requis" subtitle="Pieces a joindre si le fournisseur les demande." icon={<Paperclip size={16} />} />
-              <ul className="adh-conv-list">
-                {convention.documentsRequis.map((doc, i) => (
-                  <li key={i}>
-                    <Paperclip size={14} />
-                    <span>{doc}</span>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          )}
-
-          {/* Important notice */}
-          <section className="adh-alert info" style={{ marginTop: 'var(--space-2)' }}>
-            <Info size={18} className="adh-alert-icon" />
-            <div>
-              <strong>Informations importantes</strong>
-              <p style={{ margin: '4px 0 0', fontSize: 'var(--font-size-sm)' }}>
-                Votre demande doit etre validee avant utilisation de la convention. Le suivi reste disponible dans
-                la rubrique Mes demandes de conventions.
-              </p>
-            </div>
-          </section>
-        </div>
-
-        <aside className="adh-conv-aside">
-          {/* Validity & status */}
-          <div className="adh-conv-card">
-            <h4>Validite</h4>
-            <div className="adh-conv-info-row">
-              <Calendar size={14} />
-              <div>
-                <span>Debut</span>
-                <strong>{new Date(convention.dateDebut).toLocaleDateString('fr-FR')}</strong>
-              </div>
-            </div>
-            <div className="adh-conv-info-row">
-              <Calendar size={14} />
-              <div>
-                <span>Date de fin</span>
-                <strong>{new Date(convention.dateFin).toLocaleDateString('fr-FR')}</strong>
-              </div>
-            </div>
-            <div className="adh-conv-info-row">
-              <Info size={14} />
-              <div>
-                <span>Statut</span>
-                <strong><StatusBadge status={convention.statut} /></strong>
-              </div>
-            </div>
-          </div>
-
-          {/* Supplier contact */}
-          {(convention.fournisseurAdresse || convention.fournisseurTelephone || convention.fournisseurEmail || convention.fournisseurContact) && (
-            <div className="adh-conv-card">
-              <h4>Fournisseur</h4>
-              {convention.fournisseurContact && (
-                <div className="adh-conv-info-row">
-                  <UserIcon size={14} />
-                  <div><span>Contact</span><strong>{convention.fournisseurContact}</strong></div>
-                </div>
-              )}
-              {convention.fournisseurAdresse && (
-                <div className="adh-conv-info-row">
-                  <MapPin size={14} />
-                  <div><span>Adresse</span><strong>{convention.fournisseurAdresse}</strong></div>
-                </div>
-              )}
-              {convention.fournisseurTelephone && (
-                <div className="adh-conv-info-row">
-                  <Phone size={14} />
-                  <div>
-                    <span>Telephone</span>
-                    <a href={`tel:${convention.fournisseurTelephone}`} className="adh-conv-link">
-                      {convention.fournisseurTelephone}
-                    </a>
-                  </div>
-                </div>
-              )}
-              {convention.fournisseurEmail && (
-                <div className="adh-conv-info-row">
-                  <Mail size={14} />
-                  <div>
-                    <span>Email</span>
-                    <a href={`mailto:${convention.fournisseurEmail}`} className="adh-conv-link">
-                      {convention.fournisseurEmail}
-                    </a>
-                  </div>
-                </div>
-              )}
-              {convention.fournisseurId && (
-                <div className="adh-conv-info-row">
-                  <Building2 size={14} />
-                  <div><span>Reference</span><strong>{convention.fournisseurId}</strong></div>
-                </div>
-              )}
+          ) : (
+            <div className="documents-empty-state">
+              <Info size={16} className="info-icon" />
+              <span>Aucun justificatif particulier n'est requis pour cette convention.</span>
             </div>
           )}
-        </aside>
+        </section>
       </div>
 
-      {/* Demande modal */}
       {profile && (
         <Modal
           open={demandeOpen}
-          onClose={() => { setDemandeOpen(false); setSubmitError(null); }}
-          title="Demande d'adhésion à une convention"
-          description="Verifiez les informations puis confirmez votre demande."
+          onClose={() => {
+            setDemandeOpen(false);
+            setSubmitError(null);
+          }}
+          title="Demande d'adhésion"
+          description="Veuillez remplir les informations pour finaliser votre dossier."
           size="lg"
         >
-          <DemandeConventionForm
-            adherent={profile}
-            convention={convention}
-            submitting={createDemandeMutation.isPending}
-            errorMessage={submitError}
-            onCancel={() => { setDemandeOpen(false); setSubmitError(null); }}
-            onSubmit={async (payload) => { await createDemandeMutation.mutateAsync(payload); }}
-          />
+          <div className="form-modal-container">
+            <DemandeConventionForm
+              adherent={profile as any}
+              convention={convention}
+              submitting={createDemandeMutation.isPending}
+              errorMessage={submitError}
+              onCancel={() => {
+                setDemandeOpen(false);
+                setSubmitError(null);
+              }}
+              onSubmit={(payload) => createDemandeMutation.mutateAsync(payload)}
+            />
+          </div>
         </Modal>
       )}
 
-      {/* Confirmation modal */}
       <Modal
         open={confirmationOpen}
         onClose={() => setConfirmationOpen(false)}
-        title="Demande envoyée"
+        title="Félicitations !"
         size="sm"
         footer={
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, width: '100%' }}>
-            <Button variant="secondary" onClick={() => setConfirmationOpen(false)}>Fermer</Button>
-            <Button onClick={() => { setConfirmationOpen(false); navigate('/adherent/conventions/mes-demandes'); }}>
-              Voir mes demandes
+          <div className="adh-conv-modal-footer">
+            <Button variant="secondary" onClick={() => setConfirmationOpen(false)}>
+              Fermer
+            </Button>
+
+            <Button
+              onClick={() => {
+                setConfirmationOpen(false);
+                navigate('/adherent/conventions/mes-demandes');
+              }}
+            >
+              Suivre ma demande
+              <ArrowRight size={14} className="ml-1" />
             </Button>
           </div>
         }
       >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)', alignItems: 'center', textAlign: 'center' }}>
-          <div className="adh-tile-icon tone-success" style={{ width: 56, height: 56 }}>
-            <CheckCircle2 size={28} />
+        <div className="adh-conv-confirmation">
+          <div className="adh-conv-confirmation-icon">
+            <BookmarkCheck size={32} />
           </div>
-          <div>
-            <h3 style={{ margin: '0 0 8px', color: 'var(--color-text-primary)' }}>
-              Votre demande a ete envoyee.
-            </h3>
-            <p style={{ margin: 0, color: 'var(--color-text-secondary)', fontSize: 'var(--font-size-sm)' }}>
-              Le suivi est disponible dans la rubrique <strong>Mes demandes de conventions</strong>.
+
+          <div className="confirmation-copy">
+            <h3>Demande transmise avec succès</h3>
+            <p>
+              Votre dossier a été transmis au tresorier de l'Amicale. Vous pouvez
+              suivre l'évolution de son traitement en temps réel.
             </p>
           </div>
+
           <StatusBadge status="en_attente" />
         </div>
       </Modal>
-
-      <style>{INLINE_STYLES}</style>
     </div>
   );
 }
 
-function DashboardMetric({
-  icon,
-  label,
-  value,
-  tone,
-}: {
-  icon: ReactNode;
-  label: string;
-  value: ReactNode;
-  tone: 'primary' | 'success' | 'warning' | 'neutral';
-}) {
+function DirectDiscount({ convention }: any) {
   return (
-    <div className={`adh-conv-dashboard-metric adh-conv-dashboard-metric--${tone}`}>
-      <span>{icon}</span>
-      <div>
-        <p>{label}</p>
-        <strong>{value}</strong>
+    <div className="adh-conv-discount-visual">
+      <div className="discount-badge-flat">
+        <span>-{convention.remise}%</span>
+      </div>
+
+      <div className="discount-copy">
+        <h4>Remise immédiate en caisse</h4>
+        <p>
+          Bénéficiez d'une remise exclusive de{' '}
+          <strong>{convention.remise}%</strong> sur vos achats chez{' '}
+          <strong>{convention.fournisseurNom}</strong>. Présentez simplement votre
+          carte d'adhérent active lors du passage en caisse.
+        </p>
       </div>
     </div>
   );
 }
 
-function SectionHeader({
-  title,
-  subtitle,
-  icon,
-}: {
-  title: string;
-  subtitle?: string;
-  icon?: ReactNode;
-}) {
+function PaymentDetails({
+  totalAmount,
+  pctAdherent,
+  pctAmicale,
+  amountAdherent,
+  amountAmicale,
+  convention,
+}: any) {
   return (
-    <header className="adh-conv-section-header">
-      <div>
-        <h3>{icon}{title}</h3>
-        {subtitle && <p>{subtitle}</p>}
+    <div className="adh-conv-finance-breakdown">
+      <div className="visual-header">
+        <h4>Conditions de paiement</h4>
+        <span className="total-badge">{formatCurrency(totalAmount)} au total</span>
       </div>
-    </header>
-  );
-}
 
-function mapProfileToAdherent(profile: ProfileResponse): Adherent {
-  return {
-    id: profile.id,
-    nom: profile.lastName,
-    prenom: profile.firstName,
-    email: profile.email,
-    telephone: profile.phone ?? '',
-    role: profile.role,
-    status: (profile.status ?? 'actif') as Adherent['status'],
-    matricule: profile.matricule ?? undefined,
-    createdAt: profile.createdAt ?? '',
-    salaire: profile.adherent?.salaire ?? 0,
-    enfants: profile.adherent?.enfants ?? 0,
-    marie: profile.adherent?.marie ?? false,
-    dateNaissance: profile.adherent?.dateNaissance ?? undefined,
-  };
-}
+      <div className="finance-invoice-summary">
+        <div className="invoice-row">
+          <span className="invoice-label">
+            À la charge de l'adhérent ({pctAdherent}%)
+          </span>
+          <span className="invoice-amount">{formatCurrency(amountAdherent)}</span>
+        </div>
 
-function FinancementCard({
-  label, value, icon, highlight,
-}: { label: string; value: string; icon: ReactNode; highlight?: boolean }) {
-  return (
-    <div
-      style={{
-        padding: 'var(--space-3)',
-        borderRadius: 'var(--radius-md)',
-        border: `1px solid ${highlight ? 'var(--color-primary-200)' : 'var(--color-border-light)'}`,
-        background: highlight ? 'var(--color-primary-50)' : 'var(--color-surface-secondary)',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 4,
-      }}
-    >
-      <span
-        style={{
-          fontSize: 'var(--font-size-xs)',
-          textTransform: 'uppercase',
-          letterSpacing: 0,
-          color: 'var(--color-text-tertiary)',
-          fontWeight: 600,
-          display: 'inline-flex', alignItems: 'center', gap: 6,
-        }}
-      >
-        <span style={{ color: highlight ? 'var(--color-primary-700)' : 'var(--color-text-secondary)' }}>
-          {icon}
-        </span>
-        {label}
-      </span>
-      <strong
-        style={{
-          fontSize: highlight ? 18 : 16,
-          color: highlight ? 'var(--color-primary-800)' : 'var(--color-text-primary)',
-          fontVariantNumeric: 'tabular-nums',
-        }}
-      >
-        {value}
-      </strong>
+        {pctAmicale > 0 && (
+          <div className="invoice-row">
+            <span className="invoice-label">
+              Prise en charge Amicale SRT ({pctAmicale}%)
+            </span>
+            <span className="invoice-amount text-success">
+              {formatCurrency(amountAmicale)}
+            </span>
+          </div>
+        )}
+
+        <div className="invoice-row is-total">
+          <span className="invoice-label">Montant total</span>
+          <strong className="invoice-amount">{formatCurrency(totalAmount)}</strong>
+        </div>
+      </div>
+
+      <div className="adh-conv-finance-details-grid">
+        <DetailPill
+          title="Montant total"
+          value={formatCurrency(totalAmount)}
+          className="text-primary"
+        />
+
+        {convention.nombreMoisRetenue && (
+          <>
+            <DetailPill
+              title="Durée de remboursement"
+              value={`${convention.nombreMoisRetenue} mois`}
+            />
+
+            <DetailPill
+              title="Mensualité prélevée"
+              value={`${formatCurrency(amountAdherent / convention.nombreMoisRetenue)}/mois`}
+              className="text-success"
+            />
+          </>
+        )}
+
+        {convention.nbTranches && (
+          <DetailPill
+            title="Nombre de tranches"
+            value={`${convention.nbTranches} tranches`}
+          />
+        )}
+      </div>
     </div>
   );
 }
 
-const INLINE_STYLES = `
-.adh-conv-detail {
-  display: grid;
-  gap: var(--space-5);
+function DetailPill({ title, value, className = '' }: any) {
+  return (
+    <div className="detail-pill">
+      <span className="pill-title">{title}</span>
+      <strong className={`pill-value ${className}`}>{value}</strong>
+    </div>
+  );
+}
+
+function SupplierContact({ convention }: any) {
+  const hasContact =
+    convention.fournisseurAdresse ||
+    convention.fournisseurTelephone ||
+    convention.fournisseurEmail ||
+    convention.fournisseurContact;
+
+  if (!hasContact) return null;
+
+  return (
+    <>
+      <hr className="unified-divider" />
+
+      <div className="unified-section-header">
+        <h3>Coordonnées du partenaire</h3>
+        <p>Contact et localisation physique du fournisseur</p>
+      </div>
+
+      <div className="supplier-details-list-horizontal">
+        {convention.fournisseurContact && (
+          <ContactItem
+            icon={<UserIcon size={16} />}
+            label="Contact principal"
+            value={convention.fournisseurContact}
+          />
+        )}
+
+        {convention.fournisseurAdresse && (
+          <ContactItem
+            icon={<MapPin size={16} />}
+            label="Adresse"
+            value={convention.fournisseurAdresse}
+          />
+        )}
+
+        {convention.fournisseurTelephone && (
+          <ContactItem
+            icon={<Phone size={16} />}
+            label="Téléphone"
+            value={convention.fournisseurTelephone}
+            href={`tel:${convention.fournisseurTelephone}`}
+          />
+        )}
+
+        {convention.fournisseurEmail && (
+          <ContactItem
+            icon={<Mail size={16} />}
+            label="Email"
+            value={convention.fournisseurEmail}
+            href={`mailto:${convention.fournisseurEmail}`}
+          />
+        )}
+      </div>
+    </>
+  );
+}
+
+function ContactItem({ icon, label, value, href }: any) {
+  return (
+    <div className="contact-item">
+      <div className="contact-icon">{icon}</div>
+
+      <div className="contact-content">
+        <span className="contact-label">{label}</span>
+
+        {href ? (
+          <a href={href} className="contact-link">
+            <span>{value}</span>
+            <ExternalLink size={12} className="link-arrow" />
+          </a>
+        ) : (
+          <strong className="contact-value">{value}</strong>
+        )}
+      </div>
+    </div>
+  );
 }
-.adh-conv-overview-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1.45fr) minmax(360px, 0.9fr);
-  gap: var(--space-4);
-}
-.adh-conv-panel,
-.adh-conv-section,
-.adh-conv-card {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-xs);
-}
-.adh-conv-panel,
-.adh-conv-section {
-  padding: var(--space-5);
-}
-.adh-conv-card {
-  padding: var(--space-4);
-}
-.adh-conv-panel--main {
-  border-color: var(--color-primary-100);
-}
-.adh-conv-panel-header,
-.adh-conv-section-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--space-3);
-}
-.adh-conv-section-header {
-  margin-bottom: var(--space-4);
-}
-.adh-conv-eyebrow {
-  display: block;
-  margin-bottom: var(--space-1);
-  color: var(--color-text-tertiary);
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-semibold);
-  text-transform: uppercase;
-  letter-spacing: 0;
-}
-.adh-conv-panel-header h2,
-.adh-conv-section-header h3 {
-  margin: 0;
-  color: var(--color-text-primary);
-  line-height: var(--line-height-tight);
-}
-.adh-conv-panel-header h2 {
-  font-size: var(--font-size-lg);
-}
-.adh-conv-section-header h3 {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  font-size: var(--font-size-md);
-}
-.adh-conv-section-header p {
-  margin: 3px 0 0;
-  color: var(--color-text-secondary);
-  font-size: var(--font-size-sm);
-}
-.adh-conv-panel-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 44px;
-  height: 44px;
-  flex: 0 0 44px;
-  border-radius: var(--radius-md);
-}
-.adh-conv-panel-icon.tone-sante,
-.adh-conv-panel-icon.tone-commerce,
-.adh-conv-panel-icon.tone-primary {
-  color: var(--color-primary-700);
-  background: var(--color-primary-50);
-}
-.adh-conv-panel-icon.tone-info {
-  color: var(--color-info-700);
-  background: var(--color-info-50);
-}
-.adh-conv-panel-icon.tone-restauration,
-.adh-conv-panel-icon.tone-loisir,
-.adh-conv-panel-icon.tone-warning {
-  color: var(--color-warning-700);
-  background: var(--color-warning-50);
-}
-.adh-conv-panel-icon.tone-error {
-  color: var(--color-error-700);
-  background: var(--color-error-50);
-}
-.adh-conv-panel-icon.tone-violet {
-  color: var(--color-primary-700);
-  background: var(--color-primary-50);
-}
-.adh-conv-panel-icon.tone-transport,
-.adh-conv-panel-icon.tone-education,
-.adh-conv-panel-icon.tone-success {
-  color: var(--color-success-700);
-  background: var(--color-success-50);
-}
-.adh-conv-primary-value {
-  display: block;
-  margin: var(--space-5) 0 var(--space-2);
-  color: var(--color-text-primary);
-  font-size: clamp(1.5rem, 3vw, 2.15rem);
-  line-height: var(--line-height-tight);
-}
-.adh-conv-panel-note {
-  margin: 0 0 var(--space-4);
-  color: var(--color-text-secondary);
-  font-size: var(--font-size-sm);
-}
-.adh-conv-metric-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--space-3);
-}
-.adh-conv-dashboard-metric {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  min-width: 0;
-  padding: var(--space-3);
-  background: var(--color-surface-secondary);
-  border: 1px solid var(--color-border-light);
-  border-radius: var(--radius-md);
-}
-.adh-conv-dashboard-metric > span {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 34px;
-  height: 34px;
-  flex: 0 0 34px;
-  border-radius: var(--radius-md);
-}
-.adh-conv-dashboard-metric--primary > span {
-  color: var(--color-primary-700);
-  background: var(--color-primary-50);
-}
-.adh-conv-dashboard-metric--success > span {
-  color: var(--color-success-700);
-  background: var(--color-success-50);
-}
-.adh-conv-dashboard-metric--warning > span {
-  color: var(--color-warning-700);
-  background: var(--color-warning-50);
-}
-.adh-conv-dashboard-metric--neutral > span {
-  color: var(--color-text-secondary);
-  background: var(--color-surface);
-}
-.adh-conv-dashboard-metric p {
-  margin: 0;
-  color: var(--color-text-secondary);
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-semibold);
-  text-transform: uppercase;
-  letter-spacing: 0;
-}
-.adh-conv-dashboard-metric strong {
-  display: block;
-  margin-top: 2px;
-  color: var(--color-text-primary);
-  font-size: var(--font-size-base);
-  overflow-wrap: anywhere;
-}
-.adh-conv-action-stack {
-  display: grid;
-  gap: var(--space-3);
-  margin-top: var(--space-4);
-}
-.adh-conv-action-stack p {
-  margin: 0;
-  color: var(--color-text-secondary);
-  font-size: var(--font-size-sm);
-}
-.adh-conv-banner {
-  position: relative;
-  width: 100%;
-  aspect-ratio: 21 / 8;
-  max-height: 280px;
-  border-radius: 14px;
-  overflow: hidden;
-  margin-bottom: 16px;
-  border: 1px solid var(--adh-border);
-  box-shadow: var(--adh-shadow-xs);
-  background: var(--adh-surface-2);
-}
-.adh-conv-banner img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-.adh-conv-banner::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(180deg, transparent 60%, rgba(0,0,0,0.25) 100%);
-  pointer-events: none;
-}
-.adh-conv-banner-discount {
-  position: absolute;
-  bottom: 14px;
-  right: 14px;
-  background: #16a34a;
-  color: white;
-  font-size: 1.25rem;
-  font-weight: 700;
-  padding: 8px 16px;
-  border-radius: 10px;
-  letter-spacing: 0;
-  font-variant-numeric: tabular-nums;
-  box-shadow: 0 6px 18px -4px rgba(22, 163, 74, 0.5),
-              0 0 0 1px rgba(22, 163, 74, 0.20);
-  z-index: 1;
-}
-.adh-conv-hero {
-  display: flex; align-items: center; gap: var(--space-4);
-  padding: var(--space-5);
-  background: white;
-  border: 1px solid var(--color-border-light);
-  border-radius: var(--radius-lg);
-  margin-bottom: var(--space-4);
-  flex-wrap: wrap;
-}
-.adh-conv-hero-text { flex: 1; min-width: 240px; }
-.adh-conv-hero-tags { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
-.adh-conv-hero-title {
-  margin: 0; font-size: var(--font-size-xl);
-  color: var(--color-text-primary); font-weight: 700;
-}
-.adh-conv-hero-sub {
-  margin: 4px 0 0;
-  color: var(--color-text-secondary);
-  font-size: var(--font-size-sm);
-}
-.adh-conv-hero-discount {
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  padding: var(--space-3) var(--space-4);
-  background: linear-gradient(135deg, var(--color-success-50), var(--color-success-100));
-  border-radius: var(--radius-lg);
-  min-width: 120px;
-}
-.adh-conv-hero-discount span {
-  font-size: var(--font-size-xs);
-  color: var(--color-success-700);
-  text-transform: uppercase;
-  letter-spacing: 0;
-  font-weight: 600;
-}
-.adh-conv-hero-discount strong {
-  font-size: var(--font-size-2xl);
-  color: var(--color-success-700);
-  font-weight: 800;
-}
-.adh-conv-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 320px;
-  gap: var(--space-4);
-  margin-top: var(--space-4);
-}
-@media (max-width: 920px) { .adh-conv-grid { grid-template-columns: 1fr; } }
-.adh-conv-main { display: flex; flex-direction: column; gap: var(--space-4); }
-.adh-conv-aside { display: flex; flex-direction: column; gap: var(--space-3); }
-.adh-conv-section {
-  background: white;
-  border: 1px solid var(--color-border-light);
-  border-radius: var(--radius-lg);
-  padding: var(--space-4) var(--space-5);
-}
-.adh-conv-section-title {
-  display: flex; align-items: center; gap: 8px;
-  margin: 0 0 var(--space-3);
-  font-size: var(--font-size-sm);
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0;
-  color: var(--color-text-secondary);
-}
-.adh-conv-paragraph {
-  margin: 0;
-  font-size: var(--font-size-sm);
-  line-height: 1.6;
-  color: var(--color-text-primary);
-}
-.adh-conv-highlight {
-  display: flex; flex-direction: column; gap: 4px;
-  padding: var(--space-3) var(--space-4);
-  background: var(--color-success-50);
-  border: 1px solid var(--color-success-100);
-  border-radius: var(--radius-md);
-  color: var(--color-success-700);
-}
-.adh-conv-highlight strong { font-size: var(--font-size-base); }
-.adh-conv-highlight span { font-size: var(--font-size-xs); color: var(--color-success-600); }
-.adh-conv-list {
-  list-style: none; padding: 0; margin: 0;
-  display: flex; flex-direction: column; gap: 8px;
-}
-.adh-conv-list li {
-  display: flex; align-items: flex-start; gap: 10px;
-  font-size: var(--font-size-sm);
-  color: var(--color-text-primary);
-  line-height: 1.5;
-}
-.adh-conv-list li svg {
-  color: var(--color-success-500);
-  flex-shrink: 0;
-  margin-top: 2px;
-}
-.adh-conv-card {
-  background: white;
-  border: 1px solid var(--color-border-light);
-  border-radius: var(--radius-lg);
-  padding: var(--space-4);
-}
-.adh-conv-card h4 {
-  margin: 0 0 var(--space-3);
-  font-size: var(--font-size-sm);
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0;
-  color: var(--color-text-secondary);
-}
-.adh-conv-info-row {
-  display: flex; align-items: flex-start; gap: 10px;
-  padding: 8px 0;
-}
-.adh-conv-info-row svg {
-  color: var(--color-text-tertiary);
-  margin-top: 4px;
-  flex-shrink: 0;
-}
-.adh-conv-info-row > div {
-  display: flex; flex-direction: column; min-width: 0; flex: 1;
-}
-.adh-conv-info-row span {
-  font-size: var(--font-size-xs);
-  color: var(--color-text-tertiary);
-  text-transform: uppercase;
-  letter-spacing: 0;
-}
-.adh-conv-info-row strong {
-  font-size: var(--font-size-sm);
-  color: var(--color-text-primary);
-  font-weight: 600;
-  word-break: break-word;
-}
-.adh-conv-link {
-  font-size: var(--font-size-sm);
-  color: var(--color-primary-600);
-  text-decoration: none;
-  font-weight: 600;
-}
-.adh-conv-link:hover { text-decoration: underline; }
-.adh-conv-card-action p {
-  margin: 0 0 var(--space-3);
-  font-size: var(--font-size-sm);
-  color: var(--color-text-secondary);
-}
-@media (max-width: 1180px) {
-  .adh-conv-overview-grid {
-    grid-template-columns: 1fr;
-  }
-}
-@media (max-width: 820px) {
-  .adh-conv-metric-grid {
-    grid-template-columns: 1fr;
-  }
-  .adh-conv-panel-header,
-  .adh-conv-section-header {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-}
-@media (max-width: 640px) {
-  .adh-conv-panel,
-  .adh-conv-section {
-    padding: var(--space-4);
-  }
-  .adh-conv-primary-value {
-    font-size: var(--font-size-2xl);
-  }
-}
-.adh-conv-section {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-xs);
-  padding: var(--space-5);
-}
-.adh-conv-card {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-xs);
-}
-.adh-conv-card h4,
-.adh-conv-info-row span,
-.adh-conv-hero-discount span,
-.adh-conv-section-title {
-  letter-spacing: 0;
-}
-`;

@@ -1,9 +1,3 @@
-/* ============================================
-   Real Authentication Service
-   ============================================
-   Connects to Spring Boot backend at port 8081
-   ============================================ */
-
 import { post } from '../../../shared/api/apiClient';
 import type { User, SignupPayload } from '../types/auth.types';
 
@@ -55,15 +49,16 @@ export async function loginService(
 }
 
 export async function signupService(data: SignupPayload): Promise<User> {
-  // Backend expects 'admin', 'adherent', or 'treasurer'
-  // Default role for self-registration is 'adherent'
   const { data: apiUser } = await post<AuthApiResponse>('/api/auth/register', {
     firstName: data.firstName,
     lastName: data.lastName,
     email: data.email,
     password: data.password,
-    role: 'adherent', // Default role
+    role: 'adherent',
     phone: data.phone,
+    matricule: data.matricule,
+    enfant: data.enfant,
+    marie: data.marie,
   });
 
   // IMPORTANT: do NOT log the user in.

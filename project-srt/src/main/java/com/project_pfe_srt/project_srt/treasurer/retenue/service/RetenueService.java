@@ -318,10 +318,13 @@ public class RetenueService {
     /** Convention retenues are activated only after the consolidated supplier facture is validated. */
     private List<RetenueLigne> conventionLines(User adherent, int mois, int annee, RetenueMensuelle master) {
         List<RetenueLigne> out = new ArrayList<>();
+        System.out.println("test");
         for (ConventionDemande demande : conventionDemandeRepository.findByAdherentIdAndFactureIsNotNullOrderByIdAsc(adherent.getId())) {
             if (!isConventionFactureValidated(demande) || !isConventionRetenueActiveForPeriod(demande, mois, annee)) {
+                System.out.println("enter to the if");
                 continue;
             }
+            System.out.println("build the ligne");
             out.add(RetenueLigne.builder()
                     .retenue(master)
                     .type("CONVENTION")

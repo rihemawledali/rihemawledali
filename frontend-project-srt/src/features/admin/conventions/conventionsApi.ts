@@ -6,11 +6,12 @@ import type {
   Convention, ConventionStatus, ConventionType, PageQuery, PageResult,
 } from '../../../shared/types/domain';
 import { get, post, put, del } from '../../../shared/api/apiClient';
+import { getConventionAvantageSummary } from '../../../shared/lib/conventionWorkflow';
 
 interface BackendConventionDto {
   id: string;
-  fournisseurId: string;
-  fournisseurNom: string;
+  fournisseurId: string | null;
+  fournisseurNom: string | null;
   type: string;
   dateDebut: string;   // yyyy-MM-dd
   dateFin: string;
@@ -49,8 +50,8 @@ interface BackendConventionRequest {
 function fromDto(dto: BackendConventionDto): Convention {
   return {
     id: dto.id,
-    fournisseurId: dto.fournisseurId,
-    fournisseurNom: dto.fournisseurNom,
+    fournisseurId: dto.fournisseurId ?? '',
+    fournisseurNom: dto.fournisseurNom ?? 'Fournisseur introuvable',
     type: dto.type as ConventionType,
     dateDebut: dto.dateDebut,
     dateFin: dto.dateFin,
@@ -94,9 +95,21 @@ function clientPaginate(rows: Convention[], q: PageQuery = {}): PageResult<Conve
   let result = [...rows];
   const search = q.search?.trim().toLowerCase();
   if (search) {
-    result = result.filter((r) =>
-      [r.fournisseurNom, r.description].some((v) => String(v ?? '').toLowerCase().includes(search))
-    );
+    result = result.filter((r) => {
+      const avantage = getConventionAvantageSummary(r);
+      const searchable = [
+        r.fournisseurNom,
+        r.description,
+        r.type,
+        r.typeConvention,
+        r.typeAvantage,
+        avantage.label,
+        avantage.title,
+        avantage.subtitle,
+        ...avantage.rows.flatMap((row) => [row.label, row.value]),
+      ];
+      return searchable.some((v) => String(v ?? '').toLowerCase().includes(search));
+    });
   }
   if (q.filters) {
     for (const [k, v] of Object.entries(q.filters)) {
@@ -112,6 +125,7 @@ function clientPaginate(rows: Convention[], q: PageQuery = {}): PageResult<Conve
       if (av == null) return 1;
       if (bv == null) return -1;
       if (typeof av === 'number' && typeof bv === 'number') return (av - bv) * dir;
+      if (key === 'id') return (Number(av) - Number(bv)) * dir;
       return String(av).localeCompare(String(bv)) * dir;
     });
   }

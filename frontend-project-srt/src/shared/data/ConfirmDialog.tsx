@@ -1,5 +1,6 @@
 import { Modal } from './Modal';
 import { Button } from '../ui/Button';
+import './ConfirmDialog.css';
 
 interface ConfirmDialogProps {
   open: boolean;
@@ -40,7 +41,7 @@ export function ConfirmDialog({
         </>
       }
     >
-      <p style={{ color: 'var(--color-text-secondary)', lineHeight: 'var(--line-height-relaxed)' }}>
+      <p className="confirm-dialog-message">
         {message}
       </p>
     </Modal>

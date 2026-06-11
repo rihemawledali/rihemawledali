@@ -40,7 +40,7 @@ public class User implements UserDetails {
     private Role role;
 
     private String telephone;
-
+    @Column(nullable = false, unique = true)
     private String matricule;
 
     @Column(name = "created_at", updatable = false)

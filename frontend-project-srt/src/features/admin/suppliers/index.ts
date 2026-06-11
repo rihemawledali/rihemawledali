@@ -1,2 +1,2 @@
 export { SuppliersPage } from './SuppliersPage';
-export { suppliersApi } from './suppliersApi';
+export { suppliersApi } from '../../../shared/api/suppliersApi';

@@ -223,15 +223,6 @@ public class PaiementService {
         return PaiementDto.from(saved);
     }
 
-    @Transactional
-    public PaiementDto annuler(Long id) {
-        Paiement p = findPaiement(id);
-        boolean wasReussi = STATUT_REUSSI.equalsIgnoreCase(p.getStatut());
-        p.setStatut(STATUT_REMBOURSE);
-        Paiement saved = paiementRepository.save(p);
-        if (wasReussi) ledger.reverseByReference(p.getReference());
-        return PaiementDto.from(saved);
-    }
 
     @Transactional
     public void delete(Long id) {

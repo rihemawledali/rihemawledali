@@ -92,8 +92,8 @@ public class TreasurerFactureController {
      */
     @GetMapping(value = "/{id}/pdf", produces = MediaType.APPLICATION_PDF_VALUE)
     public ResponseEntity<byte[]> downloadPdf(@PathVariable Long id) {
-        byte[] pdf = facturePdfService.render(id);
-        String filename = facturePdfService.suggestedFilename(id);
+        byte[] pdf = facturePdfService.generatePdf(id);
+        String filename = facturePdfService.pdfFilename(id);
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
                 .contentType(MediaType.APPLICATION_PDF)

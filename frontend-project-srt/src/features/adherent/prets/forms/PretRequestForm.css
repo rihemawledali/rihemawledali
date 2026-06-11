@@ -1,0 +1,86 @@
+.pret-estimate-box {
+  padding: var(--space-3);
+  margin-bottom: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-secondary);
+}
+
+.pret-estimate-box strong {
+  color: var(--color-text-primary);
+}
+
+.pret-estimate-box p {
+  margin: 4px 0 0;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.pret-file-label {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+}
+
+.pret-file-drop,
+.pret-file-preview {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+}
+
+.pret-file-drop {
+  border: 1px dashed var(--color-border);
+  background: var(--color-surface-secondary);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.pret-file-input {
+  display: none;
+}
+
+.pret-file-preview {
+  border: 1px solid var(--color-border);
+  background: var(--color-primary-50);
+}
+
+.pret-file-icon {
+  color: var(--color-primary-700);
+  flex-shrink: 0;
+}
+
+.pret-file-name {
+  flex: 1;
+  min-width: 0;
+  color: var(--color-text-primary);
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pret-file-size {
+  color: var(--color-text-tertiary);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.pret-file-remove {
+  padding: 4px;
+  border: 0;
+  background: transparent;
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+}
+
+.pret-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+}

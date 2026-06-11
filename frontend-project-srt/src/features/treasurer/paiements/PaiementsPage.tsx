@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-  Plus, Pencil, Trash2, CheckCircle2, Ban, Eye, CreditCard,
+  Plus, Pencil, Trash2, CheckCircle2, Eye, CreditCard,
   Building2, HeartHandshake, MoreHorizontal,
 } from 'lucide-react';
 import { PageHeader } from '../../../shared/layout/PageHeader';
@@ -24,9 +24,10 @@ import { formatCurrency, formatDateTime } from '../../../shared/lib/formatters';
 import type { Facture, Indemnite, Paiement, TypePaiement } from '../../../shared/types/domain';
 import type { PaiementFormValues } from '../../../shared/validators';
 import '../../../shared/layout/CrudPage.css';
+import './PaiementsPage.css';
 
 const MODE_LABEL: Record<string, string> = {
-  virement: 'Virement', cheque: 'Chèque', especes: 'Espèces', carte: 'Carte',
+  virement: 'Virement', especes: 'Espèces',
 };
 
 const TYPE_LABEL: Record<TypePaiement, string> = {
@@ -41,7 +42,7 @@ const TYPE_TONE: Record<TypePaiement, 'info' | 'primary' | 'neutral'> = {
   AUTRE_SORTIE: 'neutral',
 };
 
-const TYPE_ICON: Record<TypePaiement, React.ReactNode> = {
+const TYPE_ICON: Record<TypePaiement, any> = {
   PAIEMENT_FACTURE_FOURNISSEUR: <Building2 size={12} />,
   PAIEMENT_INDEMNITE: <HeartHandshake size={12} />,
   AUTRE_SORTIE: <MoreHorizontal size={12} />,
@@ -71,7 +72,6 @@ export function PaiementsPage() {
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<Paiement | null>(null);
   const [deleting, setDeleting] = useState<Paiement | null>(null);
-  const [cancelling, setCancelling] = useState<Paiement | null>(null);
   const [viewing, setViewing] = useState<Paiement | null>(null);
   const [payingFacture, setPayingFacture] = useState<Facture | null>(null);
   const [payingIndemnite, setPayingIndemnite] = useState<Indemnite | null>(null);
@@ -177,17 +177,6 @@ export function PaiementsPage() {
     onError: (e) => toast.push({ title: e instanceof Error ? e.message : 'Erreur', variant: 'error' }),
   });
 
-  const annuler = useMutation({
-    mutationFn: (id: string) => paiementsApi.annuler(id),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['paiements'] });
-      qc.invalidateQueries({ queryKey: ['historique'] });
-      qc.invalidateQueries({ queryKey: ['treasurer', 'tresorerie'] });
-      setCancelling(null);
-      toast.push({ title: 'Paiement annulé', variant: 'success' });
-    },
-    onError: (e) => toast.push({ title: e instanceof Error ? e.message : 'Erreur', variant: 'error' }),
-  });
 
   const payFacture = useMutation({
     mutationFn: ({ factureId, payload }: { factureId: string; payload: { reference: string; montant: number; mode: Paiement['mode']; description?: string; compteBancaireId: string } }) =>
@@ -231,7 +220,7 @@ export function PaiementsPage() {
 
   const onSort = (k: string) => sortBy === k ? setSortDir(sortDir === 'asc' ? 'desc' : 'asc') : (setSortBy(k), setSortDir('asc'));
 
-  const columns: Column<Paiement>[] = useMemo(() => [
+  const columns: Column<Paiement>[] = [
     { key: 'reference', header: 'Référence', sortable: true, cell: (p) => <span className="cell-mono">{p.reference}</span> },
     {
       key: 'typePaiement', header: 'Type', width: '230px',
@@ -241,7 +230,7 @@ export function PaiementsPage() {
           <StatusBadge
             status={t}
             tone={TYPE_TONE[t]}
-            label={(<span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>{TYPE_ICON[t]}{TYPE_LABEL[t]}</span>) as unknown as string}
+            label={(<span className="paiements-type-label">{TYPE_ICON[t]}{TYPE_LABEL[t]}</span>) as any}
           />
         );
       },
@@ -251,7 +240,7 @@ export function PaiementsPage() {
       cell: (p) => (
         <div className="row-stack">
           <strong className="cell-strong">{p.beneficiaire}</strong>
-          {p.factureNumero && <span style={{ color: 'var(--color-text-tertiary)' }}>{p.factureNumero}</span>}
+          {p.factureNumero && <span>{p.factureNumero}</span>}
         </div>
       ),
     },
@@ -259,7 +248,27 @@ export function PaiementsPage() {
     { key: 'date', header: 'Date paiement', sortable: true, cell: (p) => <span className="cell-muted">{formatDateTime(p.date)}</span> },
     { key: 'mode', header: 'Mode', sortable: true, cell: (p) => <StatusBadge tone="neutral" status={p.mode} label={MODE_LABEL[p.mode]} /> },
     { key: 'statut', header: 'Statut', sortable: true, cell: (p) => <StatusBadge status={p.statut} /> },
-  ], []);
+  ];
+
+  function changeSearch(value: string) {
+    setSearch(value);
+    setPage(1);
+  }
+
+  function changeType(value: string) {
+    setTypeFilter(value);
+    setPage(1);
+  }
+
+  function changeStatus(value: string) {
+    setStatut(value);
+    setPage(1);
+  }
+
+  function changeMode(value: string) {
+    setMode(value);
+    setPage(1);
+  }
 
   return (
     <div>
@@ -272,17 +281,17 @@ export function PaiementsPage() {
 
       <div className="crud-toolbar">
         <FilterBar>
-          <SearchInput value={search} onChange={(v) => { setSearch(v); setPage(1); }} placeholder="Référence, bénéficiaire..." />
-          <SelectFilter label="Type" value={typeFilter} onChange={(v) => { setTypeFilter(v); setPage(1); }}
+          <SearchInput value={search} onChange={changeSearch} placeholder="Référence, bénéficiaire..." />
+          <SelectFilter label="Type" value={typeFilter} onChange={changeType}
             options={Object.entries(TYPE_LABEL).map(([value, label]) => ({ value, label }))} />
-          <SelectFilter label="Statut" value={statut} onChange={(v) => { setStatut(v); setPage(1); }}
+          <SelectFilter label="Statut" value={statut} onChange={changeStatus}
             options={[
               { value: 'reussi', label: 'Réussi' },
               { value: 'en_attente', label: 'En attente' },
               { value: 'echoue', label: 'Échoué' },
               { value: 'rembourse', label: 'Remboursé' },
             ]} />
-          <SelectFilter label="Mode" value={mode} onChange={(v) => { setMode(v); setPage(1); }}
+          <SelectFilter label="Mode" value={mode} onChange={changeMode}
             options={Object.entries(MODE_LABEL).map(([value, label]) => ({ value, label }))} />
         </FilterBar>
       </div>
@@ -301,16 +310,13 @@ export function PaiementsPage() {
               <button className="icon-btn icon-btn--success" onClick={() => valider.mutate(p.id)} title="Valider paiement" disabled={valider.isPending}><CheckCircle2 size={15} /></button>
             )}
             <button className="icon-btn icon-btn--primary" onClick={() => setEditing(p)} title="Modifier"><Pencil size={15} /></button>
-            {p.statut !== 'rembourse' && (
-              <button className="icon-btn" onClick={() => setCancelling(p)} title="Annuler paiement"><Ban size={15} /></button>
-            )}
             <button className="icon-btn icon-btn--danger" onClick={() => setDeleting(p)} title="Supprimer"><Trash2 size={15} /></button>
           </span>
         )}
       />
 
       {query.data && query.data.total > 0 && (
-        <div className="data-table-card" style={{ marginTop: 'var(--space-3)' }}>
+        <div className="data-table-card paiements-pagination">
           <Pagination page={page} size={10} total={query.data.total} onPageChange={setPage} />
         </div>
       )}
@@ -358,25 +364,18 @@ export function PaiementsPage() {
         confirmLabel="Supprimer" destructive loading={remove.isPending}
         onCancel={() => setDeleting(null)} onConfirm={() => deleting && remove.mutate(deleting.id)}
       />
-      <ConfirmDialog
-        open={!!cancelling} title="Annuler ce paiement ?"
-        message={`Le paiement ${cancelling?.reference} sera marqué comme remboursé et la trésorerie sera ajustée.`}
-        confirmLabel="Annuler le paiement" destructive loading={annuler.isPending}
-        onCancel={() => setCancelling(null)} onConfirm={() => cancelling && annuler.mutate(cancelling.id)}
-      />
     </div>
   );
 }
-
 function PaiementDetail({ paiement: p }: { paiement: Paiement }) {
   const t = inferType(p);
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
-      <Detail label="Référence" value={<span style={{ fontFamily: 'var(--font-family-mono, monospace)' }}>{p.reference}</span>} icon={<CreditCard size={14} />} />
+    <div className="paiement-detail">
+      <Detail label="Référence" value={<span className="cell-mono">{p.reference}</span>} icon={<CreditCard size={14} />} />
       <Detail label="Type de paiement" value={TYPE_LABEL[t]} icon={TYPE_ICON[t]} />
       <Detail label="Bénéficiaire" value={p.beneficiaire} />
       {p.factureNumero && <Detail label="Facture liée" value={p.factureNumero} />}
-      <Detail label="Montant" value={<strong style={{ fontSize: 16 }}>{formatCurrency(p.montant)}</strong>} />
+      <Detail label="Montant" value={<strong className="paiement-detail-amount">{formatCurrency(p.montant)}</strong>} />
       <Detail label="Mode" value={MODE_LABEL[p.mode]} />
       <Detail label="Statut" value={<StatusBadge status={p.statut} />} />
       <Detail label="Date paiement" value={formatDateTime(p.date)} />
@@ -386,13 +385,13 @@ function PaiementDetail({ paiement: p }: { paiement: Paiement }) {
   );
 }
 
-function Detail({ label, value, icon }: { label: string; value: React.ReactNode; icon?: React.ReactNode }) {
+function Detail({ label, value, icon }: any) {
   return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, padding: '8px 0', borderBottom: '1px solid var(--color-border-light)' }}>
-      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 'var(--font-size-xs)', textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--color-text-tertiary)', fontWeight: 600 }}>
+    <div className="paiement-detail-row">
+      <span className="paiement-detail-label">
         {icon}{label}
       </span>
-      <span style={{ color: 'var(--color-text-primary)', fontSize: 'var(--font-size-sm)', textAlign: 'right' }}>{value}</span>
+      <span className="paiement-detail-value">{value}</span>
     </div>
   );
 }

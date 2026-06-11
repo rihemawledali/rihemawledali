@@ -1,0 +1,50 @@
+.facture-description {
+  color: var(--color-text-secondary);
+}
+
+.facture-delay {
+  color: var(--color-error-600);
+}
+
+.facture-soon {
+  color: var(--color-warning-600);
+}
+
+.facture-panel {
+  padding: var(--space-4);
+}
+
+.facture-panel-title {
+  margin-bottom: var(--space-3);
+}
+
+.facture-list {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.facture-select-row,
+.facture-detail-row {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--color-border-light);
+  border-radius: 8px;
+}
+
+.facture-select-row {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+}
+
+.facture-detail-row {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.facture-amount-right {
+  text-align: right;
+}
+
+.facture-detail-layout {
+  gap: var(--space-4);
+}

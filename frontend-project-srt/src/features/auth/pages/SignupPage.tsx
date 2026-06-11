@@ -70,7 +70,6 @@ export function SignupPage() {
     setIsLoading(true);
     try {
       await signup(formData);
-      // Account created with statut=INACTIF — redirect to pending approval page
       navigate('/pending-approval', {
         replace: true,
         state: { email, firstName },
@@ -87,7 +86,7 @@ export function SignupPage() {
   };
 
   return (
-    <AuthLayout variant="signup">
+    <AuthLayout variant="signup" heroImage="login2">
       <div className="auth-page auth-page--signup">
         <h1 className="auth-title text-gradient-link">Créer un compte</h1>
 

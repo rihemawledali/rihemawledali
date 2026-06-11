@@ -101,6 +101,13 @@
   white-space: nowrap;
 }
 
+.sidebar-link-button {
+  width: 100%;
+  background: transparent;
+  border: none;
+  text-align: left;
+}
+
 .sidebar-link:hover {
   background: var(--color-dark-800);
   color: white;

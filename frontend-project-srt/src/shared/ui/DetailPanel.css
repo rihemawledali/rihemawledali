@@ -1,0 +1,19 @@
+.detail-panel {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.detail-panel header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.detail-panel h4 {
+  margin: 0;
+}
+
+.detail-panel-list {
+  display: grid;
+  gap: var(--space-2);
+}

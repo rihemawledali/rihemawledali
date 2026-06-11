@@ -1,4 +1,4 @@
-import { useMemo, useState, type FormEvent, type ReactNode } from 'react';
+import { useState, type FormEvent } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { PageHeader } from '../../../shared/layout/PageHeader';
 import { Button } from '../../../shared/ui/Button';
+import { SectionTitle } from '../../../shared/ui/SectionTitle';
 import { FormTextarea } from '../../../shared/ui/FormTextarea';
 import { StatusBadge } from '../../../shared/data/StatusBadge';
 import { formatCurrency, formatDate } from '../../../shared/lib/formatters';
@@ -30,22 +31,22 @@ import type { PretSocial } from '../../../shared/types/domain';
 import './TreasurerPretDetailPage.css';
 
 const DEFAULT_AI_QUESTION =
-  'Explique clairement la situation de ce pret: statut, montant rembourse, montant restant, mois payes, mois manquants et incoherences eventuelles.';
+  'Prepare une note professionnelle pour le tresorier: resume le dossier, indique la situation de remboursement, les points de vigilance et les elements utiles avant decision.';
 
 const PAID_STATUS = 'PRELEVEE';
 
 const AI_PROMPTS = [
   {
-    label: 'Situation claire',
+    label: 'Note executive',
     question: DEFAULT_AI_QUESTION,
   },
   {
-    label: 'Cohérence',
-    question: 'Verifie la coherence des donnees de ce pret et signale uniquement les donnees manquantes ou incoherentes.',
+    label: 'Points de vigilance',
+    question: 'Identifie les risques, donnees manquantes ou incoherences a surveiller dans ce dossier de pret.',
   },
   {
-    label: 'Synthese courte',
-    question: 'Donne une synthese courte en 3 points maximum pour aider le tresorier a comprendre ce dossier.',
+    label: 'Avis tresorerie',
+    question: 'Redige un avis concis pour le tresorier avec les informations financieres importantes et les controles a faire avant traitement.',
   },
 ];
 
@@ -63,7 +64,7 @@ export function TreasurerPretDetailPage() {
   });
 
   const loan = detail.data;
-  const repayment = useMemo(() => createRepaymentSummary(loan), [loan]);
+  const repayment = createRepaymentSummary(loan);
 
   const askAi = useMutation({
     mutationFn: ({ loanId, question }: { loanId: string; question: string }) =>
@@ -208,14 +209,10 @@ export function TreasurerPretDetailPage() {
             <header>
               <span><Bot size={18} /></span>
               <div>
-                <h3>Ask AI</h3>
-                <p>Assistant read-only pour clarifier ce dossier.</p>
+                <h3>Assistant financier</h3>
+                <p>Analyse professionnelle du dossier de pret, basee sur les donnees disponibles.</p>
               </div>
             </header>
-            <div className="pret-ai-status">
-              <span className="pret-ai-status-dot" aria-hidden="true" />
-              <span>Contexte charge par le backend</span>
-            </div>
             <div className="pret-ai-prompts" aria-label="Questions rapides">
               {AI_PROMPTS.map((prompt) => (
                 <button
@@ -230,7 +227,7 @@ export function TreasurerPretDetailPage() {
             </div>
             <form onSubmit={handleAskAi} className="pret-ai-form">
               <FormTextarea
-                label="Question"
+                label="Votre demande"
                 value={aiQuestion}
                 onChange={(event) => setAiQuestion(event.target.value)}
                 rows={5}
@@ -247,16 +244,16 @@ export function TreasurerPretDetailPage() {
             </form>
             <div className={`pret-ai-answer ${askAi.isPending ? 'is-loading' : ''}`} aria-live="polite">
               <div className="pret-ai-answer-header">
-                <strong>Resultat</strong>
-                <span>{askAi.isPending ? 'Analyse en cours' : askAi.data?.answer ? 'Disponible' : 'En attente'}</span>
+                <strong>Reponse de l'assistant</strong>
+                <span>{askAi.isPending ? 'Preparation' : askAi.data?.answer ? 'Pret' : 'Disponible sur demande'}</span>
               </div>
               <div className="pret-ai-answer-body">
                 {askAi.isPending ? (
-                  <span>Analyse du dossier en cours...</span>
+                  <span>Preparation d'une analyse claire et structuree du dossier...</span>
                 ) : askAi.data?.answer ? (
-                  askAi.data.answer
+                  <AiAnswer text={askAi.data.answer} />
                 ) : (
-                  <span>Choisissez une question rapide ou saisissez votre propre question.</span>
+                  <span>Choisissez une suggestion ou formulez une demande precise pour obtenir une note d'analyse exploitable.</span>
                 )}
               </div>
             </div>
@@ -268,7 +265,7 @@ export function TreasurerPretDetailPage() {
   );
 }
 
-function BackButton({ onBack }: { onBack: () => void }) {
+function BackButton({ onBack }: any) {
   return (
     <div className="pret-detail-back">
       <Button variant="ghost" size="sm" onClick={onBack}>
@@ -278,21 +275,11 @@ function BackButton({ onBack }: { onBack: () => void }) {
   );
 }
 
-function SectionHeader({ title, subtitle }: { title: string; subtitle?: string }) {
-  return (
-    <header className="pret-section-header">
-      <h3>{title}</h3>
-      {subtitle && <p>{subtitle}</p>}
-    </header>
-  );
+function SectionHeader(props: any) {
+  return <SectionTitle {...props} className="pret-section-header" />;
 }
 
-function KpiCard({ icon, label, value, tone = 'neutral' }: {
-  icon: ReactNode;
-  label: string;
-  value: ReactNode;
-  tone?: 'neutral' | 'primary' | 'success';
-}) {
+function KpiCard({ icon, label, value, tone = 'neutral' }: any) {
   return (
     <article className={`pret-kpi pret-kpi--${tone}`}>
       <span>{icon}</span>
@@ -304,12 +291,7 @@ function KpiCard({ icon, label, value, tone = 'neutral' }: {
   );
 }
 
-function DetailField({ icon, label, value, mono }: {
-  icon: ReactNode;
-  label: string;
-  value: ReactNode;
-  mono?: boolean;
-}) {
+function DetailField({ icon, label, value, mono }: any) {
   return (
     <div className="pret-detail-field">
       <span>{icon}</span>
@@ -319,6 +301,133 @@ function DetailField({ icon, label, value, mono }: {
       </div>
     </div>
   );
+}
+
+function AiAnswer({ text }: any) {
+  const blocks = createAiAnswerBlocks(text);
+
+  return (
+    <div className="pret-ai-response">
+      {blocks.map((block: any, index: number) => {
+        if (block.type === 'title') {
+          return <h4 key={index}>{renderAiText(block.text)}</h4>;
+        }
+        if (block.type === 'field') {
+          return (
+            <div key={index} className="pret-ai-field">
+              <span>{block.label}</span>
+              <strong>{renderAiText(block.value)}</strong>
+            </div>
+          );
+        }
+        if (block.type === 'list') {
+          const ListTag = block.ordered ? 'ol' : 'ul';
+          return (
+            <ListTag key={index} className="pret-ai-list">
+              {block.items.map((item: string, itemIndex: number) => (
+                <li key={itemIndex}>{renderAiText(item)}</li>
+              ))}
+            </ListTag>
+          );
+        }
+        return <p key={index}>{renderAiText(block.text)}</p>;
+      })}
+    </div>
+  );
+}
+
+function createAiAnswerBlocks(text: string) {
+  const blocks: any[] = [];
+  const paragraph: string[] = [];
+  let list: any = null;
+
+  const flushParagraph = () => {
+    if (!paragraph.length) return;
+    blocks.push({ type: 'paragraph', text: paragraph.join(' ') });
+    paragraph.length = 0;
+  };
+
+  const flushList = () => {
+    if (!list) return;
+    blocks.push(list);
+    list = null;
+  };
+
+  for (const rawLine of text.replace(/\r/g, '').split('\n')) {
+    const line = rawLine.trim();
+
+    if (!line) {
+      flushParagraph();
+      flushList();
+      continue;
+    }
+
+    const title = getAiTitle(line);
+    if (title) {
+      flushParagraph();
+      flushList();
+      blocks.push({ type: 'title', text: title });
+      continue;
+    }
+
+    const bullet = line.match(/^[-*•]\s+(.+)$/);
+    const numbered = line.match(/^\d+[.)]\s+(.+)$/);
+    if (bullet || numbered) {
+      flushParagraph();
+      const ordered = Boolean(numbered);
+      if (!list || list.ordered !== ordered) {
+        flushList();
+        list = { type: 'list', ordered, items: [] };
+      }
+      list.items.push(cleanAiText((bullet?.[1] ?? numbered?.[1] ?? '').trim()));
+      continue;
+    }
+
+    const field = line.match(/^([^:]{3,42}):\s*(.+)$/);
+    if (field) {
+      flushParagraph();
+      flushList();
+      blocks.push({
+        type: 'field',
+        label: cleanAiText(field[1]),
+        value: cleanAiText(field[2]),
+      });
+      continue;
+    }
+
+    paragraph.push(cleanAiText(line));
+  }
+
+  flushParagraph();
+  flushList();
+
+  return blocks.length ? blocks : [{ type: 'paragraph', text }];
+}
+
+function getAiTitle(line: string) {
+  const markdownTitle = line.match(/^#{1,4}\s+(.+)$/);
+  if (markdownTitle) return cleanAiText(markdownTitle[1]);
+
+  const simpleTitle = line.match(/^(.{3,48}):$/);
+  if (simpleTitle) return cleanAiText(simpleTitle[1]);
+
+  return '';
+}
+
+function cleanAiText(text: string) {
+  return text
+    .replace(/^["'`]+|["'`]+$/g, '')
+    .trim();
+}
+
+function renderAiText(text: string) {
+  const parts = text.split(/(\*\*[^*]+\*\*)/g);
+  return parts.map((part, index) => {
+    if (part.startsWith('**') && part.endsWith('**')) {
+      return <strong key={index}>{part.slice(2, -2)}</strong>;
+    }
+    return <span key={index}>{part}</span>;
+  });
 }
 
 function createRepaymentSummary(loan?: PretSocial) {

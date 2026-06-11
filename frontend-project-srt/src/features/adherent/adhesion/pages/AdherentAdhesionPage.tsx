@@ -2,20 +2,19 @@ import { useQuery } from '@tanstack/react-query';
 import type { LucideIcon } from 'lucide-react';
 import {
   AlertTriangle,
-  BadgeCheck,
   Calendar,
   Clock3,
   CreditCard,
   Hash,
   History,
-  RefreshCw,
 } from 'lucide-react';
 import { PageHeader } from '../../../../shared/layout/PageHeader';
 import { DataTable } from '../../../../shared/data/DataTable';
 import { StatusBadge } from '../../../../shared/data/StatusBadge';
+import { formatCurrency, formatDate } from '../../../../shared/lib/formatters';
 import { adhesionApi } from '../api';
 import type { Adhesion } from '../../../../shared/types/domain';
-import '../../profile/pages/AdherentAccountPages.css';
+import './AdherentAdhesionPage.css';
 
 export function AdherentAdhesionPage() {
   const { data: adhesion, isLoading: adhesionLoading } = useQuery({
@@ -30,9 +29,6 @@ export function AdherentAdhesionPage() {
 
   const activeHistory = (history ?? []).filter((item) => item.statut === 'active');
   const pendingDemande = (history ?? []).find((item) => item.statut === 'en_attente');
-  const expiryDays = adhesion?.dateFin ? getDaysUntil(adhesion.dateFin) : null;
-  const isExpiringSoon = expiryDays !== null && expiryDays <= 5 && expiryDays > 0;
-  const isExpired = expiryDays !== null && expiryDays <= 0;
 
   const historyColumns = [
     {
@@ -48,7 +44,7 @@ export function AdherentAdhesionPage() {
     {
       key: 'montantCotisation',
       header: 'Cotisation',
-      cell: (item: Adhesion) => <span className="adh-account-num">{formatCurrency(item.montantCotisation)} / mois</span>,
+      cell: (item: Adhesion) => <span className="adh-adhesion-num">{formatCurrency(item.montantCotisation)} / mois</span>,
       align: 'right' as const,
     },
     {
@@ -59,56 +55,25 @@ export function AdherentAdhesionPage() {
   ];
 
   return (
-    <div className="adh-account-page">
+    <div className="adh-adhesion-page">
       <PageHeader
         title="Mon adhésion"
         description="Votre statut d'adhésion à l'Amicale SRT et son historique."
       />
 
       {adhesionLoading ? (
-        <div className="adh-membership-skeleton skeleton" />
+        <div className="adh-adhesion-skeleton skeleton" />
       ) : adhesion ? (
-        <section className="adh-membership-card">
-          <header className="adh-membership-head">
-            <div className="adh-membership-title">
-              <span className="adh-membership-icon">
-                <BadgeCheck size={24} />
-              </span>
-              <div>
-                <span className="adh-account-kicker">Statut adhésion</span>
-                <h2>Adhésion active</h2>
-                <p>Renouvellement automatique avec retenue mensuelle.</p>
-              </div>
-            </div>
-
-            {(isExpiringSoon || isExpired) && (
-              <span className={`adh-membership-alert ${isExpired ? 'is-danger' : 'is-warning'}`}>
-                <AlertTriangle size={16} />
-                {isExpired ? 'Renouvellement en cours' : `Renouvellement dans ${expiryDays} j`}
-              </span>
-            )}
-          </header>
-
-          <div className="adh-membership-detail-grid">
+        <section className="adh-adhesion-card">
+          <div className="adh-adhesion-detail-grid">
             <MembershipDetail icon={Hash} label="Référence" value={adhesion.id} />
             <MembershipDetail icon={Calendar} label="Date de début" value={formatDate(adhesion.dateDebut)} />
             <MembershipDetail icon={Calendar} label="Date de fin" value={formatDate(adhesion.dateFin)} />
             <MembershipDetail icon={CreditCard} label="Cotisation mensuelle" value={formatCurrency(adhesion.montantCotisation)} />
           </div>
-
-          <div className="adh-membership-note">
-            <RefreshCw size={17} />
-            <div>
-              <strong>Renouvellement automatique</strong>
-              <span>
-                La cotisation de {formatCurrency(adhesion.montantCotisation)} est prélevée sur votre salaire
-                au début de chaque mois.
-              </span>
-            </div>
-          </div>
         </section>
       ) : pendingDemande ? (
-        <section className="adh-empty-card adh-account-empty">
+        <section className="adh-empty-card adh-adhesion-empty">
           <div className="adh-empty-icon">
             <Clock3 size={24} />
           </div>
@@ -119,7 +84,7 @@ export function AdherentAdhesionPage() {
           </p>
         </section>
       ) : (
-        <section className="adh-empty-card adh-account-empty">
+        <section className="adh-empty-card adh-adhesion-empty">
           <div className="adh-empty-icon">
             <AlertTriangle size={24} />
           </div>
@@ -128,8 +93,8 @@ export function AdherentAdhesionPage() {
         </section>
       )}
 
-      <section className="adh-account-section-card">
-        <header className="adh-account-section-head">
+      <section className="adh-adhesion-section-card">
+        <header className="adh-adhesion-section-head">
           <div>
             <h3>
               <History size={17} />
@@ -156,7 +121,7 @@ export function AdherentAdhesionPage() {
 
 function MembershipDetail({ icon: Icon, label, value }: { icon: LucideIcon; label: string; value: string }) {
   return (
-    <div className="adh-membership-detail">
+    <div className="adh-adhesion-detail">
       <span>
         <Icon size={16} />
       </span>
@@ -166,27 +131,4 @@ function MembershipDetail({ icon: Icon, label, value }: { icon: LucideIcon; labe
       </div>
     </div>
   );
-}
-
-function getDaysUntil(date: string) {
-  const today = new Date();
-  const endDate = new Date(date);
-  today.setHours(0, 0, 0, 0);
-  endDate.setHours(0, 0, 0, 0);
-  return Math.ceil((endDate.getTime() - today.getTime()) / 86400000);
-}
-
-function formatDate(date: string) {
-  return new Intl.DateTimeFormat('fr-FR', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-  }).format(new Date(date));
-}
-
-function formatCurrency(value: number) {
-  return new Intl.NumberFormat('fr-FR', {
-    style: 'currency',
-    currency: 'TND',
-  }).format(value);
 }

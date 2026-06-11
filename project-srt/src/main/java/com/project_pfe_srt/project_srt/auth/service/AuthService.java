@@ -5,6 +5,8 @@ import com.project_pfe_srt.project_srt.adherent.adhesion.dto.AdhesionRequest;
 import com.project_pfe_srt.project_srt.adherent.adhesion.entity.Adhesion;
 import com.project_pfe_srt.project_srt.adherent.adhesion.repository.AdhesionRepository;
 import com.project_pfe_srt.project_srt.adherent.adhesion.service.AdhesionService;
+import com.project_pfe_srt.project_srt.adherent.profile.entity.AdherentProfile;
+import com.project_pfe_srt.project_srt.adherent.profile.repository.AdherentProfileRepository;
 import com.project_pfe_srt.project_srt.auth.dto.AuthResponse;
 import com.project_pfe_srt.project_srt.auth.dto.LoginRequest;
 import com.project_pfe_srt.project_srt.auth.dto.RegisterRequest;
@@ -28,6 +30,7 @@ public class AuthService {
 
     private final UserRepository userRepository;
     private final AdhesionRepository adhesionRepository;
+    private final AdherentProfileRepository profileRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
@@ -48,6 +51,7 @@ public class AuthService {
 
     @org.springframework.transaction.annotation.Transactional
     public AuthResponse register(RegisterRequest request) {
+
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new IllegalArgumentException("Email already in use");
         }
@@ -63,18 +67,21 @@ public class AuthService {
                 .password(passwordEncoder.encode(request.getPassword()))
                 .role(role)
                 .telephone(request.getPhone())
+                .matricule(request.getMatricule())
                 .statut("INACTIF") // Pending admin validation of the adhesion demande
                 .build();
 
         user = userRepository.save(user);
 
-        // Signup IS the adhésion demande: create a pending adhesion so it
-        // lands in the admin "Demandes d'adhesion" queue immediately.
-        // When the admin validates it, AdhesionService.valider() will
-        // activate both the adhesion and the user account.
+        profileRepository.save(AdherentProfile.builder()
+                .user(user)
+                .enfants(request.getEnfant())
+                .marie(request.getMarie())
+                .build());
+
+       
         create(user, null);
 
-        // No JWT issued: account is INACTIF and must be approved by an admin.
         return AuthResponse.builder()
                 .id(user.getId().toString())
                 .token(null)
@@ -114,7 +121,7 @@ public class AuthService {
         LocalDate dateDebut = DateParser.parseIsoDateOrDefault(
                 request == null ? null : request.getDateDebut(), today.withDayOfMonth(1));
         LocalDate dateFin = DateParser.parseIsoDateOrDefault(
-                request == null ? null : request.getDateFin(), dateDebut.plusMonths(12).minusDays(1));
+                request == null ? null : request.getDateFin(), dateDebut.plusMonths(1).minusDays(1));
         if (!dateFin.isAfter(dateDebut)) {
             throw new IllegalArgumentException("La date de fin doit être après la date de début.");
         }

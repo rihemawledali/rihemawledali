@@ -5,37 +5,34 @@ import {
   AlertTriangle,
   ArrowRight,
   Calendar,
-  CheckCircle2,
-  Clock3,
   FileText,
   Filter,
-  Handshake,
   RotateCcw,
   Search,
   X,
 } from 'lucide-react';
+
 import { PageHeader } from '../../../../shared/layout/PageHeader';
 import { Button } from '../../../../shared/ui/Button';
 import { StatusBadge } from '../../../../shared/data/StatusBadge';
+import { formatDate, daysUntil } from '../../../../shared/lib/formatters';
+import { getConventionAvantageSummary } from '../../../../shared/lib/conventionWorkflow';
 import { conventionsApi, getAdherentConventionStatus } from '../api';
+
 import {
   ADHERENT_STATUS_LABEL,
   ADHERENT_STATUS_VARIANT,
   CONV_TYPE_ICON,
   CONV_TYPE_LABEL,
   CONV_TYPE_TONE,
+  getConventionImageUrl,
 } from '../components/conventionHelpers';
-import type {
-  Convention,
-  ConventionAdherentStatus,
-  ConventionType,
-} from '../../../../shared/types/domain';
+
 import './AdherentConventionsListPage.css';
 
-type ValidityFilter = 'all' | 'in_progress' | 'expiring_soon' | 'expired';
+const TYPES = ['sante', 'restauration', 'transport', 'commerce', 'education', 'loisir'];
 
-const ALL_TYPES: ConventionType[] = ['sante', 'restauration', 'transport', 'commerce', 'education', 'loisir'];
-const ALL_STATUSES: ConventionAdherentStatus[] = [
+const STATUSES = [
   'disponible',
   'deja_demandee',
   'active',
@@ -43,97 +40,93 @@ const ALL_STATUSES: ConventionAdherentStatus[] = [
   'non_disponible',
 ];
 
-const FILTER_LABELS: Record<ValidityFilter, string> = {
-  all: 'Toutes les validités',
-  in_progress: 'En cours',
-  expiring_soon: 'Expire bientôt',
-  expired: 'Expirées',
-};
+const VALIDITY_OPTIONS = [
+  { value: 'all', label: 'Toutes les validités' },
+  { value: 'in_progress', label: 'En cours' },
+  { value: 'expiring_soon', label: 'Expire bientôt' },
+  { value: 'expired', label: 'Expirées' },
+];
+
+const EXPIRING_SOON_DAYS = 60;
 
 export function AdherentConventionsListPage() {
   const navigate = useNavigate();
 
   const [search, setSearch] = useState('');
-  const [typeFilter, setTypeFilter] = useState<ConventionType | 'all'>('all');
-  const [statusFilter, setStatusFilter] = useState<ConventionAdherentStatus | 'all'>('all');
-  const [validityFilter, setValidityFilter] = useState<ValidityFilter>('all');
+  const [typeFilter, setTypeFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [validityFilter, setValidityFilter] = useState('all');
 
-  const { data: conventions, isLoading: conventionsLoading } = useQuery({
+  const { data: conventions = [], isLoading: conventionsLoading } = useQuery<any[]>({
     queryKey: ['adherent-conventions'],
     queryFn: () => conventionsApi.getConventions(),
   });
 
-  const { data: demandes, isLoading: demandesLoading } = useQuery({
+  const { data: demandes = [], isLoading: demandesLoading } = useQuery<any[]>({
     queryKey: ['adherent-conventions-demandes'],
     queryFn: () => conventionsApi.getMyDemandes(),
   });
 
   const isLoading = conventionsLoading || demandesLoading;
 
-  const decoratedConventions = useMemo(() => {
+  const conventionsWithStatus = useMemo(() => {
     const today = new Date();
-    return (conventions ?? []).map((convention) => ({
+
+    return conventions.map((convention) => ({
       convention,
-      adherentStatus: getAdherentConventionStatus(convention, demandes ?? [], today),
+      status: getAdherentConventionStatus(convention, demandes, today),
     }));
   }, [conventions, demandes]);
 
-  const summary = useMemo(() => {
-    return decoratedConventions.reduce(
-      (acc, item) => {
-        acc.total += 1;
-        if (item.adherentStatus === 'disponible') acc.available += 1;
-        if (item.adherentStatus === 'deja_demandee') acc.pending += 1;
-        if (item.adherentStatus === 'active') acc.active += 1;
-        if (isExpiringSoon(item.convention)) acc.expiringSoon += 1;
-        return acc;
-      },
-      { total: 0, available: 0, pending: 0, active: 0, expiringSoon: 0 }
-    );
-  }, [decoratedConventions]);
-
   const filteredConventions = useMemo(() => {
-    const normalizedSearch = search.trim().toLowerCase();
+    const text = search.trim().toLowerCase();
 
-    return decoratedConventions.filter(({ convention, adherentStatus }) => {
-      if (normalizedSearch) {
-        const searchable = [
-          convention.fournisseurNom,
-          convention.avantage,
-          convention.descriptionCourte,
-          CONV_TYPE_LABEL[convention.type],
-        ]
-          .filter(Boolean)
-          .join(' ')
-          .toLowerCase();
+    return conventionsWithStatus.filter(({ convention, status }) => {
+      const daysLeft = daysUntil(convention.dateFin);
 
-        if (!searchable.includes(normalizedSearch)) return false;
+      if (text && !conventionMatchesSearch(convention, text)) {
+        return false;
       }
 
-      if (typeFilter !== 'all' && convention.type !== typeFilter) return false;
-      if (statusFilter !== 'all' && adherentStatus !== statusFilter) return false;
+      if (typeFilter !== 'all' && convention.type !== typeFilter) {
+        return false;
+      }
 
-      const daysLeft = getDaysLeft(convention.dateFin);
-      if (validityFilter === 'expired' && daysLeft >= 0) return false;
-      if (validityFilter === 'expiring_soon' && (daysLeft < 0 || daysLeft > 60)) return false;
-      if (validityFilter === 'in_progress' && daysLeft < 0) return false;
+      if (statusFilter !== 'all' && status !== statusFilter) {
+        return false;
+      }
+
+      if (validityFilter === 'expired' && daysLeft >= 0) {
+        return false;
+      }
+
+      if (
+        validityFilter === 'expiring_soon' &&
+        (daysLeft < 0 || daysLeft > EXPIRING_SOON_DAYS)
+      ) {
+        return false;
+      }
+
+      if (validityFilter === 'in_progress' && daysLeft < 0) {
+        return false;
+      }
 
       return true;
     });
-  }, [decoratedConventions, search, statusFilter, typeFilter, validityFilter]);
+  }, [conventionsWithStatus, search, typeFilter, statusFilter, validityFilter]);
 
   const activeFilterCount =
-    (search.trim() ? 1 : 0)
-    + (typeFilter !== 'all' ? 1 : 0)
-    + (statusFilter !== 'all' ? 1 : 0)
-    + (validityFilter !== 'all' ? 1 : 0);
+    (search.trim() ? 1 : 0) +
+    (typeFilter !== 'all' ? 1 : 0) +
+    (statusFilter !== 'all' ? 1 : 0) +
+    (validityFilter !== 'all' ? 1 : 0);
 
-  const resetFilters = () => {
+  function resetFilters() {
     setSearch('');
     setTypeFilter('all');
     setStatusFilter('all');
     setValidityFilter('all');
-  };
+  }
 
   return (
     <div className="adh-conventions-page">
@@ -142,36 +135,10 @@ export function AdherentConventionsListPage() {
         description="Retrouvez les conventions partenaires disponibles et suivez vos avantages en cours."
       />
 
-      <section className="adh-conventions-hero">
-        <div className="adh-conventions-hero-main">
-          <span className="adh-conventions-eyebrow">
-            Espace adhérent
-          </span>
-          <h2>Avantages partenaires</h2>
-          <p>Vos conventions disponibles, demandes en cours et avantages actifs au même endroit.</p>
-        </div>
-        <div className="adh-conventions-hero-actions">
-          <button
-            type="button"
-            className="adh-conventions-nav-btn"
-            onClick={() => navigate('/adherent/conventions/mes-demandes')}
-          >
-            <FileText size={17} />
-            <span>Mes demandes</span>
-          </button>
-        </div>
-      </section>
-
-      <section className="adh-conventions-summary" aria-label="Synthese conventions">
-        <SummaryCard icon={Handshake} label="Disponibles" value={summary.available} tone="success" />
-        <SummaryCard icon={Clock3} label="Demandes en cours" value={summary.pending} tone="warning" />
-        <SummaryCard icon={CheckCircle2} label="Actives" value={summary.active} tone="info" />
-        <SummaryCard icon={AlertTriangle} label="Bientôt expirées" value={summary.expiringSoon} tone="danger" />
-      </section>
-
       <section className="adh-conventions-filters" aria-label="Filtres conventions">
         <div className="adh-conventions-search">
           <Search size={16} />
+
           <input
             type="text"
             placeholder="Rechercher fournisseur, avantage, type..."
@@ -179,6 +146,7 @@ export function AdherentConventionsListPage() {
             onChange={(event) => setSearch(event.target.value)}
             aria-label="Rechercher une convention"
           />
+
           {search.trim() && (
             <button
               type="button"
@@ -195,35 +163,41 @@ export function AdherentConventionsListPage() {
           <select
             className="adh-conventions-select"
             value={typeFilter}
-            onChange={(event) => setTypeFilter(event.target.value as ConventionType | 'all')}
+            onChange={(event) => setTypeFilter(event.target.value)}
             aria-label="Filtrer par type"
           >
             <option value="all">Tous les types</option>
-            {ALL_TYPES.map((type) => (
-              <option key={type} value={type}>{CONV_TYPE_LABEL[type]}</option>
+            {TYPES.map((type) => (
+              <option key={type} value={type}>
+                {CONV_TYPE_LABEL[type]}
+              </option>
             ))}
           </select>
 
           <select
             className="adh-conventions-select"
             value={statusFilter}
-            onChange={(event) => setStatusFilter(event.target.value as ConventionAdherentStatus | 'all')}
+            onChange={(event) => setStatusFilter(event.target.value)}
             aria-label="Filtrer par statut"
           >
             <option value="all">Tous les statuts</option>
-            {ALL_STATUSES.map((status) => (
-              <option key={status} value={status}>{ADHERENT_STATUS_LABEL[status]}</option>
+            {STATUSES.map((status) => (
+              <option key={status} value={status}>
+                {ADHERENT_STATUS_LABEL[status]}
+              </option>
             ))}
           </select>
 
           <select
             className="adh-conventions-select"
             value={validityFilter}
-            onChange={(event) => setValidityFilter(event.target.value as ValidityFilter)}
+            onChange={(event) => setValidityFilter(event.target.value)}
             aria-label="Filtrer par validité"
           >
-            {Object.entries(FILTER_LABELS).map(([value, label]) => (
-              <option key={value} value={value}>{label}</option>
+            {VALIDITY_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
             ))}
           </select>
         </div>
@@ -239,42 +213,35 @@ export function AdherentConventionsListPage() {
       <div className="adh-conventions-results-head">
         <div>
           <span className="adh-conventions-results-kicker">Catalogue</span>
-          <h3>{filteredConventions.length} convention{filteredConventions.length > 1 ? 's' : ''}</h3>
+          <h3>
+            {filteredConventions.length} convention
+            {filteredConventions.length > 1 ? 's' : ''}
+          </h3>
         </div>
-        <span className="adh-conventions-results-total">{summary.total} au total</span>
+
+        <span className="adh-conventions-results-total">
+          {conventionsWithStatus.length} au total
+        </span>
       </div>
 
       {isLoading ? (
         <div className="adh-conventions-grid">
-          {Array.from({ length: 6 }, (_, index) => (
-            <div key={index} className="adh-conventions-skeleton skeleton" />
+          {[1, 2, 3, 4, 5, 6].map((item) => (
+            <div key={item} className="adh-conventions-skeleton skeleton" />
           ))}
         </div>
       ) : filteredConventions.length === 0 ? (
-        <section className="adh-empty-card adh-conventions-empty">
-          <div className="adh-empty-icon">
-            <Filter size={28} />
-          </div>
-          <h3>{activeFilterCount > 0 ? 'Aucun résultat' : 'Aucune convention disponible'}</h3>
-          <p>
-            {activeFilterCount > 0
-              ? 'Aucune convention ne correspond aux filtres sélectionnés.'
-              : 'Les prochaines conventions apparaîtront ici dès leur publication.'}
-          </p>
-          {activeFilterCount > 0 && (
-            <Button variant="secondary" onClick={resetFilters}>
-              <RotateCcw size={14} className="adh-conventions-btn-icon" />
-              Réinitialiser les filtres
-            </Button>
-          )}
-        </section>
+        <EmptyState
+          hasFilters={activeFilterCount > 0}
+          onReset={resetFilters}
+        />
       ) : (
         <div className="adh-conventions-grid">
-          {filteredConventions.map(({ convention, adherentStatus }) => (
+          {filteredConventions.map(({ convention, status }) => (
             <ConventionCard
               key={convention.id}
               convention={convention}
-              adherentStatus={adherentStatus}
+              status={status}
               onView={() => navigate(`/adherent/conventions/${convention.id}`)}
             />
           ))}
@@ -284,78 +251,64 @@ export function AdherentConventionsListPage() {
   );
 }
 
-interface SummaryCardProps {
-  icon: typeof Handshake;
-  label: string;
-  value: number;
-  tone: 'success' | 'warning' | 'info' | 'danger';
-}
-
-function SummaryCard({ icon: Icon, label, value, tone }: SummaryCardProps) {
-  return (
-    <article className={`adh-conventions-summary-card is-${tone}`}>
-      <span className="adh-conventions-summary-icon">
-        <Icon size={18} />
-      </span>
-      <div>
-        <strong>{value}</strong>
-        <span>{label}</span>
-      </div>
-    </article>
-  );
-}
-
-interface ConventionCardProps {
-  convention: Convention;
-  adherentStatus: ConventionAdherentStatus;
-  onView: () => void;
-}
-
-function ConventionCard({ convention, adherentStatus, onView }: ConventionCardProps) {
+function ConventionCard({ convention, status, onView }: any) {
   const Icon = CONV_TYPE_ICON[convention.type];
   const tone = CONV_TYPE_TONE[convention.type];
-  const daysLeft = getDaysLeft(convention.dateFin);
-  const expiringSoon = daysLeft > 0 && daysLeft <= 60;
-  const canRequest = adherentStatus === 'disponible';
+  const avantage = getConventionAvantageSummary(convention);
+  const imageUrl = getConventionImageUrl(convention);
+
+  const daysLeft = daysUntil(convention.dateFin);
+  const expiringSoon = daysLeft > 0 && daysLeft <= EXPIRING_SOON_DAYS;
+  const canRequest = status === 'disponible';
+  const description = convention.descriptionCourte || convention.description;
 
   return (
     <article className="adh-convention-card">
       <div className={`adh-convention-cover tone-${tone}`}>
-        {convention.imageUrl ? (
-          <img
-            src={convention.imageUrl}
-            alt={convention.fournisseurNom}
-            loading="lazy"
-            onError={(event) => {
-              event.currentTarget.classList.add('is-hidden');
-            }}
-          />
-        ) : null}
+        <img
+          src={imageUrl}
+          alt={`${CONV_TYPE_LABEL[convention.type]} - ${convention.fournisseurNom}`}
+          loading="lazy"
+          onError={(event) => {
+            event.currentTarget.classList.add('is-hidden');
+          }}
+        />
+
         <div className="adh-convention-cover-fallback">
           <Icon size={34} />
         </div>
+
         <div className="adh-convention-cover-top">
           <span className="adh-convention-type">
             <Icon size={13} />
             {CONV_TYPE_LABEL[convention.type]}
           </span>
+
           <StatusBadge
-            status={adherentStatus}
-            tone={ADHERENT_STATUS_VARIANT[adherentStatus]}
-            label={ADHERENT_STATUS_LABEL[adherentStatus]}
+            status={status}
+            tone={ADHERENT_STATUS_VARIANT[status]}
+            label={ADHERENT_STATUS_LABEL[status]}
           />
         </div>
-        <span className="adh-convention-discount">-{convention.remise}%</span>
+
+        <span className="adh-convention-discount">{avantage.label}</span>
       </div>
 
       <div className="adh-convention-body">
         <div className="adh-convention-heading">
           <h3>{convention.fournisseurNom}</h3>
-          {convention.avantage && <p>{convention.avantage}</p>}
+          <p>{avantage.title}</p>
         </div>
 
-        {convention.descriptionCourte && (
-          <p className="adh-convention-description">{convention.descriptionCourte}</p>
+        {description && (
+          <p className="adh-convention-description">{description}</p>
+        )}
+
+        {avantage.subtitle && (
+          <p className="adh-convention-conditions">
+            <span>Avantage</span>
+            {avantage.subtitle}
+          </p>
         )}
 
         {convention.conditions && (
@@ -371,7 +324,7 @@ function ConventionCard({ convention, adherentStatus, onView }: ConventionCardPr
           {expiringSoon && <strong>{daysLeft} j restants</strong>}
         </div>
 
-        {expiringSoon && adherentStatus !== 'expiree' && (
+        {expiringSoon && status !== 'expiree' && (
           <div className="adh-convention-warning">
             <AlertTriangle size={15} />
             <span>Expire bientôt</span>
@@ -383,6 +336,7 @@ function ConventionCard({ convention, adherentStatus, onView }: ConventionCardPr
             <FileText size={14} className="adh-conventions-btn-icon" />
             Détails
           </Button>
+
           {canRequest ? (
             <Button size="sm" onClick={onView}>
               Demander
@@ -390,7 +344,7 @@ function ConventionCard({ convention, adherentStatus, onView }: ConventionCardPr
             </Button>
           ) : (
             <Button size="sm" disabled>
-              {getUnavailableActionLabel(adherentStatus)}
+              {getDisabledButtonLabel(status)}
             </Button>
           )}
         </div>
@@ -399,30 +353,56 @@ function ConventionCard({ convention, adherentStatus, onView }: ConventionCardPr
   );
 }
 
-function getUnavailableActionLabel(status: ConventionAdherentStatus) {
+function EmptyState({ hasFilters, onReset }: any) {
+  return (
+    <section className="adh-empty-card adh-conventions-empty">
+      <div className="adh-empty-icon">
+        <Filter size={28} />
+      </div>
+
+      <h3>{hasFilters ? 'Aucun résultat' : 'Aucune convention disponible'}</h3>
+
+      <p>
+        {hasFilters
+          ? 'Aucune convention ne correspond aux filtres sélectionnés.'
+          : 'Les prochaines conventions apparaîtront ici dès leur publication.'}
+      </p>
+
+      {hasFilters && (
+        <Button variant="secondary" onClick={onReset}>
+          <RotateCcw size={14} className="adh-conventions-btn-icon" />
+          Réinitialiser les filtres
+        </Button>
+      )}
+    </section>
+  );
+}
+
+function conventionMatchesSearch(convention: any, search: string) {
+  const avantage = getConventionAvantageSummary(convention);
+
+  const text = [
+    convention.fournisseurNom,
+    convention.avantage,
+    convention.descriptionCourte,
+    convention.description,
+    convention.typeAvantage,
+    avantage.label,
+    avantage.title,
+    avantage.subtitle,
+    CONV_TYPE_LABEL[convention.type],
+  ]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase();
+
+  return text.includes(search);
+}
+
+function getDisabledButtonLabel(status: string) {
   if (status === 'deja_demandee') return 'Demande en cours';
   if (status === 'active') return 'Active';
   if (status === 'expiree') return 'Expirée';
+
   return 'Non disponible';
-}
-
-function getDaysLeft(date: string) {
-  const today = new Date();
-  const endDate = new Date(date);
-  today.setHours(0, 0, 0, 0);
-  endDate.setHours(0, 0, 0, 0);
-  return Math.ceil((endDate.getTime() - today.getTime()) / 86400000);
-}
-
-function isExpiringSoon(convention: Convention) {
-  const daysLeft = getDaysLeft(convention.dateFin);
-  return daysLeft > 0 && daysLeft <= 60;
-}
-
-function formatDate(date: string) {
-  return new Intl.DateTimeFormat('fr-FR', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-  }).format(new Date(date));
 }

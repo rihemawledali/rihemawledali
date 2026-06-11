@@ -4,14 +4,6 @@ import { compteBancaireSchema, type CompteBancaireFormValues } from '../../../sh
 import { FormInput } from '../../../shared/ui/FormInput';
 import { FormSelect } from '../../../shared/ui/FormSelect';
 import { Button } from '../../../shared/ui/Button';
-import type { CompteBancaire } from '../../../shared/types/domain';
-
-interface Props {
-  initial?: CompteBancaire;
-  onSubmit: (v: CompteBancaireFormValues) => Promise<unknown> | void;
-  onCancel: () => void;
-  submitting?: boolean;
-}
 
 const DEVISES = [
   { value: 'TND', label: 'TND — Dinar tunisien' },
@@ -19,7 +11,7 @@ const DEVISES = [
   { value: 'USD', label: 'USD — Dollar US' },
 ];
 
-export function CompteBancaireForm({ initial, onSubmit, onCancel, submitting }: Props) {
+export function CompteBancaireForm({ initial, onSubmit, onCancel, submitting }: any) {
   const { register, handleSubmit, formState: { errors } } = useForm<CompteBancaireFormValues>({
     resolver: zodResolver(compteBancaireSchema),
     defaultValues: initial
@@ -64,7 +56,7 @@ export function CompteBancaireForm({ initial, onSubmit, onCancel, submitting }: 
         options={DEVISES}
         error={errors.devise?.message}
       />
-      <div className="form-grid-full" style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-3)' }}>
+      <div className="form-grid-full form-actions">
         <Button type="button" variant="secondary" onClick={onCancel} disabled={submitting}>
           Annuler
         </Button>

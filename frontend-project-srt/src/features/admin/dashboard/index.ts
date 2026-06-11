@@ -1,2 +1,3 @@
-export { OverviewPage } from './pages/OverviewPage';
-export { dashboardApi } from './dashboardApi';
+export { AdminDashboardPage } from './pages/AdminDashboardPage';
+export { dashboardApi } from './api';
+export type { DashboardStats } from './model';

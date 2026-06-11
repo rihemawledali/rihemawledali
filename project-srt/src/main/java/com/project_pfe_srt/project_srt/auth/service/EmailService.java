@@ -13,7 +13,7 @@ public class EmailService {
 
     private final ObjectProvider<JavaMailSender> mailSenderProvider;
 
-    @Value("${app.mail.from:no-reply@srt.local}")
+    @Value("${app.mail.from:awledalirihem@gmail.com}")
     private String fromEmail;
 
     public void sendPasswordResetCode(String toEmail, String code) {

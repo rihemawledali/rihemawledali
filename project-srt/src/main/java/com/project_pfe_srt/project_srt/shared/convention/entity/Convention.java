@@ -5,6 +5,8 @@ import com.project_pfe_srt.project_srt.shared.file.entity.Attachment;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.NotFound;
+import org.hibernate.annotations.NotFoundAction;
 
 import java.time.LocalDate;
 
@@ -22,8 +24,12 @@ public class Convention {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @NotFound(action = NotFoundAction.IGNORE)
     @JoinColumn(name = "fournisseur_id", nullable = false)
     private Fournisseur fournisseur;
+
+    @Column(name = "fournisseur_id", insertable = false, updatable = false)
+    private Long fournisseurId;
 
     /** Lowercase: sante | restauration | transport | loisir | commerce | education */
     @Column(nullable = false)

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Outlet } from 'react-router-dom';
-import { Sidebar } from '../../../shared/layout/Sidebar';
 import { Topbar } from '../../../shared/layout/Topbar';
+import { AdminSidebar } from './AdminSidebar';
 import './AdminLayout.css';
 
 export function AdminLayout() {
@@ -10,7 +10,7 @@ export function AdminLayout() {
 
   return (
     <div className={`admin-layout ${collapsed ? 'is-collapsed' : ''}`}>
-      <Sidebar
+      <AdminSidebar
         collapsed={collapsed}
         onToggle={() => setCollapsed((v) => !v)}
         mobileOpen={mobileOpen}

@@ -6,14 +6,7 @@ import { FormInput } from '../../../shared/ui/FormInput';
 import { FormSelect } from '../../../shared/ui/FormSelect';
 import { Button } from '../../../shared/ui/Button';
 import { treasurerTresorerieApi } from '../api/treasurerListApi';
-import type { Paiement, CompteBancaire } from '../../../shared/types/domain';
-
-interface Props {
-  initial?: Paiement;
-  onSubmit: (v: PaiementFormValues) => Promise<unknown> | void;
-  onCancel: () => void;
-  submitting?: boolean;
-}
+import type { CompteBancaire } from '../../../shared/types/domain';
 
 function createPaymentReference() {
   return `PAY-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 9999)).padStart(4, '0')}`;
@@ -55,7 +48,7 @@ function createPaiementDefaults(initial?: Paiement): PaiementFormValues {
   };
 }
 
-export function PaiementForm({ initial, onSubmit, onCancel, submitting }: Props) {
+export function PaiementForm({ initial, onSubmit, onCancel, submitting }: any) {
   const [defaultValues] = useState(() => createPaiementDefaults(initial));
   const [comptes, setComptes] = useState<CompteBancaire[]>([]);
   const [comptesLoading, setComptesLoading] = useState(true);
@@ -97,9 +90,7 @@ export function PaiementForm({ initial, onSubmit, onCancel, submitting }: Props)
       <FormInput label="Montant (TND)" type="number" step="0.01" {...register('montant', { valueAsNumber: true })} error={errors.montant?.message} />
       <FormSelect label="Mode" {...register('mode')} options={[
         { value: 'virement', label: 'Virement' },
-        { value: 'cheque', label: 'Chèque' },
         { value: 'especes', label: 'Espèces' },
-        { value: 'carte', label: 'Carte bancaire' },
       ]} error={errors.mode?.message} />
       <FormSelect label="Statut" {...register('statut')} options={[
         { value: 'reussi', label: 'Réussi' },
@@ -111,7 +102,7 @@ export function PaiementForm({ initial, onSubmit, onCancel, submitting }: Props)
       <div className="form-grid-full">
         <FormInput label="Description (optionnel)" {...register('description')} error={errors.description?.message} />
       </div>
-      <div className="form-grid-full" style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-3)' }}>
+      <div className="form-grid-full form-actions">
         <Button type="button" variant="secondary" onClick={onCancel} disabled={submitting || comptesLoading}>Annuler</Button>
         <Button type="submit" isLoading={submitting || comptesLoading} disabled={comptes.length === 0}>{initial ? 'Mettre à jour' : 'Créer'}</Button>
       </div>

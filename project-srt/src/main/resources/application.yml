@@ -8,10 +8,10 @@ spring:
     password: ${SPRING_DATASOURCE_PASSWORD:}
 
   mail:
-    host: ${SPRING_MAIL_HOST:}
+    host: ${SPRING_MAIL_HOST:smtp.gmail.com}
     port: ${SPRING_MAIL_PORT:587}
-    username: ${SPRING_MAIL_USERNAME:}
-    password: ${SPRING_MAIL_PASSWORD:}
+    username: ${SPRING_MAIL_USERNAME:awledalirihem@gmail.com}
+    password: ${SPRING_MAIL_PASSWORD:jotc vzbp xnjb xezs}
     properties:
       mail:
         smtp:
@@ -44,7 +44,7 @@ app:
     allowed-content-types: ${APP_UPLOAD_ALLOWED_CONTENT_TYPES:application/pdf,image/jpeg,image/png}
   ai:
     openai:
-      api-key: sk-644a2e5638f95fadd629eb985291cb57d70a2d27cb9b942e
+      api-key: sk-a77aeaddb17f06aceb4fca030c782e713b56e76f7a38c204
       base-url: https://api.ecomagent.in/v1/chat/completions
       model: claude-opus-4.6
       max-tokens: 900

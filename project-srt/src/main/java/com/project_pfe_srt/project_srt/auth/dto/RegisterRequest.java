@@ -29,4 +29,10 @@ public class RegisterRequest {
     private String role; // admin | adherent | treasurer
 
     private String phone; // maps to telephone
+
+    private String matricule;
+
+    private Integer enfant;
+
+    private Boolean marie;
 }

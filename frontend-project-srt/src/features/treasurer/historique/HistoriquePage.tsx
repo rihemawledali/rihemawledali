@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { ArrowUpRight, ArrowDownRight } from 'lucide-react';
 import { PageHeader } from '../../../shared/layout/PageHeader';
@@ -33,7 +33,7 @@ export function HistoriquePage() {
 
   const onSort = (k: string) => sortBy === k ? setSortDir(sortDir === 'asc' ? 'desc' : 'asc') : (setSortBy(k), setSortDir('asc'));
 
-  const columns: Column<HistoriqueFinanciere>[] = useMemo(() => [
+  const columns: Column<HistoriqueFinanciere>[] = [
     { key: 'date', header: 'Date', sortable: true, cell: (h) => <span className="cell-muted">{formatDateTime(h.date)}</span> },
     { key: 'reference', header: 'Référence', cell: (h) => <span className="cell-mono">{h.reference}</span> },
     { key: 'description', header: 'Opération', sortable: true, cell: (h) => (
@@ -47,13 +47,23 @@ export function HistoriquePage() {
     { key: 'montant', header: 'Montant', sortable: true, align: 'right', cell: (h) => {
       const positive = h.montant >= 0;
       return (
-        <span className={`amount ${positive ? 'amount--positive' : 'amount--negative'}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+        <span className={`amount amount-inline ${positive ? 'amount--positive' : 'amount--negative'}`}>
           {positive ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
           {positive ? '+' : '−'}{formatCurrency(Math.abs(h.montant))}
         </span>
       );
     }},
-  ], []);
+  ];
+
+  function changeSearch(value: string) {
+    setSearch(value);
+    setPage(1);
+  }
+
+  function changeType(value: string) {
+    setType(value);
+    setPage(1);
+  }
 
   return (
     <div>
@@ -65,8 +75,8 @@ export function HistoriquePage() {
 
       <div className="crud-toolbar">
         <FilterBar>
-          <SearchInput value={search} onChange={(v) => { setSearch(v); setPage(1); }} placeholder="Référence, description, utilisateur..." />
-          <SelectFilter label="Type" value={type} onChange={(v) => { setType(v); setPage(1); }}
+          <SearchInput value={search} onChange={changeSearch} placeholder="Référence, description, utilisateur..." />
+          <SelectFilter label="Type" value={type} onChange={changeType}
             options={Object.entries(TYPE_LABEL).map(([value, label]) => ({ value, label }))} />
         </FilterBar>
       </div>
@@ -81,7 +91,7 @@ export function HistoriquePage() {
       />
 
       {query.data && query.data.total > 0 && (
-        <div className="data-table-card" style={{ marginTop: 'var(--space-3)' }}>
+        <div className="data-table-card data-table-pagination">
           <Pagination page={page} size={15} total={query.data.total} onPageChange={setPage} />
         </div>
       )}

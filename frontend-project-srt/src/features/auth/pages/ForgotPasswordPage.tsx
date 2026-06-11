@@ -92,18 +92,18 @@ export function ForgotPasswordPage() {
   };
 
   return (
-    <AuthLayout>
+    <AuthLayout heroImage="login2">
       <div className="auth-page">
         {step === 'success' ? (
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ display: 'inline-flex', padding: '1rem', borderRadius: '9999px', background: 'rgba(34, 197, 94, 0.1)', color: '#4ade80', marginBottom: '1.5rem' }}>
+          <div className="auth-success">
+            <div className="auth-success-icon">
               <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
                 <polyline points="22 4 12 14.01 9 11.01" />
               </svg>
             </div>
             <h2 className="auth-title">Mot de passe reinitialise</h2>
-            <p style={{ color: 'var(--auth-text-dim)', marginBottom: '1.5rem' }}>
+            <p className="auth-helper-text">
               Votre mot de passe a ete modifie avec succes. Vous pouvez maintenant vous connecter.
             </p>
             <Link to="/login" className="text-gradient-link">
@@ -113,7 +113,7 @@ export function ForgotPasswordPage() {
         ) : (
           <>
             <h1 className="auth-title">Mot de passe oublie ?</h1>
-            <p style={{ color: 'var(--auth-text-dim)', marginBottom: '2rem', marginTop: '-1rem' }}>
+            <p className="auth-helper-text auth-helper-text--intro">
               {step === 'email'
                 ? 'Entrez votre email pour recevoir un code de reinitialisation.'
                 : `Entrez le code envoye a ${email}, puis choisissez un nouveau mot de passe.`}
@@ -170,7 +170,7 @@ export function ForgotPasswordPage() {
                   autoComplete="new-password"
                 />
 
-                <div style={{ marginTop: '-0.5rem' }}>
+                <div className="auth-password-strength-offset">
                   <PasswordStrength password={password} />
                 </div>
 
@@ -199,7 +199,7 @@ export function ForgotPasswordPage() {
               </form>
             )}
 
-            <p className="auth-switch-text" style={{ textAlign: 'center' }}>
+            <p className="auth-switch-text">
               <Link to="/login" className="text-gradient-link">
                 Retour a la connexion
               </Link>

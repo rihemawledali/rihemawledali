@@ -1,0 +1,16 @@
+.section-title {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.section-title h3,
+.section-title p {
+  margin: 0;
+}
+
+.section-title p {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}

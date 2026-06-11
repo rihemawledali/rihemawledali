@@ -1,6 +1,7 @@
 package com.project_pfe_srt.project_srt.shared.convention.dto;
 
 import com.project_pfe_srt.project_srt.shared.convention.entity.Convention;
+import com.project_pfe_srt.project_srt.shared.fournisseur.entity.Fournisseur;
 
 import lombok.*;
 
@@ -31,10 +32,14 @@ public class ConventionDto {
     private String documentConventionNom;
 
     public static ConventionDto from(Convention c) {
+        Fournisseur fournisseur = c.getFournisseur();
+        Long fournisseurId = c.getFournisseurId() != null
+                ? c.getFournisseurId()
+                : fournisseur == null ? null : fournisseur.getId();
         return ConventionDto.builder()
                 .id(c.getId().toString())
-                .fournisseurId(c.getFournisseur().getId().toString())
-                .fournisseurNom(c.getFournisseur().getNom())
+                .fournisseurId(fournisseurId == null ? null : fournisseurId.toString())
+                .fournisseurNom(fournisseur == null ? "Fournisseur introuvable" : fournisseur.getNom())
                 .type(c.getType())
                 .dateDebut(c.getDateDebut().toString())
                 .dateFin(c.getDateFin().toString())

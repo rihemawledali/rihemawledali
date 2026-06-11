@@ -2,7 +2,7 @@
    Treasurer - Indemnites
    ============================================ */
 
-import { useMemo, useState, type ReactNode } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
@@ -24,6 +24,9 @@ import { PageHeader } from '../../../shared/layout/PageHeader';
 import { DataTable, type Column } from '../../../shared/data/DataTable';
 import { StatusBadge } from '../../../shared/data/StatusBadge';
 import { Button } from '../../../shared/ui/Button';
+import { DetailField as SharedDetailField } from '../../../shared/ui/DetailField';
+import { DetailPanel as SharedDetailPanel } from '../../../shared/ui/DetailPanel';
+import { SimpleMetricCard } from '../../../shared/ui/SimpleMetricCard';
 import { SearchInput } from '../../../shared/data/SearchInput';
 import { FilterBar, SelectFilter } from '../../../shared/data/FilterBar';
 import { Pagination } from '../../../shared/data/Pagination';
@@ -140,18 +143,16 @@ export function TreasurerIndemnitesPage() {
 
   const handlePay = (i: Indemnite) => navigate(`/treasurer/paiements?indemniteId=${i.id}`);
 
-  const stats = useMemo(() => {
-    const items = all.data?.items ?? [];
-    return {
-      total: items.length,
-      pending: items.filter((i) => i.statut === 'en_attente').length,
-      validated: items.filter((i) => isValidated(i.statut)).length,
-      paid: items.filter((i) => i.statut === 'payee').length,
-      amountToPay: items.filter((i) => isValidated(i.statut)).reduce((s, i) => s + i.montant, 0),
-    };
-  }, [all.data]);
+  const allItems = all.data?.items ?? [];
+  const stats = {
+    total: allItems.length,
+    pending: allItems.filter((i) => i.statut === 'en_attente').length,
+    validated: allItems.filter((i) => isValidated(i.statut)).length,
+    paid: allItems.filter((i) => i.statut === 'payee').length,
+    amountToPay: allItems.filter((i) => isValidated(i.statut)).reduce((s, i) => s + i.montant, 0),
+  };
 
-  const columns: Column<Indemnite>[] = useMemo(() => [
+  const columns: Column<Indemnite>[] = [
     {
       key: 'reference',
       header: 'Référence',
@@ -196,10 +197,25 @@ export function TreasurerIndemnitesPage() {
       width: '130px',
       cell: (i) => <StatusBadge status={i.statut} tone={STATUT_TONE[i.statut]} label={STATUT_LABEL[i.statut]} />,
     },
-  ], []);
+  ];
 
   const rows = query.data?.items ?? [];
   const visiblePending = rows.filter((i) => i.statut === 'en_attente').length;
+
+  function changeSearch(value: string) {
+    setSearch(value);
+    setPage(1);
+  }
+
+  function changeType(value: string) {
+    setTypeF(value);
+    setPage(1);
+  }
+
+  function changeStatus(value: string) {
+    setStatut(value);
+    setPage(1);
+  }
 
   return (
     <div className="treasurer-indemnities-page">
@@ -241,19 +257,19 @@ export function TreasurerIndemnitesPage() {
           <FilterBar>
             <SearchInput
               value={search}
-              onChange={(v) => { setSearch(v); setPage(1); }}
+              onChange={changeSearch}
               placeholder="Rechercher par adhérent, type ou motif..."
             />
             <SelectFilter
               label="Type"
               value={typeF}
-              onChange={(v) => { setTypeF(v); setPage(1); }}
+              onChange={changeType}
               options={Object.entries(TYPE_LABEL).map(([value, label]) => ({ value, label }))}
             />
             <SelectFilter
               label="Statut"
               value={statut}
-              onChange={(v) => { setStatut(v); setPage(1); }}
+              onChange={changeStatus}
               options={STATUT_OPTIONS}
             />
           </FilterBar>
@@ -352,13 +368,7 @@ export function TreasurerIndemnitesPage() {
   );
 }
 
-function IndemnityPanel({
-  stats,
-  loading,
-}: {
-  stats: { amountToPay: number };
-  loading?: boolean;
-}) {
+function IndemnityPanel({ stats, loading }: any) {
   return (
     <section className="indemnity-panel">
       <div className="indemnity-panel-header">
@@ -377,28 +387,8 @@ function IndemnityPanel({
   );
 }
 
-function IndemnityMetric({
-  icon,
-  label,
-  value,
-  loading,
-  tone,
-}: {
-  icon: ReactNode;
-  label: string;
-  value: string;
-  loading?: boolean;
-  tone: 'primary' | 'warning' | 'info' | 'success';
-}) {
-  return (
-    <article className={`indemnity-metric indemnity-metric--${tone}`}>
-      <span>{icon}</span>
-      <div>
-        <p>{label}</p>
-        <strong>{loading ? '...' : value}</strong>
-      </div>
-    </article>
-  );
+function IndemnityMetric(props: any) {
+  return <SimpleMetricCard {...props} className="indemnity-metric" tonePrefix="indemnity-metric--" iconClassName="" />;
 }
 
 function IndemnityDetailModal({
@@ -408,14 +398,7 @@ function IndemnityDetailModal({
   onClose,
   onValidate,
   onReject,
-}: {
-  indemnity: Indemnite | null;
-  validating: boolean;
-  rejecting: boolean;
-  onClose: () => void;
-  onValidate: () => void;
-  onReject: () => void;
-}) {
+}: any) {
   const handleDownload = () => {
     if (!indemnity?.documentNom) return;
     const blob = new Blob(
@@ -528,47 +511,25 @@ function IndemnityDetailModal({
   );
 }
 
-function IndemnityDetailMetric({
-  icon,
-  label,
-  value,
-  tone = 'neutral',
-}: {
-  icon: ReactNode;
-  label: string;
-  value: ReactNode;
-  tone?: 'neutral' | 'primary' | 'success';
-}) {
+function IndemnityDetailMetric(props: any) {
+  return <SimpleMetricCard {...props} className="indemnity-detail-metric" tonePrefix="indemnity-detail-metric--" iconClassName="" />;
+}
+
+function DetailPanel({ title, icon, children }: any) {
   return (
-    <div className={`indemnity-detail-metric indemnity-detail-metric--${tone}`}>
-      <span>{icon}</span>
-      <div>
-        <p>{label}</p>
-        <strong>{value}</strong>
-      </div>
-    </div>
+    <SharedDetailPanel
+      title={title}
+      icon={icon}
+      className="indemnity-detail-panel"
+      listClassName="indemnity-detail-list"
+    >
+      {children}
+    </SharedDetailPanel>
   );
 }
 
-function DetailPanel({ title, icon, children }: { title: string; icon: ReactNode; children: ReactNode }) {
-  return (
-    <section className="indemnity-detail-panel">
-      <header>
-        <span>{icon}</span>
-        <h4>{title}</h4>
-      </header>
-      <div className="indemnity-detail-list">{children}</div>
-    </section>
-  );
-}
-
-function DetailField({ label, value }: { label: string; value: ReactNode }) {
-  return (
-    <div className="indemnity-detail-field">
-      <span>{label}</span>
-      <div>{value}</div>
-    </div>
-  );
+function DetailField({ label, value }: any) {
+  return <SharedDetailField label={label} value={value} className="indemnity-detail-field" />;
 }
 
 function getInitials(name: string) {

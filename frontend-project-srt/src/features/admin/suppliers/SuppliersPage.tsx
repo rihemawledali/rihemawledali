@@ -1,7 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { LucideIcon } from 'lucide-react';
-import { Building2, Mail, Pencil, Phone, Plus, Store, Trash2, UserCheck, UserX } from 'lucide-react';
+import { Building2, Mail, Pencil, Phone, Plus, Trash2, UserCheck, UserX } from 'lucide-react';
 import { PageHeader } from '../../../shared/layout/PageHeader';
 import { Button } from '../../../shared/ui/Button';
 import { DataTable, type Column } from '../../../shared/data/DataTable';
@@ -12,7 +11,7 @@ import { SearchInput } from '../../../shared/data/SearchInput';
 import { FilterBar, SelectFilter } from '../../../shared/data/FilterBar';
 import { StatusBadge } from '../../../shared/data/StatusBadge';
 import { useToast } from '../../../shared/feedback/useToast';
-import { suppliersApi } from './suppliersApi';
+import { suppliersApi } from '../../../shared/api/suppliersApi';
 import { SupplierForm } from './SupplierForm';
 import type { Fournisseur } from '../../../shared/types/domain';
 import type { SupplierFormValues } from '../../../shared/validators';
@@ -27,6 +26,13 @@ const CAT_LABEL: Record<string, string> = {
   commerce: 'Commerce',
   education: 'Éducation',
 };
+
+const PAGE_SIZE = 10;
+const CATEGORY_OPTIONS = Object.entries(CAT_LABEL).map(([value, label]) => ({ value, label }));
+const STATUS_OPTIONS = [
+  { value: 'actif', label: 'Actif' },
+  { value: 'inactif', label: 'Inactif' },
+];
 
 export function SuppliersPage() {
   const queryClient = useQueryClient();
@@ -43,7 +49,7 @@ export function SuppliersPage() {
 
   const query = useQuery({
     queryKey: ['suppliers', { page, search, categorie, status, sortBy, sortDir }],
-    queryFn: () => suppliersApi.list({ page, size: 10, search, sortBy, sortDir, filters: { categorie, status } }),
+    queryFn: () => suppliersApi.list({ page, size: PAGE_SIZE, search, sortBy, sortDir, filters: { categorie, status } }),
   });
 
   const create = useMutation({
@@ -83,7 +89,7 @@ export function SuppliersPage() {
     }
   };
 
-  const columns: Column<Fournisseur>[] = useMemo(() => [
+  const columns: Column<Fournisseur>[] = [
     {
       key: 'nom',
       header: 'Fournisseur',
@@ -112,19 +118,35 @@ export function SuppliersPage() {
       cell: (supplier) => <StatusBadge status={supplier.categorie} tone="info" label={CAT_LABEL[supplier.categorie]} />,
     },
     { key: 'status', header: 'Statut', sortable: true, cell: (supplier) => <StatusBadge status={supplier.status} /> },
-  ], []);
+  ];
 
   const rows = query.data?.items ?? [];
   const total = query.data?.total ?? 0;
-  const activeCount = rows.filter((supplier) => supplier.status === 'actif').length;
-  const inactiveCount = rows.filter((supplier) => supplier.status === 'inactif').length;
-  const categoriesCount = new Set(rows.map((supplier) => supplier.categorie)).size;
+  const metrics = [
+    { icon: Building2, label: 'Résultats', value: total, tone: 'info' },
+    { icon: UserCheck, label: 'Actifs sur la page', value: rows.filter((supplier) => supplier.status === 'actif').length, tone: 'success' },
+    { icon: UserX, label: 'Inactifs', value: rows.filter((supplier) => supplier.status === 'inactif').length, tone: 'warning' },
+  ];
+
+  function changeSearch(value: string) {
+    setSearch(value);
+    setPage(1);
+  }
+
+  function changeCategory(value: string) {
+    setCategorie(value);
+    setPage(1);
+  }
+
+  function changeStatus(value: string) {
+    setStatus(value);
+    setPage(1);
+  }
 
   return (
     <div className="admin-surface">
       <PageHeader
         title="Fournisseurs"
-        description="Annuaire des partenaires conventionnés."
         breadcrumb={['Administration', 'Gestion', 'Fournisseurs']}
         actions={(
           <Button onClick={() => setCreating(true)}>
@@ -133,42 +155,17 @@ export function SuppliersPage() {
           </Button>
         )}
       />
-
-      <section className="admin-hero">
-        <div>
-          <span className="admin-hero-kicker">Réseau partenaires</span>
-          <h2>Fournisseurs conventionnés</h2>
-          <p>Centralisez les contacts, catégories et statuts des partenaires de l’Amicale SRT.</p>
-        </div>
-      </section>
-
       <section className="admin-metrics" aria-label="Synthèse fournisseurs">
-        <AdminMetric icon={Building2} label="Résultats" value={total} tone="info" />
-        <AdminMetric icon={UserCheck} label="Actifs sur la page" value={activeCount} tone="success" />
-        <AdminMetric icon={Store} label="Catégories visibles" value={categoriesCount} tone="neutral" />
-        <AdminMetric icon={UserX} label="Inactifs" value={inactiveCount} tone="warning" />
+        {metrics.map((metric) => <AdminMetric key={metric.label} {...metric} />)}
       </section>
 
       <section className="admin-workspace">
         <div className="admin-toolbar-panel">
           <div className="crud-toolbar">
             <FilterBar>
-              <SearchInput value={search} onChange={(value) => { setSearch(value); setPage(1); }} placeholder="Rechercher nom, email, téléphone..." />
-              <SelectFilter
-                label="Catégorie"
-                value={categorie}
-                onChange={(value) => { setCategorie(value); setPage(1); }}
-                options={Object.entries(CAT_LABEL).map(([value, label]) => ({ value, label }))}
-              />
-              <SelectFilter
-                label="Statut"
-                value={status}
-                onChange={(value) => { setStatus(value); setPage(1); }}
-                options={[
-                  { value: 'actif', label: 'Actif' },
-                  { value: 'inactif', label: 'Inactif' },
-                ]}
-              />
+              <SearchInput value={search} onChange={changeSearch} placeholder="Rechercher nom, email, téléphone..." />
+              <SelectFilter label="Catégorie" value={categorie} onChange={changeCategory} options={CATEGORY_OPTIONS} />
+              <SelectFilter label="Statut" value={status} onChange={changeStatus} options={STATUS_OPTIONS} />
             </FilterBar>
           </div>
         </div>
@@ -176,7 +173,6 @@ export function SuppliersPage() {
         <div className="admin-table-panel">
           <header className="admin-table-head">
             <div>
-              <span className="admin-section-kicker">Annuaire</span>
               <h3>Liste des fournisseurs</h3>
               <p>{total} fournisseur{total > 1 ? 's' : ''} trouvé{total > 1 ? 's' : ''}</p>
             </div>
@@ -206,7 +202,7 @@ export function SuppliersPage() {
 
           {query.data && query.data.total > 0 && (
             <div className="admin-pagination">
-              <Pagination page={page} size={10} total={query.data.total} onPageChange={setPage} />
+              <Pagination page={page} size={PAGE_SIZE} total={query.data.total} onPageChange={setPage} />
             </div>
           )}
         </div>
@@ -241,17 +237,7 @@ export function SuppliersPage() {
   );
 }
 
-function AdminMetric({
-  icon: Icon,
-  label,
-  value,
-  tone,
-}: {
-  icon: LucideIcon;
-  label: string;
-  value: number;
-  tone: 'success' | 'warning' | 'info' | 'neutral';
-}) {
+function AdminMetric({ icon: Icon, label, value, tone }: any) {
   return (
     <article className={`admin-metric is-${tone}`}>
       <span className="admin-metric-icon">

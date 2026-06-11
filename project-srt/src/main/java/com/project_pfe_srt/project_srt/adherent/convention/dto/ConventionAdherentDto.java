@@ -1,6 +1,7 @@
 package com.project_pfe_srt.project_srt.adherent.convention.dto;
 
 import com.project_pfe_srt.project_srt.shared.convention.entity.Convention;
+import com.project_pfe_srt.project_srt.shared.fournisseur.entity.Fournisseur;
 
 import lombok.*;
 
@@ -43,10 +44,13 @@ public class ConventionAdherentDto {
 
     public static ConventionAdherentDto from(Convention c, String adherentStatus) {
         if (c == null) return null;
-        var f = c.getFournisseur();
+        Fournisseur f = c.getFournisseur();
+        Long fournisseurId = c.getFournisseurId() != null
+                ? c.getFournisseurId()
+                : f == null ? null : f.getId();
         return ConventionAdherentDto.builder()
                 .id(c.getId().toString())
-                .fournisseurId(f == null ? null : f.getId().toString())
+                .fournisseurId(fournisseurId == null ? null : fournisseurId.toString())
                 .fournisseurNom(f == null ? null : f.getNom())
                 .type(c.getType())
                 .dateDebut(c.getDateDebut().toString())

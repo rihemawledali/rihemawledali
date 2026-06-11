@@ -1,0 +1,4 @@
+.confirm-dialog-message {
+  color: var(--color-text-secondary);
+  line-height: var(--line-height-relaxed);
+}

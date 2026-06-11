@@ -1,4 +1,4 @@
-import { useCallback, useState, type ReactNode } from 'react';
+import { useState } from 'react';
 import { CheckCircle2, AlertCircle, Info, AlertTriangle, X } from 'lucide-react';
 import { ToastContext, type ToastInput, type ToastVariant } from './toastContextInstance';
 import './Toast.css';
@@ -15,20 +15,20 @@ const ICONS: Record<ToastVariant, typeof CheckCircle2> = {
   warning: AlertTriangle,
 };
 
-export function ToastProvider({ children }: { children: ReactNode }) {
+export function ToastProvider({ children }: any) {
   const [toasts, setToasts] = useState<Toast[]>([]);
 
-  const remove = useCallback((id: string) => {
+  const remove = (id: string) => {
     setToasts((t) => t.filter((x) => x.id !== id));
-  }, []);
+  };
 
-  const push = useCallback((input: ToastInput) => {
+  const push = (input: ToastInput) => {
     const id = Math.random().toString(36).slice(2);
     const variant = input.variant ?? 'info';
     const toast: Toast = { id, variant, ...input };
     setToasts((t) => [...t, toast]);
     setTimeout(() => remove(id), input.durationMs ?? 4000);
-  }, [remove]);
+  };
 
   return (
     <ToastContext.Provider value={{ push }}>

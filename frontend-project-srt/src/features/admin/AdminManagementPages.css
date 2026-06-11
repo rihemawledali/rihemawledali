@@ -239,6 +239,24 @@
   flex-shrink: 0;
 }
 
+.admin-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-3);
+}
+
+.admin-form-section {
+  border-top: 1px solid var(--color-border);
+  padding-top: var(--space-4);
+}
+
+.admin-checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-text-secondary);
+}
+
 @media (max-width: 1200px) {
   .admin-metrics,
   .admin-metrics.is-dashboard {
@@ -271,5 +289,14 @@
   .admin-metrics,
   .admin-metrics.is-dashboard {
     grid-template-columns: 1fr;
+  }
+
+  .admin-form-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .admin-form-actions .btn {
+    width: 100%;
   }
 }

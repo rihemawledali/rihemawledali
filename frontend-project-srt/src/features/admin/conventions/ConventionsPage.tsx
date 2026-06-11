@@ -1,6 +1,5 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { LucideIcon } from 'lucide-react';
 import { ClockAlert, FileSignature, Handshake, PauseCircle, Pencil, Plus, Trash2 } from 'lucide-react';
 import { PageHeader } from '../../../shared/layout/PageHeader';
 import { Button } from '../../../shared/ui/Button';
@@ -13,10 +12,11 @@ import { FilterBar, SelectFilter } from '../../../shared/data/FilterBar';
 import { StatusBadge } from '../../../shared/data/StatusBadge';
 import { useToast } from '../../../shared/feedback/useToast';
 import { formatDate, daysUntil } from '../../../shared/lib/formatters';
+import { getConventionAvantageSummary } from '../../../shared/lib/conventionWorkflow';
 import { conventionsApi } from './conventionsApi';
-import { suppliersApi } from '../suppliers/suppliersApi';
+import { suppliersApi } from '../../../shared/api/suppliersApi';
 import { ConventionForm } from './ConventionForm';
-import type { Convention } from '../../../shared/types/domain';
+import type { Convention, PageResult } from '../../../shared/types/domain';
 import type { ConventionFormValues } from '../../../shared/validators';
 import '../../../shared/layout/CrudPage.css';
 import '../AdminManagementPages.css';
@@ -30,16 +30,41 @@ const TYPE_LABEL: Record<string, string> = {
   education: 'Éducation',
 };
 
-const TYPE_AVANTAGE_LABEL: Record<string, string> = {
-  REMISE_DIRECTE: 'Remise directe',
-  ACHAT_TRANCHE: 'Achat tranche',
-  ABONNEMENT: 'Abonnement',
-  BON_ACHAT: "Bon d'achat",
-};
+const PAGE_SIZE = 10;
+const TYPE_OPTIONS = Object.entries(TYPE_LABEL).map(([value, label]) => ({ value, label }));
+const STATUS_OPTIONS = [
+  { value: 'active', label: 'Active' },
+  { value: 'expiree', label: 'Expirée' },
+  { value: 'en_negociation', label: 'En négociation' },
+  { value: 'suspendue', label: 'Suspendue' },
+];
 
 function renderTypeAvantage(convention: Convention) {
   if (!convention.typeAvantage) return '—';
-  return TYPE_AVANTAGE_LABEL[convention.typeAvantage] ?? convention.typeAvantage;
+  return getConventionAvantageSummary(convention).title;
+}
+
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error && error.message ? error.message : fallback;
+}
+
+function prependConventionToPage(
+  pageData: PageResult<Convention> | undefined,
+  convention: Convention
+): PageResult<Convention> {
+  if (!pageData) {
+    return { items: [convention], total: 1, page: 1, size: 10 };
+  }
+  const alreadyExists = pageData.items.some((item) => item.id === convention.id);
+  const items = [
+    convention,
+    ...pageData.items.filter((item) => item.id !== convention.id),
+  ].slice(0, pageData.size);
+  return {
+    ...pageData,
+    items,
+    total: alreadyExists ? pageData.total : pageData.total + 1,
+  };
 }
 
 export function ConventionsPage() {
@@ -49,15 +74,15 @@ export function ConventionsPage() {
   const [search, setSearch] = useState('');
   const [type, setType] = useState('');
   const [statut, setStatut] = useState('');
-  const [sortBy, setSortBy] = useState('dateFin');
-  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+  const [sortBy, setSortBy] = useState('id');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<Convention | null>(null);
   const [deleting, setDeleting] = useState<Convention | null>(null);
 
   const query = useQuery({
     queryKey: ['conventions', { page, search, type, statut, sortBy, sortDir }],
-    queryFn: () => conventionsApi.list({ page, size: 10, search, sortBy, sortDir, filters: { type, statut } }),
+    queryFn: () => conventionsApi.list({ page, size: PAGE_SIZE, search, sortBy, sortDir, filters: { type, statut } }),
   });
 
   const buildPayload = async (values: ConventionFormValues): Promise<Omit<Convention, 'id'>> => {
@@ -67,8 +92,8 @@ export function ConventionsPage() {
       fournisseurId: values.fournisseurId,
       fournisseurNom: supplier?.nom ?? '—',
       type: values.type,
-      dateDebut: new Date(values.dateDebut).toISOString(),
-      dateFin: new Date(values.dateFin).toISOString(),
+      dateDebut: values.dateDebut,
+      dateFin: values.dateFin,
       remise: 0,
       statut: values.statut,
       description: values.description,
@@ -84,11 +109,37 @@ export function ConventionsPage() {
 
   const create = useMutation({
     mutationFn: async (values: ConventionFormValues) => conventionsApi.create(await buildPayload(values)),
-    onSuccess: () => {
+    onSuccess: (createdConvention) => {
+      const visibleConventionsKey = ['conventions', {
+        page: 1,
+        search: '',
+        type: '',
+        statut: '',
+        sortBy: 'id',
+        sortDir: 'desc' as const,
+      }];
       queryClient.invalidateQueries({ queryKey: ['conventions'] });
+      queryClient.invalidateQueries({ queryKey: ['adherent-conventions'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      queryClient.setQueriesData<PageResult<Convention>>(
+        { queryKey: ['conventions'] },
+        (old) => prependConventionToPage(old, createdConvention)
+      );
+      queryClient.setQueryData<PageResult<Convention>>(
+        visibleConventionsKey,
+        (old) => prependConventionToPage(old, createdConvention)
+      );
       setCreating(false);
+      setSearch('');
+      setType('');
+      setStatut('');
+      setSortBy('id');
+      setSortDir('desc');
+      setPage(1);
       toast.push({ title: 'Convention créée', variant: 'success' });
+    },
+    onError: (error) => {
+      toast.push({ title: 'Convention non creee', description: getErrorMessage(error, 'Verifier les champs saisis.'), variant: 'error' });
     },
   });
 
@@ -97,8 +148,12 @@ export function ConventionsPage() {
       conventionsApi.update(id, await buildPayload(values)),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['conventions'] });
+      queryClient.invalidateQueries({ queryKey: ['adherent-conventions'] });
       setEditing(null);
       toast.push({ title: 'Convention mise à jour', variant: 'success' });
+    },
+    onError: (error) => {
+      toast.push({ title: 'Convention non mise a jour', description: getErrorMessage(error, 'Verifier les champs saisis.'), variant: 'error' });
     },
   });
 
@@ -106,9 +161,13 @@ export function ConventionsPage() {
     mutationFn: (id: string) => conventionsApi.remove(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['conventions'] });
+      queryClient.invalidateQueries({ queryKey: ['adherent-conventions'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
       setDeleting(null);
       toast.push({ title: 'Convention supprimée', variant: 'success' });
+    },
+    onError: (error) => {
+      toast.push({ title: 'Suppression impossible', description: getErrorMessage(error, 'Veuillez reessayer.'), variant: 'error' });
     },
   });
 
@@ -120,7 +179,7 @@ export function ConventionsPage() {
     }
   };
 
-  const columns: Column<Convention>[] = useMemo(() => [
+  const columns: Column<Convention>[] = [
     {
       key: 'fournisseurNom',
       header: 'Fournisseur',
@@ -151,7 +210,7 @@ export function ConventionsPage() {
       },
     },
     { key: 'statut', header: 'Statut', sortable: true, cell: (convention) => <StatusBadge status={convention.statut} /> },
-  ], []);
+  ];
 
   const rows = query.data?.items ?? [];
   const total = query.data?.total ?? 0;
@@ -161,6 +220,27 @@ export function ConventionsPage() {
     return convention.statut === 'active' && days > 0 && days < 30;
   }).length;
   const pausedCount = rows.filter((convention) => convention.statut === 'suspendue' || convention.statut === 'en_negociation').length;
+  const metrics = [
+    { icon: FileSignature, label: 'Résultats', value: total, tone: 'info' },
+    { icon: Handshake, label: 'Actives sur la page', value: activeCount, tone: 'success' },
+    { icon: ClockAlert, label: 'Échéance proche', value: expiringCount, tone: 'warning' },
+    { icon: PauseCircle, label: 'Suspendues / négociation', value: pausedCount, tone: 'neutral' },
+  ];
+
+  function changeSearch(value: string) {
+    setSearch(value);
+    setPage(1);
+  }
+
+  function changeType(value: string) {
+    setType(value);
+    setPage(1);
+  }
+
+  function changeStatus(value: string) {
+    setStatut(value);
+    setPage(1);
+  }
 
   return (
     <div className="admin-surface">
@@ -185,34 +265,16 @@ export function ConventionsPage() {
       </section>
 
       <section className="admin-metrics" aria-label="Synthèse conventions">
-        <AdminMetric icon={FileSignature} label="Résultats" value={total} tone="info" />
-        <AdminMetric icon={Handshake} label="Actives sur la page" value={activeCount} tone="success" />
-        <AdminMetric icon={ClockAlert} label="Échéance proche" value={expiringCount} tone="warning" />
-        <AdminMetric icon={PauseCircle} label="Suspendues / négociation" value={pausedCount} tone="neutral" />
+        {metrics.map((metric) => <AdminMetric key={metric.label} {...metric} />)}
       </section>
 
       <section className="admin-workspace">
         <div className="admin-toolbar-panel">
           <div className="crud-toolbar">
             <FilterBar>
-              <SearchInput value={search} onChange={(value) => { setSearch(value); setPage(1); }} placeholder="Rechercher fournisseur ou description..." />
-              <SelectFilter
-                label="Type"
-                value={type}
-                onChange={(value) => { setType(value); setPage(1); }}
-                options={Object.entries(TYPE_LABEL).map(([value, label]) => ({ value, label }))}
-              />
-              <SelectFilter
-                label="Statut"
-                value={statut}
-                onChange={(value) => { setStatut(value); setPage(1); }}
-                options={[
-                  { value: 'active', label: 'Active' },
-                  { value: 'expiree', label: 'Expirée' },
-                  { value: 'en_negociation', label: 'En négociation' },
-                  { value: 'suspendue', label: 'Suspendue' },
-                ]}
-              />
+              <SearchInput value={search} onChange={changeSearch} placeholder="Rechercher fournisseur ou description..." />
+              <SelectFilter label="Type" value={type} onChange={changeType} options={TYPE_OPTIONS} />
+              <SelectFilter label="Statut" value={statut} onChange={changeStatus} options={STATUS_OPTIONS} />
             </FilterBar>
           </div>
         </div>
@@ -250,7 +312,7 @@ export function ConventionsPage() {
 
           {query.data && query.data.total > 0 && (
             <div className="admin-pagination">
-              <Pagination page={page} size={10} total={query.data.total} onPageChange={setPage} />
+              <Pagination page={page} size={PAGE_SIZE} total={query.data.total} onPageChange={setPage} />
             </div>
           )}
         </div>
@@ -285,17 +347,7 @@ export function ConventionsPage() {
   );
 }
 
-function AdminMetric({
-  icon: Icon,
-  label,
-  value,
-  tone,
-}: {
-  icon: LucideIcon;
-  label: string;
-  value: number;
-  tone: 'success' | 'warning' | 'info' | 'neutral';
-}) {
+function AdminMetric({ icon: Icon, label, value, tone }: any) {
   return (
     <article className={`admin-metric is-${tone}`}>
       <span className="admin-metric-icon">

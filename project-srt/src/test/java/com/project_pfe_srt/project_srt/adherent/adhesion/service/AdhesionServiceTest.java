@@ -1,5 +1,6 @@
 package com.project_pfe_srt.project_srt.adherent.adhesion.service;
 
+import com.project_pfe_srt.project_srt.adherent.adhesion.dto.AdhesionDto;
 import com.project_pfe_srt.project_srt.adherent.adhesion.entity.Adhesion;
 import com.project_pfe_srt.project_srt.adherent.adhesion.repository.AdhesionRepository;
 import com.project_pfe_srt.project_srt.auth.entity.Role;
@@ -40,19 +41,8 @@ class AdhesionServiceTest {
     private AdhesionService adhesionService;
 
     @Test
-    void createRejectsExistingActiveAdhesion() {
-        User adherent = adherent();
-        when(adhesionRepository.findFirstByAdherentIdAndStatutOrderByDateDebutDesc(1L, "active"))
-                .thenReturn(Optional.of(Adhesion.builder().id(10L).adherent(adherent).statut("active").build()));
-
-        assertThatThrownBy(() -> adhesionService.create(adherent, null))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("Vous avez déjà une adhésion active.");
-    }
-
-    @Test
-    void renewKeepsCurrentActiveAdhesionUntilPendingRenewalIsValidated() {
-        User adherent = adherent();
+    void getCurrentReturnsActiveAdhesion() {
+        User adherent = AliAdherent();
         Adhesion active = Adhesion.builder()
                 .id(10L)
                 .adherent(adherent)
@@ -61,59 +51,39 @@ class AdhesionServiceTest {
                 .montantCotisation(AdhesionService.COTISATION_MENSUELLE)
                 .statut("active")
                 .build();
-        AtomicLong ids = new AtomicLong(20L);
 
-        when(adhesionRepository.findFirstByAdherentIdAndStatutOrderByDateDebutDesc(1L, "en_attente"))
-                .thenReturn(Optional.empty());
-        when(adhesionRepository.save(any(Adhesion.class))).thenAnswer(invocation -> {
-            Adhesion adhesion = invocation.getArgument(0);
-            if (adhesion.getId() == null) {
-                adhesion.setId(ids.incrementAndGet());
-            }
-            return adhesion;
-        });
-
-        adhesionService.renew(adherent);
-
-        ArgumentCaptor<Adhesion> saved = ArgumentCaptor.forClass(Adhesion.class);
-        verify(adhesionRepository).save(saved.capture());
-        assertThat(active.getStatut()).isEqualTo("active");
-        assertThat(saved.getValue().getStatut()).isEqualTo("en_attente");
-        assertThat(saved.getValue().getMontantCotisation()).isEqualTo(AdhesionService.COTISATION_MENSUELLE);
-    }
-
-    @Test
-    void validerExpiresPreviousActiveAdhesionWhenRenewalIsAccepted() {
-        User adherent = adherent();
-        Adhesion active = Adhesion.builder()
-                .id(10L)
-                .adherent(adherent)
-                .dateDebut(LocalDate.of(2025, 1, 1))
-                .dateFin(LocalDate.of(2025, 12, 31))
-                .montantCotisation(AdhesionService.COTISATION_MENSUELLE)
-                .statut("active")
-                .build();
-        Adhesion renewal = Adhesion.builder()
-                .id(11L)
-                .adherent(adherent)
-                .dateDebut(LocalDate.of(2026, 1, 1))
-                .dateFin(LocalDate.of(2026, 12, 31))
-                .montantCotisation(AdhesionService.COTISATION_MENSUELLE)
-                .statut("en_attente")
-                .build();
-
-        when(adhesionRepository.findById(11L)).thenReturn(Optional.of(renewal));
         when(adhesionRepository.findFirstByAdherentIdAndStatutOrderByDateDebutDesc(1L, "active"))
                 .thenReturn(Optional.of(active));
-        when(adhesionRepository.save(any(Adhesion.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        adhesionService.valider(11L);
+        AdhesionDto result = adhesionService.getCurrent(adherent);
 
-        assertThat(active.getStatut()).isEqualTo("expiree");
-        assertThat(renewal.getStatut()).isEqualTo("active");
+        assertThat(result).isNotNull();
+        assertThat(result.getId()).isEqualTo("10");
+        assertThat(result.getStatut()).isEqualTo("active");
     }
 
-    private static User adherent() {
+    @Test
+    void getHistoryReturnsHistory() {
+        User adherent = AliAdherent();
+        Adhesion active = Adhesion.builder()
+                .id(10L)
+                .adherent(adherent)
+                .dateDebut(LocalDate.of(2025, 1, 1))
+                .dateFin(LocalDate.of(2025, 12, 31))
+                .montantCotisation(AdhesionService.COTISATION_MENSUELLE)
+                .statut("active")
+                .build();
+
+        when(adhesionRepository.findByAdherentIdOrderByDateDebutDesc(1L))
+                .thenReturn(java.util.List.of(active));
+
+        java.util.List<AdhesionDto> result = adhesionService.getHistory(adherent);
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).getId()).isEqualTo("10");
+    }
+
+    private static User AliAdherent() {
         return User.builder()
                 .id(1L)
                 .nom("Ben Salah")

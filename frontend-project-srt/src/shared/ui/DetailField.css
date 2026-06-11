@@ -1,0 +1,16 @@
+.detail-field {
+  display: grid;
+  gap: 2px;
+}
+
+.detail-field > span {
+  color: var(--color-text-tertiary);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  text-transform: uppercase;
+}
+
+.detail-field > div,
+.detail-field > strong {
+  color: var(--color-text-primary);
+}

@@ -12,11 +12,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-/**
- * Read-only listings + workflow operations on prêts / indemnités for
- * the trésorier. Errors are uniformly translated to HTTP responses by
- * {@code GlobalExceptionHandler}.
- */
 @RestController
 @RequestMapping("/api/treasurer")
 @RequiredArgsConstructor

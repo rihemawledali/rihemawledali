@@ -3,7 +3,7 @@
    Workflow: SOUMISE -> APPROUVEE | REFUSEE
    ============================================ */
 
-import { useMemo, useState, type ReactNode } from 'react';
+import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Ban,
@@ -24,6 +24,9 @@ import { PageHeader } from '../../../shared/layout/PageHeader';
 import { DataTable, type Column } from '../../../shared/data/DataTable';
 import { StatusBadge } from '../../../shared/data/StatusBadge';
 import { Button } from '../../../shared/ui/Button';
+import { DetailField as SharedDetailField } from '../../../shared/ui/DetailField';
+import { DetailPanel as SharedDetailPanel } from '../../../shared/ui/DetailPanel';
+import { SimpleMetricCard } from '../../../shared/ui/SimpleMetricCard';
 import { SearchInput } from '../../../shared/data/SearchInput';
 import { FilterBar, SelectFilter } from '../../../shared/data/FilterBar';
 import { Pagination } from '../../../shared/data/Pagination';
@@ -91,15 +94,13 @@ export function TreasurerConventionsPage() {
       treasurerConventionsApi.list({ page, size: 10, search, filters: { statutNormalise: statut } }),
   });
 
-  const stats = useMemo(() => {
-    const items = all.data?.items ?? [];
-    return {
-      total: items.length,
-      pending: items.filter((d) => d.statutNormalise === 'pending').length,
-      validated: items.filter((d) => d.statutNormalise === 'approved').length,
-      refused: items.filter((d) => d.statutNormalise === 'refused').length,
-    };
-  }, [all.data]);
+  const allItems = all.data?.items ?? [];
+  const stats = {
+    total: allItems.length,
+    pending: allItems.filter((d) => d.statutNormalise === 'pending').length,
+    validated: allItems.filter((d) => d.statutNormalise === 'approved').length,
+    refused: allItems.filter((d) => d.statutNormalise === 'refused').length,
+  };
 
   const valider = useMutation({
     mutationFn: (id: string) => treasurerConventionsApi.valider(id),
@@ -131,8 +132,7 @@ export function TreasurerConventionsPage() {
       toast.push({ title: e instanceof Error ? e.message : 'Erreur', variant: 'error' }),
   });
 
-  const columns: Column<ConventionDemandeRow>[] = useMemo(
-    () => [
+  const columns: Column<ConventionDemandeRow>[] = [
       {
         key: 'reference',
         header: 'Référence',
@@ -175,12 +175,20 @@ export function TreasurerConventionsPage() {
         ),
         width: '130px',
       },
-    ],
-    [],
-  );
+  ];
 
   const rows = query.data?.items ?? [];
   const visiblePending = rows.filter((d) => d.statutNormalise === 'pending').length;
+
+  function changeSearch(value: string) {
+    setSearch(value);
+    setPage(1);
+  }
+
+  function changeStatus(value: string) {
+    setStatut(value as ConventionDemandeDisplayStatus | '');
+    setPage(1);
+  }
 
   return (
     <div className="treasurer-conventions-page">
@@ -218,13 +226,13 @@ export function TreasurerConventionsPage() {
           <FilterBar>
             <SearchInput
               value={search}
-              onChange={(v) => { setSearch(v); setPage(1); }}
+              onChange={changeSearch}
               placeholder="Rechercher par adhérent, statut ou commentaire..."
             />
             <SelectFilter
               label="Statut"
               value={statut}
-              onChange={(v) => { setStatut(v as ConventionDemandeDisplayStatus | ''); setPage(1); }}
+              onChange={changeStatus}
               options={STATUT_OPTIONS}
             />
           </FilterBar>
@@ -325,28 +333,8 @@ function ConventionCell({ row }: { row: ConventionDemandeRow }) {
   );
 }
 
-function ConventionMetric({
-  icon,
-  label,
-  value,
-  loading,
-  tone,
-}: {
-  icon: ReactNode;
-  label: string;
-  value: string;
-  loading?: boolean;
-  tone: 'primary' | 'warning' | 'success' | 'error';
-}) {
-  return (
-    <article className={`convention-metric convention-metric--${tone}`}>
-      <span>{icon}</span>
-      <div>
-        <p>{label}</p>
-        <strong>{loading ? '...' : value}</strong>
-      </div>
-    </article>
-  );
+function ConventionMetric(props: any) {
+  return <SimpleMetricCard {...props} className="convention-metric" tonePrefix="convention-metric--" iconClassName="" />;
 }
 
 function ConventionDetailModal({
@@ -356,14 +344,7 @@ function ConventionDetailModal({
   onClose,
   onValidate,
   onRefuse,
-}: {
-  row: ConventionDemandeRow | null;
-  validating: boolean;
-  refusing: boolean;
-  onClose: () => void;
-  onValidate: () => void;
-  onRefuse: () => void;
-}) {
+}: any) {
   const snap = row?.conventionSnapshot;
   const typeLabel = snap?.type ? CONV_TYPE_LABEL[snap.type] ?? snap.type : 'Non renseigné';
   const avantage = row ? getConventionAvantageSummary(row) : null;
@@ -465,14 +446,7 @@ function RejectConventionModal({
   onMotifChange,
   onClose,
   onConfirm,
-}: {
-  row: ConventionDemandeRow | null;
-  motif: string;
-  loading: boolean;
-  onMotifChange: (value: string) => void;
-  onClose: () => void;
-  onConfirm: () => void;
-}) {
+}: any) {
   return (
     <Modal
       open={!!row}
@@ -508,47 +482,25 @@ function RejectConventionModal({
   );
 }
 
-function ConventionDetailMetric({
-  icon,
-  label,
-  value,
-  tone = 'neutral',
-}: {
-  icon: ReactNode;
-  label: string;
-  value: ReactNode;
-  tone?: 'neutral' | 'primary' | 'success';
-}) {
+function ConventionDetailMetric(props: any) {
+  return <SimpleMetricCard {...props} className="convention-detail-metric" tonePrefix="convention-detail-metric--" iconClassName="" />;
+}
+
+function DetailPanel({ title, icon, children }: any) {
   return (
-    <div className={`convention-detail-metric convention-detail-metric--${tone}`}>
-      <span>{icon}</span>
-      <div>
-        <p>{label}</p>
-        <strong>{value}</strong>
-      </div>
-    </div>
+    <SharedDetailPanel
+      title={title}
+      icon={icon}
+      className="convention-detail-panel"
+      listClassName="convention-detail-list"
+    >
+      {children}
+    </SharedDetailPanel>
   );
 }
 
-function DetailPanel({ title, icon, children }: { title: string; icon: ReactNode; children: ReactNode }) {
-  return (
-    <section className="convention-detail-panel">
-      <header>
-        <span>{icon}</span>
-        <h4>{title}</h4>
-      </header>
-      <div className="convention-detail-list">{children}</div>
-    </section>
-  );
-}
-
-function DetailField({ label, value }: { label: string; value: ReactNode }) {
-  return (
-    <div className="convention-detail-field">
-      <span>{label}</span>
-      <div>{value}</div>
-    </div>
-  );
+function DetailField({ label, value }: any) {
+  return <SharedDetailField label={label} value={value} className="convention-detail-field" />;
 }
 
 function getInitials(name: string) {

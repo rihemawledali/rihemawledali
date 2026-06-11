@@ -86,7 +86,7 @@ export const paiementSchema = z.object({
   beneficiaireId: z.string().optional(),
   beneficiaire: z.string().min(2, 'Beneficiaire requis'),
   montant: z.number({ error: 'Montant requis' }).positive('Montant > 0'),
-  mode: z.enum(['virement', 'cheque', 'especes', 'carte']),
+  mode: z.enum(['virement', 'especes']),
   statut: z.enum(['reussi', 'en_attente', 'echoue', 'rembourse']),
   factureId: z.string().optional(),
   factureNumero: z.string().optional(),

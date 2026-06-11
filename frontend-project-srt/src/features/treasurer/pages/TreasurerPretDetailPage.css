@@ -263,10 +263,10 @@
 
 .pret-ai-card {
   display: grid;
-  gap: var(--space-3);
-  border-color: var(--color-primary-100);
+  gap: var(--space-4);
+  border-color: rgba(37, 99, 235, 0.2);
   background:
-    linear-gradient(180deg, rgba(239, 246, 255, 0.72), rgba(255, 255, 255, 1) 170px),
+    linear-gradient(180deg, rgba(239, 246, 255, 0.82), rgba(255, 255, 255, 1) 190px),
     var(--color-surface);
 }
 
@@ -274,48 +274,34 @@
   display: flex;
   align-items: flex-start;
   gap: var(--space-3);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid rgba(37, 99, 235, 0.12);
 }
 
-.pret-ai-status {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  width: fit-content;
-  min-height: 30px;
-  padding: 0 var(--space-2);
-  color: var(--color-success-700);
-  background: var(--color-success-50);
-  border: 1px solid var(--color-success-100);
-  border-radius: var(--radius-full);
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-semibold);
-}
-
-.pret-ai-status-dot {
-  width: 7px;
-  height: 7px;
-  flex: 0 0 7px;
-  background: var(--color-success-500);
-  border-radius: var(--radius-full);
+.pret-ai-card header > span {
+  color: #1d4ed8;
+  background: #eff6ff;
+  border: 1px solid rgba(37, 99, 235, 0.14);
 }
 
 .pret-ai-prompts {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: 1fr;
   gap: var(--space-2);
 }
 
 .pret-ai-prompts button {
-  min-height: 34px;
+  min-height: 42px;
   padding: 0 var(--space-3);
   color: var(--color-text-secondary);
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-full);
+  border-radius: var(--radius-md);
   cursor: pointer;
   font: inherit;
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-semibold);
+  text-align: left;
   transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease;
 }
 
@@ -349,6 +335,7 @@
   border: 1px solid var(--color-primary-100);
   border-radius: var(--radius-md);
   line-height: var(--line-height-normal);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
 }
 
 .pret-ai-answer.is-loading {
@@ -370,6 +357,7 @@
 .pret-ai-answer-header strong {
   color: var(--color-text-primary);
   font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
 }
 
 .pret-ai-answer-header span,
@@ -379,7 +367,75 @@
 }
 
 .pret-ai-answer-body {
-  white-space: pre-wrap;
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+}
+
+.pret-ai-response {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.pret-ai-response h4 {
+  margin: var(--space-1) 0 0;
+  padding-left: var(--space-2);
+  color: var(--color-primary-800);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+  line-height: var(--line-height-tight);
+  border-left: 3px solid var(--color-primary-500);
+}
+
+.pret-ai-response p {
+  margin: 0;
+  color: var(--color-text-primary);
+  line-height: var(--line-height-relaxed);
+}
+
+.pret-ai-response span {
+  color: inherit;
+  font-size: inherit;
+}
+
+.pret-ai-response strong {
+  color: var(--color-text-primary);
+  font-weight: var(--font-weight-bold);
+}
+
+.pret-ai-list {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding-left: var(--space-5);
+  color: var(--color-text-primary);
+  line-height: var(--line-height-relaxed);
+}
+
+.pret-ai-list li::marker {
+  color: var(--color-primary-600);
+  font-weight: var(--font-weight-bold);
+}
+
+.pret-ai-field {
+  display: grid;
+  gap: 4px;
+  padding: var(--space-3);
+  background: var(--color-primary-50);
+  border: 1px solid var(--color-primary-100);
+  border-radius: var(--radius-md);
+}
+
+.pret-ai-field > span {
+  color: var(--color-primary-700);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  text-transform: uppercase;
+}
+
+.pret-ai-field > strong {
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-relaxed);
 }
 
 .pret-detail-empty,

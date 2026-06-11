@@ -1,10 +1,10 @@
 .topbar {
-  height: 64px;
+  height: 56px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-4);
-  padding: 0 var(--space-6);
+  padding: 0 var(--space-5);
   background: var(--color-surface);
   border-bottom: 1px solid var(--color-border);
   position: sticky;
@@ -14,14 +14,16 @@
 }
 
 .topbar-left { display: flex; align-items: center; gap: var(--space-3); flex: 1; }
-.topbar-right { display: flex; align-items: center; gap: var(--space-3); }
+.topbar-right { display: flex; align-items: center; gap: var(--space-2); }
 
 .topbar-menu-btn {
   display: none;
   background: transparent;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
-  padding: 8px;
+  width: 34px;
+  height: 34px;
+  padding: 0;
   cursor: pointer;
   color: var(--color-text-secondary);
 }
@@ -46,37 +48,13 @@
   color: var(--color-text-primary); font-size: var(--font-size-base);
 }
 
-.topbar-icon-btn {
-  position: relative;
-  display: inline-flex;
-  align-items: center; justify-content: center;
-  width: 38px; height: 38px;
-  background: var(--color-surface-secondary);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  color: var(--color-text-secondary);
-  cursor: pointer;
-  transition: all var(--transition-fast);
-}
-.topbar-icon-btn:hover { background: var(--color-primary-50); color: var(--color-primary-600); border-color: var(--color-primary-200); }
-
-.topbar-notif-dot {
-  position: absolute;
-  top: 8px; right: 8px;
-  width: 8px; height: 8px;
-  background: var(--color-error-500);
-  border-radius: var(--radius-full);
-  border: 2px solid var(--color-surface);
-}
-
 .topbar-profile { position: relative; }
-.topbar-notif { position: relative; }
 
 .topbar-profile-btn {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
-  padding: 6px var(--space-3) 6px 6px;
+  gap: var(--space-2);
+  padding: 4px 12px 4px 4px;
   background: var(--color-surface-secondary);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-full);
@@ -86,7 +64,7 @@
 .topbar-profile-btn:hover { background: var(--color-surface-hover); border-color: var(--color-dark-300); }
 
 .topbar-avatar {
-  width: 32px; height: 32px;
+  width: 30px; height: 30px;
   display: inline-flex;
   align-items: center; justify-content: center;
   background: linear-gradient(135deg, var(--color-primary-600), var(--color-primary-500));
@@ -116,38 +94,6 @@
 }
 
 @keyframes dropdown-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
-
-.topbar-dropdown-header {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: var(--space-3) var(--space-4);
-  border-bottom: 1px solid var(--color-border);
-  background: var(--color-surface-secondary);
-}
-.topbar-notif-count {
-  background: var(--color-primary-100); color: var(--color-primary-700);
-  border-radius: var(--radius-full);
-  padding: 2px 8px;
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-semibold);
-}
-
-.topbar-notif-list { list-style: none; padding: 0; max-height: 320px; overflow-y: auto; }
-.topbar-notif-item {
-  display: flex; align-items: flex-start; gap: var(--space-3);
-  padding: var(--space-3) var(--space-4);
-  border-bottom: 1px solid var(--color-border);
-  font-size: var(--font-size-sm);
-  cursor: pointer;
-  transition: background var(--transition-fast);
-}
-.topbar-notif-item:hover { background: var(--color-surface-secondary); }
-.topbar-notif-item:last-child { border-bottom: none; }
-.topbar-notif-item p { color: var(--color-text-primary); font-weight: var(--font-weight-medium); }
-.topbar-notif-item span { color: var(--color-text-tertiary); font-size: 11px; }
-.topbar-notif-bullet { width: 8px; height: 8px; border-radius: var(--radius-full); margin-top: 6px; flex-shrink: 0; }
-.topbar-notif-item--info .topbar-notif-bullet { background: var(--color-info-500); }
-.topbar-notif-item--warning .topbar-notif-bullet { background: var(--color-warning-500); }
-.topbar-notif-item--error .topbar-notif-bullet { background: var(--color-error-500); }
 
 .topbar-dropdown-profile-info {
   display: flex; align-items: center; gap: var(--space-3);

@@ -1,0 +1,153 @@
+/* ============================================
+   Adhesion Page — Adherent Portal
+   Styles specific to the adhesion/membership page.
+   ============================================ */
+
+.adh-adhesion-page {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+/* ---------- Skeleton loader ---------- */
+
+.adh-adhesion-skeleton {
+  height: 260px;
+  border-radius: 14px;
+}
+
+/* ---------- Membership card ---------- */
+
+.adh-adhesion-card {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 18px;
+  border: 1px solid var(--adh-border);
+  border-radius: 14px;
+  background: var(--adh-surface);
+  box-shadow: var(--adh-shadow-xs);
+}
+
+.adh-adhesion-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.adh-adhesion-detail {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-width: 0;
+  padding: 13px;
+  border: 1px solid var(--adh-border);
+  border-radius: 12px;
+  background: var(--adh-surface-2);
+}
+
+.adh-adhesion-detail > span {
+  width: 34px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border-radius: 9px;
+  background: #ffffff;
+  color: var(--adh-accent);
+}
+
+.adh-adhesion-detail div {
+  min-width: 0;
+}
+
+.adh-adhesion-detail small {
+  display: block;
+  color: var(--adh-text-3);
+  font-size: 0.7rem;
+  font-weight: 730;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.adh-adhesion-detail strong {
+  display: block;
+  margin-top: 4px;
+  color: var(--adh-text-1);
+  font-size: 0.86rem;
+  font-weight: 740;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+/* ---------- Empty state ---------- */
+
+.adh-adhesion-empty {
+  gap: 10px;
+}
+
+/* ---------- Cotisation value ---------- */
+
+.adh-adhesion-num {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* ---------- History section ---------- */
+
+.adh-adhesion-section-card {
+  overflow: hidden;
+  border: 1px solid var(--adh-border);
+  border-radius: 14px;
+  background: var(--adh-surface);
+  box-shadow: var(--adh-shadow-xs);
+}
+
+.adh-adhesion-section-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--adh-border);
+}
+
+.adh-adhesion-section-head h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  color: var(--adh-text-1);
+  font-size: 0.98rem;
+  font-weight: 770;
+}
+
+.adh-adhesion-section-head p {
+  margin: 5px 0 0;
+  color: var(--adh-text-3);
+  font-size: 0.8rem;
+}
+
+/* ---------- Responsive ---------- */
+
+@media (max-width: 1180px) {
+  .adh-adhesion-detail-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .adh-adhesion-page {
+    gap: 14px;
+  }
+
+  .adh-adhesion-section-head {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .adh-adhesion-detail-grid {
+    grid-template-columns: 1fr;
+  }
+}

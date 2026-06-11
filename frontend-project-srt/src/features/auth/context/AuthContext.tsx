@@ -1,4 +1,4 @@
-import { useCallback, useState, type ReactNode } from 'react';
+import { useState } from 'react';
 import type {
   User,
   AuthContextType,
@@ -16,47 +16,43 @@ import {
 } from '../services/authService';
 import { AuthContext } from './authContextInstance';
 
-interface AuthProviderProps {
-  children: ReactNode;
-}
-
-export function AuthProvider({ children }: AuthProviderProps) {
+export function AuthProvider({ children }: any) {
   const [user, setUser] = useState<User | null>(() => getCurrentUser());
   const isLoading = false;
 
-  const login = useCallback(async (payload: LoginPayload) => {
+  const login = async (payload: LoginPayload) => {
     const loggedInUser = await loginService(
       payload.email,
       payload.password,
       payload.rememberMe
     );
     setUser(loggedInUser);
-  }, []);
+  };
 
-  const signup = useCallback(async (payload: SignupPayload) => {
+  const signup = async (payload: SignupPayload) => {
     // Account is created with statut=INACTIF and must be approved by an admin.
     // We deliberately do NOT call setUser here so the SignupPage can redirect
     // to the "pending approval" page instead of logging the user in.
     await signupService(payload);
-  }, []);
+  };
 
-  const logout = useCallback(() => {
+  const logout = () => {
     logoutService();
     setUser(null);
-  }, []);
+  };
 
-  const updateUser = useCallback((nextUser: User, token?: string) => {
+  const updateUser = (nextUser: User, token?: string) => {
     updateStoredUser(nextUser, token);
     setUser(nextUser);
-  }, []);
+  };
 
-  const forgotPassword = useCallback(async (email: string) => {
+  const forgotPassword = async (email: string) => {
     await forgotPasswordService(email);
-  }, []);
+  };
 
-  const resetPassword = useCallback(async (email: string, code: string, password: string) => {
+  const resetPassword = async (email: string, code: string, password: string) => {
     await resetPasswordService(email, code, password);
-  }, []);
+  };
 
   const value: AuthContextType = {
     user,

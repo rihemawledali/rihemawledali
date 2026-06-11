@@ -2,7 +2,7 @@
    Treasurer - Prêts sociaux
    ============================================ */
 
-import { useMemo, useState, type ReactNode } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -17,6 +17,7 @@ import { PageHeader } from '../../../shared/layout/PageHeader';
 import { DataTable, type Column } from '../../../shared/data/DataTable';
 import { StatusBadge } from '../../../shared/data/StatusBadge';
 import { Button } from '../../../shared/ui/Button';
+import { SimpleMetricCard } from '../../../shared/ui/SimpleMetricCard';
 import { SearchInput } from '../../../shared/data/SearchInput';
 import { FilterBar, SelectFilter } from '../../../shared/data/FilterBar';
 import { Pagination } from '../../../shared/data/Pagination';
@@ -77,19 +78,16 @@ export function TreasurerPretsPage() {
     onError: (e) => toast.push({ title: e instanceof Error ? e.message : 'Erreur', variant: 'error' }),
   });
 
-  const stats = useMemo(() => {
-    const items = all.data?.items ?? [];
-    const active = items.filter((p) => p.statut === 'en_cours' || p.statut === 'en_retard');
+  const allItems = all.data?.items ?? [];
+  const activeItems = allItems.filter((p) => p.statut === 'en_cours' || p.statut === 'en_retard');
+  const stats = {
+    total: allItems.length,
+    active: allItems.filter((p) => p.statut === 'en_cours').length,
+    reimbursed: allItems.filter((p) => p.statut === 'rembourse').length,
+    outstanding: activeItems.reduce((sum, p) => sum + p.montant, 0),
+  };
 
-    return {
-      total: items.length,
-      active: items.filter((p) => p.statut === 'en_cours').length,
-      reimbursed: items.filter((p) => p.statut === 'rembourse').length,
-      outstanding: active.reduce((sum, p) => sum + p.montant, 0),
-    };
-  }, [all.data]);
-
-  const columns: Column<PretSocial>[] = useMemo(() => [
+  const columns: Column<PretSocial>[] = [
     {
       key: 'reference',
       header: 'Référence',
@@ -150,10 +148,20 @@ export function TreasurerPretsPage() {
       cell: (p) => <StatusBadge status={p.statut} />,
       width: '125px',
     },
-  ], []);
+  ];
 
   const rows = query.data?.items ?? [];
   const visiblePending = rows.filter((p) => p.statut === 'en_attente').length;
+
+  function changeSearch(value: string) {
+    setSearch(value);
+    setPage(1);
+  }
+
+  function changeStatus(value: string) {
+    setStatut(value);
+    setPage(1);
+  }
 
   return (
     <div className="treasurer-loans-page">
@@ -194,13 +202,13 @@ export function TreasurerPretsPage() {
           <FilterBar>
             <SearchInput
               value={search}
-              onChange={(v) => { setSearch(v); setPage(1); }}
+              onChange={changeSearch}
               placeholder="Rechercher par adhérent ou statut..."
             />
             <SelectFilter
               label="Statut"
               value={statut}
-              onChange={(v) => { setStatut(v); setPage(1); }}
+              onChange={changeStatus}
               options={STATUS_OPTIONS}
             />
           </FilterBar>
@@ -272,15 +280,7 @@ export function TreasurerPretsPage() {
   );
 }
 
-function PortfolioPanel({
-  stats,
-  loading,
-}: {
-  stats: {
-    outstanding: number;
-  };
-  loading?: boolean;
-}) {
+function PortfolioPanel({ stats, loading }: any) {
   return (
     <section className="loan-panel loan-panel--portfolio">
       <div className="loan-panel-header">
@@ -299,28 +299,8 @@ function PortfolioPanel({
   );
 }
 
-function LoanMetric({
-  icon,
-  label,
-  value,
-  loading,
-  tone,
-}: {
-  icon: ReactNode;
-  label: string;
-  value: string;
-  loading?: boolean;
-  tone: 'primary' | 'success' | 'info' | 'error';
-}) {
-  return (
-    <article className={`loan-metric loan-metric--${tone}`}>
-      <span>{icon}</span>
-      <div>
-        <p>{label}</p>
-        <strong>{loading ? '...' : value}</strong>
-      </div>
-    </article>
-  );
+function LoanMetric(props: any) {
+  return <SimpleMetricCard {...props} className="loan-metric" tonePrefix="loan-metric--" iconClassName="" />;
 }
 
 function getInitials(name: string) {

@@ -275,26 +275,20 @@ export const paiementsApi = {
 
   /**
    * Update a paiement. Only statut transitions are supported by the backend
-   * (route through /valider or /annuler). Editing other fields throws.
+   * (route through /valider). Editing other fields throws.
    */
   update: async (id: string, patch: Partial<Paiement>): Promise<Paiement> => {
     const keys = Object.keys(patch).filter((k) => (patch as Record<string, unknown>)[k] !== undefined);
     const onlyStatut = keys.length === 1 && keys[0] === 'statut';
     if (!onlyStatut) {
-      throw new Error("L'édition des paiements existants n'est pas supportée. Annulez et recréez le paiement.");
+      throw new Error("L'édition des paiements existants n'est pas supportée. Recréez le paiement.");
     }
     if (patch.statut === 'reussi') return paiementsApi.valider(id);
-    if (patch.statut === 'rembourse' || patch.statut === 'echoue') return paiementsApi.annuler(id);
     throw new Error(`Transition de statut non supportée : ${patch.statut}`);
   },
 
   valider: async (id: string): Promise<Paiement> => {
     const { data } = await put<PaiementDtoBE>(`/api/treasurer/paiements/${id}/valider`, {});
-    return mapPaiement(data);
-  },
-
-  annuler: async (id: string): Promise<Paiement> => {
-    const { data } = await put<PaiementDtoBE>(`/api/treasurer/paiements/${id}/annuler`, {});
     return mapPaiement(data);
   },
 

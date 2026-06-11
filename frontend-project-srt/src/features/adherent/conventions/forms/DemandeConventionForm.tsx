@@ -3,16 +3,18 @@
    Submitted from the convention details page or list.
    ============================================ */
 
-import { useState } from 'react';
+import { useState, type ChangeEvent, type FormEvent, type ReactNode } from 'react';
 import { User as UserIcon, Mail, Phone, BadgeCheck, Building2, Calendar, Percent, Tag, Paperclip, AlertCircle } from 'lucide-react';
 import { Button } from '../../../../shared/ui/Button';
+import { getConventionAvantageSummary } from '../../../../shared/lib/conventionWorkflow';
+import { formatDate } from '../../../../shared/lib/formatters';
 import type { Adherent, Convention } from '../../../../shared/types/domain';
 import { CONV_TYPE_LABEL } from '../components/conventionHelpers';
+import './DemandeConventionForm.css';
 
 export interface DemandeConventionPayload {
   commentaire?: string;
   documentNom?: string;
-  /** Actual File selected by the user (used by the page for multipart upload). */
   file?: File;
 }
 
@@ -36,13 +38,14 @@ export function DemandeConventionForm({
 
   const fullName = `${adherent.prenom} ${adherent.nom}`;
   const requiresDoc = (convention.documentsRequis?.length ?? 0) > 0;
+  const avantage = getConventionAvantageSummary(convention);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
     setFile(f ?? null);
   };
 
-  const handleSubmit = async (ev: React.FormEvent) => {
+  const handleSubmit = async (ev: FormEvent) => {
     ev.preventDefault();
     if (!confirmed) {
       setConfirmError('Veuillez confirmer votre demande pour continuer.');
@@ -57,8 +60,7 @@ export function DemandeConventionForm({
   };
 
   return (
-    <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
-      {/* Adherent (read-only) */}
+    <form onSubmit={handleSubmit} className="dcf-form">
       <section>
         <h4 className="dcf-section-title">Vos informations</h4>
         <div className="dcf-grid">
@@ -69,12 +71,11 @@ export function DemandeConventionForm({
             icon={<BadgeCheck size={16} />}
             label="Statut adhérent"
             value={adherent.status === 'actif' ? 'Adhérent actif' : 'Adhérent inactif'}
-            valueColor={adherent.status === 'actif' ? 'var(--color-success-700)' : 'var(--color-error-700)'}
+            valueTone={adherent.status === 'actif' ? 'success' : 'error'}
           />
         </div>
       </section>
 
-      {/* Selected convention */}
       <section>
         <h4 className="dcf-section-title">Convention sélectionnée</h4>
         <div className="dcf-grid">
@@ -83,18 +84,17 @@ export function DemandeConventionForm({
           <ReadOnlyField
             icon={<Percent size={16} />}
             label="Avantage"
-            value={convention.avantage || `${convention.remise}% de remise`}
-            valueColor="var(--color-success-700)"
+            value={avantage.subtitle ? `${avantage.title} - ${avantage.subtitle}` : avantage.title}
+            valueTone="success"
           />
           <ReadOnlyField
             icon={<Calendar size={16} />}
             label="Période de validité"
-            value={`${new Date(convention.dateDebut).toLocaleDateString('fr-FR')} → ${new Date(convention.dateFin).toLocaleDateString('fr-FR')}`}
+            value={`${formatDate(convention.dateDebut)} -> ${formatDate(convention.dateFin)}`}
           />
         </div>
       </section>
 
-      {/* Commentaire */}
       <section>
         <label htmlFor="dcf-commentaire" className="dcf-label">
           Commentaire <span className="dcf-optional">(facultatif)</span>
@@ -111,7 +111,6 @@ export function DemandeConventionForm({
         <div className="dcf-counter">{commentaire.length} / 500</div>
       </section>
 
-      {/* Document */}
       {requiresDoc && (
         <section>
           <label className="dcf-label">
@@ -127,21 +126,19 @@ export function DemandeConventionForm({
               type="file"
               accept=".pdf,image/png,image/jpeg"
               onChange={handleFileChange}
-              style={{ display: 'none' }}
+              className="dcf-file-input"
             />
           </label>
         </section>
       )}
 
-      {/* API error */}
       {errorMessage && (
-        <div className="adh-alert error" style={{ margin: 0 }}>
+        <div className="adh-alert error dcf-alert">
           <AlertCircle size={18} className="adh-alert-icon" />
           <div>{errorMessage}</div>
         </div>
       )}
 
-      {/* Confirmation */}
       <section>
         <label className="dcf-confirm">
           <input
@@ -152,13 +149,13 @@ export function DemandeConventionForm({
           <span>Je confirme vouloir demander à bénéficier de cette convention.</span>
         </label>
         {confirmError && (
-          <p style={{ color: 'var(--color-error-600)', fontSize: 'var(--font-size-xs)', margin: '6px 0 0 26px' }}>
+          <p className="dcf-confirm-error">
             {confirmError}
           </p>
         )}
       </section>
 
-      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-3)' }}>
+      <div className="dcf-actions">
         <Button type="button" variant="secondary" onClick={onCancel} disabled={submitting}>
           Annuler
         </Button>
@@ -166,139 +163,26 @@ export function DemandeConventionForm({
           Envoyer la demande
         </Button>
       </div>
-
-      <style>{INLINE_STYLES}</style>
     </form>
   );
 }
 
 interface ReadOnlyFieldProps {
-  icon: React.ReactNode;
+  icon: ReactNode;
   label: string;
   value: string;
-  valueColor?: string;
+  valueTone?: 'success' | 'error';
 }
-function ReadOnlyField({ icon, label, value, valueColor }: ReadOnlyFieldProps) {
+function ReadOnlyField({ icon, label, value, valueTone }: ReadOnlyFieldProps) {
   return (
     <div className="dcf-readonly">
       <div className="dcf-readonly-icon">{icon}</div>
       <div className="dcf-readonly-text">
         <span className="dcf-readonly-label">{label}</span>
-        <span className="dcf-readonly-value" style={valueColor ? { color: valueColor } : undefined}>
+        <span className={`dcf-readonly-value ${valueTone ? `is-${valueTone}` : ''}`}>
           {value}
         </span>
       </div>
     </div>
   );
 }
-
-// Inline scoped styles to keep the form self-contained
-const INLINE_STYLES = `
-.dcf-section-title {
-  margin: 0 0 var(--space-3);
-  font-size: var(--font-size-sm);
-  font-weight: 600;
-  color: var(--color-text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-}
-.dcf-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-3);
-}
-@media (max-width: 540px) { .dcf-grid { grid-template-columns: 1fr; } }
-.dcf-readonly {
-  display: flex; gap: var(--space-3);
-  padding: var(--space-3);
-  background: var(--color-surface-secondary);
-  border: 1px solid var(--color-border-light);
-  border-radius: var(--radius-md);
-}
-.dcf-readonly-icon {
-  width: 32px; height: 32px; flex-shrink: 0;
-  display: flex; align-items: center; justify-content: center;
-  background: white;
-  color: var(--color-text-secondary);
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--color-border-light);
-}
-.dcf-readonly-text { display: flex; flex-direction: column; min-width: 0; }
-.dcf-readonly-label {
-  font-size: var(--font-size-xs);
-  color: var(--color-text-tertiary);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  font-weight: 500;
-}
-.dcf-readonly-value {
-  font-size: var(--font-size-sm);
-  font-weight: 600;
-  color: var(--color-text-primary);
-  word-break: break-word;
-}
-.dcf-label {
-  display: block;
-  font-size: var(--font-size-sm);
-  font-weight: 600;
-  color: var(--color-text-primary);
-  margin-bottom: 6px;
-}
-.dcf-optional {
-  font-weight: 400;
-  color: var(--color-text-tertiary);
-}
-.dcf-textarea {
-  width: 100%;
-  padding: 10px 12px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  font: inherit;
-  font-size: var(--font-size-sm);
-  color: var(--color-text-primary);
-  background: white;
-  resize: vertical;
-  min-height: 80px;
-}
-.dcf-textarea:focus {
-  outline: none;
-  border-color: var(--color-primary-500);
-  box-shadow: 0 0 0 3px var(--color-primary-100);
-}
-.dcf-counter {
-  margin-top: 4px;
-  font-size: var(--font-size-xs);
-  color: var(--color-text-tertiary);
-  text-align: right;
-}
-.dcf-file {
-  display: inline-flex; align-items: center; gap: 8px;
-  padding: 10px 14px;
-  border: 1px dashed var(--color-border);
-  border-radius: var(--radius-md);
-  background: var(--color-surface-secondary);
-  cursor: pointer;
-  color: var(--color-text-secondary);
-  font-size: var(--font-size-sm);
-  transition: all 150ms;
-  width: 100%;
-}
-.dcf-file:hover {
-  border-color: var(--color-primary-400);
-  color: var(--color-primary-600);
-}
-.dcf-confirm {
-  display: flex; align-items: flex-start; gap: 10px;
-  cursor: pointer;
-  font-size: var(--font-size-sm);
-  color: var(--color-text-primary);
-  line-height: 1.4;
-}
-.dcf-confirm input[type="checkbox"] {
-  width: 16px; height: 16px;
-  margin-top: 2px;
-  accent-color: var(--color-primary-500);
-  cursor: pointer;
-  flex-shrink: 0;
-}
-`;

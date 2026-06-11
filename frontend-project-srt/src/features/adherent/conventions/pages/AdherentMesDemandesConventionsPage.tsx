@@ -1,83 +1,82 @@
-import type { ReactNode } from 'react';
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import {
   AlertCircle,
   Archive,
-  ArrowRight,
   Ban,
   CalendarX,
   CheckCircle2,
   Clock3,
-  Eye,
-  FileClock,
-  FileText,
-  RotateCcw,
 } from 'lucide-react';
+
 import { PageHeader } from '../../../../shared/layout/PageHeader';
 import { Button } from '../../../../shared/ui/Button';
 import { Modal } from '../../../../shared/data/Modal';
 import { StatusBadge } from '../../../../shared/data/StatusBadge';
 import { useToast } from '../../../../shared/feedback/useToast';
-import { getConventionAvantageSummary } from '../../../../shared/lib/conventionWorkflow';
+import { formatDate } from '../../../../shared/lib/formatters';
+
 import { conventionsApi } from '../api';
 import {
   CONV_TYPE_LABEL,
   DEMANDE_STATUS_LABEL,
   DEMANDE_STATUS_VARIANT,
 } from '../components/conventionHelpers';
-import type {
-  Convention,
-  ConventionDemande,
-  ConventionDemandeStatut,
-} from '../../../../shared/types/domain';
-import './AdherentConventionFollowupPages.css';
 
-type DisplayStatus = 'en_attente' | 'validee' | 'refusee' | 'annulee' | 'terminee' | 'expiree';
+import './AdherentMesDemandesConvention.css';
 
-const DISPLAY_STATUS_LABEL: Record<DisplayStatus, string> = {
+const DISPLAY_STATUS_LABEL: any = {
   ...DEMANDE_STATUS_LABEL,
   terminee: 'Terminée',
   expiree: 'Expirée',
 };
 
-const DISPLAY_STATUS_VARIANT: Record<
-  DisplayStatus,
-  'success' | 'warning' | 'info' | 'neutral' | 'error'
-> = {
+const DISPLAY_STATUS_VARIANT: any = {
   ...DEMANDE_STATUS_VARIANT,
   terminee: 'success',
   expiree: 'warning',
 };
 
+const STATUS_FILTERS = [
+  { value: 'all', label: 'Toutes' },
+  { value: 'en_attente', label: 'En attente' },
+  { value: 'validee', label: 'Validées' },
+  { value: 'refusee', label: 'Refusées' },
+  { value: 'annulee', label: 'Annulées' },
+];
 
-function computeDisplayStatus(demande: ConventionDemande, convention?: Convention): DisplayStatus {
-  const isConventionExpired = convention ? new Date(convention.dateFin) < new Date() : false;
-  const normalizedStatus = normalizeDemandeStatus(demande.statut);
-  if (normalizedStatus === 'validee' && isConventionExpired) return 'terminee';
-  if (normalizedStatus === 'en_attente' && isConventionExpired) return 'expiree';
-  return normalizedStatus;
+function normalizeStatus(status: string) {
+  if (status === 'SOUMISE') return 'en_attente';
+
+  if (
+    ['APPROUVEE', 'EN_COURS', 'JUSTIFIEE', 'VALIDEE', 'FACTUREE', 'PAYEE'].includes(status)
+  ) {
+    return 'validee';
+  }
+
+  if (status === 'REFUSEE') return 'refusee';
+  if (status === 'ANNULEE') return 'annulee';
+
+  return status;
 }
 
-function normalizeDemandeStatus(status: ConventionDemandeStatut): Exclude<DisplayStatus, 'terminee' | 'expiree'> {
-  switch (status) {
-    case 'SOUMISE':
-      return 'en_attente';
-    case 'APPROUVEE':
-    case 'EN_COURS':
-    case 'JUSTIFIEE':
-    case 'VALIDEE':
-    case 'FACTUREE':
-    case 'PAYEE':
-      return 'validee';
-    case 'REFUSEE':
-      return 'refusee';
-    case 'ANNULEE':
-      return 'annulee';
-    default:
-      return status;
-  }
+function getDisplayStatus(demande: any, convention: any) {
+  const status = normalizeStatus(demande.statut);
+  const expired = convention?.dateFin && new Date(convention.dateFin) < new Date();
+
+  if (status === 'validee' && expired) return 'terminee';
+  if (status === 'en_attente' && expired) return 'expiree';
+
+  return status;
+}
+
+function getSupplierName(demande: any, convention: any) {
+  return (
+    convention?.fournisseurNom ||
+    demande.conventionSnapshot?.fournisseurNom ||
+    'Fournisseur'
+  );
 }
 
 export function AdherentMesDemandesConventionsPage() {
@@ -85,190 +84,158 @@ export function AdherentMesDemandesConventionsPage() {
   const toast = useToast();
   const queryClient = useQueryClient();
 
-  const [selected, setSelected] = useState<ConventionDemande | null>(null);
-  const [confirmCancel, setConfirmCancel] = useState<ConventionDemande | null>(null);
+  const [activeFilter, setActiveFilter] = useState('all');
+  const [demandeToCancel, setDemandeToCancel] = useState<any>(null);
 
-  const { data: demandes, isLoading } = useQuery({
+  const { data: demandes = [], isLoading } = useQuery<any[]>({
     queryKey: ['adherent-conventions-demandes'],
-    queryFn: () => conventionsApi.getMyDemandes(),
+    queryFn: conventionsApi.getMyDemandes,
   });
 
-  const { data: conventions } = useQuery({
+  const { data: conventions = [] } = useQuery<any[]>({
     queryKey: ['adherent-conventions'],
-    queryFn: () => conventionsApi.getConventions(),
+    queryFn: conventionsApi.getConventions,
   });
+
+  const conventionMap = useMemo(() => {
+    const map = new Map();
+
+    conventions.forEach((convention) => {
+      map.set(convention.id, convention);
+    });
+
+    return map;
+  }, [conventions]);
+
+  const demandesList = useMemo(() => {
+    return demandes
+      .map((demande) => {
+        const convention = conventionMap.get(demande.conventionId);
+
+        return {
+          demande,
+          convention,
+          displayStatus: getDisplayStatus(demande, convention),
+        };
+      })
+      .sort((a, b) => {
+        return (
+          new Date(b.demande.dateDemande).getTime() -
+          new Date(a.demande.dateDemande).getTime()
+        );
+      });
+  }, [demandes, conventionMap]);
+
+  const counts = useMemo(() => {
+    const result: any = {
+      all: demandesList.length,
+      en_attente: 0,
+      validee: 0,
+      refusee: 0,
+      annulee: 0,
+    };
+
+    demandesList.forEach((item) => {
+      if (result[item.displayStatus] !== undefined) {
+        result[item.displayStatus]++;
+      }
+    });
+
+    return result;
+  }, [demandesList]);
+
+  const visibleDemandes =
+    activeFilter === 'all'
+      ? demandesList
+      : demandesList.filter((item) => item.displayStatus === activeFilter);
 
   const cancelMutation = useMutation({
-    mutationFn: (demandeId: string) => conventionsApi.cancelDemande(demandeId),
+    mutationFn: conventionsApi.cancelDemande,
+
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['adherent-conventions-demandes'] });
       queryClient.invalidateQueries({ queryKey: ['adherent-conventions'] });
-      toast.push({ title: 'Demande annulée', variant: 'success' });
-      setConfirmCancel(null);
+
+      toast.push({
+        title: 'Demande annulée',
+        variant: 'success',
+      });
+
+      setDemandeToCancel(null);
     },
+
     onError: (error) => {
       toast.push({
-        title: error instanceof Error ? error.message : 'Échec de l’annulation',
+        title: error instanceof Error ? error.message : "Échec de l'annulation",
         variant: 'error',
       });
     },
   });
 
-  const conventionMap = useMemo(() => {
-    const map = new Map<string, Convention>();
-    (conventions ?? []).forEach((convention) => map.set(convention.id, convention));
-    return map;
-  }, [conventions]);
-
-  const annotatedDemandes = useMemo(() => {
-    return (demandes ?? [])
-      .map((demande) => ({
-        demande,
-        displayStatus: computeDisplayStatus(demande, conventionMap.get(demande.conventionId)),
-      }))
-      .sort((a, b) => new Date(b.demande.dateDemande).getTime() - new Date(a.demande.dateDemande).getTime());
-  }, [conventionMap, demandes]);
-
-  const counts = useMemo(() => {
-    const next: Record<'all' | DisplayStatus, number> = {
-      all: 0,
-      en_attente: 0,
-      validee: 0,
-      refusee: 0,
-      annulee: 0,
-      terminee: 0,
-      expiree: 0,
-    };
-
-    annotatedDemandes.forEach(({ displayStatus }) => {
-      next.all += 1;
-      next[displayStatus] += 1;
-    });
-
-    return next;
-  }, [annotatedDemandes]);
-
-  const pendingCount = counts.en_attente + counts.expiree;
-  const activeCount = counts.validee;
-  const historyCount = counts.terminee + counts.expiree + counts.annulee + counts.refusee;
-
   return (
     <div className="adh-follow-page">
       <PageHeader
         title="Mes demandes"
-        description="Suivez les demandes envoyées et l’historique de vos conventions."
+        description="Suivez les demandes envoyées et l'historique de vos conventions."
       />
 
-      <section className="adh-follow-toolbar">
-        <div className="adh-follow-toolbar-main">
-          <span className="adh-follow-kicker">Suivi conventions</span>
-          <h2>{counts.all} demande{counts.all > 1 ? 's' : ''} de convention</h2>
-          <p>
-            {pendingCount > 0
-              ? `${pendingCount} demande${pendingCount > 1 ? 's' : ''} à surveiller, ${activeCount} convention${activeCount > 1 ? 's' : ''} active${activeCount > 1 ? 's' : ''}.`
-              : activeCount > 0
-              ? `${activeCount} convention${activeCount > 1 ? 's' : ''} active${activeCount > 1 ? 's' : ''}, aucun dossier en attente.`
-              : 'Aucune demande en attente pour le moment.'}
-          </p>
-        </div>
-        <div className="adh-follow-toolbar-actions">
-          <div className="adh-follow-toolbar-stat" aria-label="Demandes archivées">
-            <Archive size={16} />
-            <span>{historyCount}</span>
-            <small>archivées</small>
-          </div>
-          <button
-            type="button"
-            className="adh-follow-nav"
-            onClick={() => navigate('/adherent/conventions')}
-          >
-            <FileText size={16} />
-            Catalogue
-          </button>
-        </div>
-      </section>
-
-      {!isLoading && (
-        <section className="adh-follow-metrics" aria-label="Synthèse demandes conventions">
-          <MetricCard icon={FileText} label="Total" value={counts.all} tone="info" />
-          <MetricCard icon={Clock3} label="En attente" value={counts.en_attente} tone="warning" />
-          <MetricCard icon={CheckCircle2} label="Validées" value={counts.validee} tone="success" />
-          <MetricCard icon={Archive} label="Historique" value={counts.terminee + counts.expiree + counts.annulee} tone="neutral" />
+      {!isLoading && demandesList.length > 0 && (
+        <section className="adh-follow-filters">
+          {STATUS_FILTERS.map((filter) => (
+            <button
+              key={filter.value}
+              type="button"
+              className={activeFilter === filter.value ? 'is-active' : undefined}
+              onClick={() => setActiveFilter(filter.value)}
+            >
+              <span>{filter.label}</span>
+              <strong>{counts[filter.value] ?? 0}</strong>
+            </button>
+          ))}
         </section>
       )}
 
       {isLoading ? (
         <div className="adh-demandes-list">
-          {Array.from({ length: 3 }, (_, index) => (
-            <div key={index} className="adh-demande-skeleton skeleton" />
+          {[1, 2, 3].map((item) => (
+            <div key={item} className="adh-demande-skeleton skeleton" />
           ))}
         </div>
-      ) : annotatedDemandes.length === 0 ? (
-        <section className="adh-empty-card adh-follow-empty">
-          <div className="adh-empty-icon">
-            <FileClock size={28} />
-          </div>
-          <h3>Aucune demande</h3>
-          <p>Vos prochaines demandes de conventions apparaîtront ici.</p>
-          <Button onClick={() => navigate('/adherent/conventions')}>
-            Voir les conventions disponibles
-            <ArrowRight size={14} className="adh-follow-btn-icon is-after" />
-          </Button>
-        </section>
       ) : (
         <div className="adh-demandes-list">
-          {annotatedDemandes.map(({ demande, displayStatus }) => (
+          {visibleDemandes.map(({ demande, convention, displayStatus }) => (
             <DemandeCard
               key={demande.id}
               demande={demande}
+              convention={convention}
               displayStatus={displayStatus}
-              convention={conventionMap.get(demande.conventionId)}
-              onView={() => setSelected(demande)}
-              onCancel={() => setConfirmCancel(demande)}
-              onOpenConvention={() => navigate(`/adherent/conventions/${demande.conventionId}`)}
+              onCancel={() => setDemandeToCancel(demande)}
+              onOpenConvention={() =>
+                navigate(`/adherent/conventions/${demande.conventionId}`)
+              }
             />
           ))}
         </div>
       )}
 
       <Modal
-        open={!!selected}
-        onClose={() => setSelected(null)}
-        title="Détails de la demande"
-        description={selected ? `Demande #${selected.id}` : undefined}
-        size="md"
-      >
-        {selected && (
-          <DemandeDetails
-            demande={selected}
-            displayStatus={computeDisplayStatus(selected, conventionMap.get(selected.conventionId))}
-            convention={conventionMap.get(selected.conventionId)}
-            onClose={() => setSelected(null)}
-            onOpenConvention={() => {
-              setSelected(null);
-              navigate(`/adherent/conventions/${selected.conventionId}`);
-            }}
-            onCancel={() => {
-              setSelected(null);
-              setConfirmCancel(selected);
-            }}
-          />
-        )}
-      </Modal>
-
-      <Modal
-        open={!!confirmCancel}
-        onClose={() => setConfirmCancel(null)}
+        open={!!demandeToCancel}
+        onClose={() => setDemandeToCancel(null)}
         title="Annuler la demande"
         size="sm"
         footer={
           <div className="adh-modal-actions">
-            <Button variant="secondary" onClick={() => setConfirmCancel(null)} disabled={cancelMutation.isPending}>
+            <Button
+              variant="secondary"
+              onClick={() => setDemandeToCancel(null)}
+              disabled={cancelMutation.isPending}
+            >
               Conserver
             </Button>
+
             <Button
               variant="danger"
-              onClick={() => confirmCancel && cancelMutation.mutate(confirmCancel.id)}
+              onClick={() => cancelMutation.mutate(demandeToCancel.id)}
               isLoading={cancelMutation.isPending}
             >
               <Ban size={16} className="adh-follow-btn-icon" />
@@ -279,74 +246,55 @@ export function AdherentMesDemandesConventionsPage() {
       >
         <div className="adh-confirm-copy">
           <p>
-            Confirmer l’annulation de cette demande
-            {confirmCancel?.conventionSnapshot?.fournisseurNom && (
-              <strong>{confirmCancel.conventionSnapshot.fournisseurNom}</strong>
+            Confirmer l'annulation de cette demande
+            {demandeToCancel?.conventionSnapshot?.fournisseurNom && (
+              <strong> {demandeToCancel.conventionSnapshot.fournisseurNom}</strong>
             )}
           </p>
-          <span>Vous pourrez refaire une demande plus tard si la convention reste disponible.</span>
+
+          <span>
+            Vous pourrez refaire une demande plus tard si la convention reste disponible.
+          </span>
         </div>
       </Modal>
     </div>
   );
 }
 
-interface MetricCardProps {
-  icon: typeof FileText;
-  label: string;
-  value: number;
-  tone: 'success' | 'warning' | 'info' | 'neutral';
-}
-
-function MetricCard({ icon: Icon, label, value, tone }: MetricCardProps) {
-  return (
-    <article className={`adh-follow-metric is-${tone}`}>
-      <span className="adh-follow-metric-icon">
-        <Icon size={18} />
-      </span>
-      <div>
-        <strong>{value}</strong>
-        <span>{label}</span>
-      </div>
-    </article>
-  );
-}
-
-interface DemandeCardProps {
-  demande: ConventionDemande;
-  displayStatus: DisplayStatus;
-  convention?: Convention;
-  onView: () => void;
-  onCancel: () => void;
-  onOpenConvention: () => void;
-}
-
 function DemandeCard({
   demande,
-  displayStatus,
   convention,
-  onView,
+  displayStatus,
   onCancel,
   onOpenConvention,
-}: DemandeCardProps) {
+}: any) {
   const supplier = getSupplierName(demande, convention);
+
   const type = convention?.type || demande.conventionSnapshot?.type;
+  const startDate = convention?.dateDebut || demande.conventionSnapshot?.dateDebut;
+  const endDate = convention?.dateFin || demande.conventionSnapshot?.dateFin;
+
   const canCancel = displayStatus === 'en_attente';
 
   return (
     <article className={`adh-demande-card status-${displayStatus}`}>
       <header className="adh-demande-card-head">
         <div className="adh-demande-identity">
-          <span className="adh-demande-avatar">{getInitials(supplier)}</span>
-          <div>
-            <span className="adh-demande-reference">Demande #{demande.id}</span>
-            <h3>{supplier}</h3>
+          <div className="adh-demande-title-group">
+            <div className="adh-demande-title-row">
+              <h3>{supplier}</h3>
+            </div>
+
             <div className="adh-demande-meta">
+              <span>Demande #{demande.id}</span>
+
               {type && <span>{CONV_TYPE_LABEL[type]}</span>}
+
               <span>Envoyée le {formatDate(demande.dateDemande)}</span>
             </div>
           </div>
         </div>
+
         <StatusBadge
           status={displayStatus}
           tone={DISPLAY_STATUS_VARIANT[displayStatus]}
@@ -354,21 +302,50 @@ function DemandeCard({
         />
       </header>
 
-      <DemandeStatusMessage demande={demande} displayStatus={displayStatus} convention={convention} />
+      <div className="adh-demande-clean-details">
+        {startDate && endDate && (
+          <div className="clean-detail-row">
+            <span className="clean-detail-label">Période :</span>
+            <span className="clean-detail-value">
+              {formatDate(startDate)} au {formatDate(endDate)}
+            </span>
+          </div>
+        )}
+
+        <div className="clean-detail-row">
+          <span className="clean-detail-label">Suivi :</span>
+          <span className="clean-detail-value">
+            {demande.dateDecision
+              ? `Décision le ${formatDate(demande.dateDecision)}`
+              : 'En cours de traitement'}
+          </span>
+        </div>
+      </div>
+
+      <StatusMessage
+        demande={demande}
+        convention={convention}
+        displayStatus={displayStatus}
+      />
 
       <footer className="adh-demande-actions">
-        <Button variant="secondary" size="sm" onClick={onView}>
-          <Eye size={14} className="adh-follow-btn-icon" />
-          Détails
+        <Button
+          variant="primary"
+          size="sm"
+          onClick={onOpenConvention}
+          className="adh-btn-elevated"
+        >
+          Ouvrir la convention
         </Button>
-        <Button variant="ghost" size="sm" onClick={onOpenConvention}>
-          <FileText size={14} className="adh-follow-btn-icon" />
-          Convention
-        </Button>
+
         {canCancel && (
-          <Button variant="danger" size="sm" onClick={onCancel}>
-            <Ban size={14} className="adh-follow-btn-icon" />
-            Annuler
+          <Button
+            variant="danger"
+            size="sm"
+            onClick={onCancel}
+            className="adh-btn-elevated-danger"
+          >
+            Annuler la demande
           </Button>
         )}
       </footer>
@@ -376,242 +353,72 @@ function DemandeCard({
   );
 }
 
-function DemandeStatusMessage({
-  demande,
-  displayStatus,
-  convention,
-}: {
-  demande: ConventionDemande;
-  displayStatus: DisplayStatus;
-  convention?: Convention;
-}) {
+function StatusMessage({ demande, convention, displayStatus }: any) {
   if (displayStatus === 'validee') {
-    return <ValidatedMessage demande={demande} convention={convention} />;
+    return (
+      <div className="adh-demande-message is-success">
+        <CheckCircle2 size={16} />
+        <div>
+          <strong>Demande validée.</strong>
+          <span>
+            Convention active
+            {demande.dateDecision
+              ? ` depuis le ${formatDate(demande.dateDecision)}.`
+              : '.'}
+          </span>
+        </div>
+      </div>
+    );
   }
 
-  const config: Record<Exclude<DisplayStatus, 'validee'>, {
-    icon: typeof Clock3;
-    tone: 'info' | 'success' | 'warning' | 'error' | 'neutral';
-    title: string;
-    body?: ReactNode;
-  }> = {
+  const messages: any = {
     en_attente: {
-      icon: Clock3,
+      Icon: Clock3,
       tone: 'info',
       title: 'Demande en cours de traitement.',
     },
     refusee: {
-      icon: AlertCircle,
+      Icon: AlertCircle,
       tone: 'error',
       title: 'Demande refusée.',
-      body: demande.motifRefus ? `Motif : ${demande.motifRefus}` : 'Aucun motif précisé.',
+      body: demande.motifRefus
+        ? `Motif : ${demande.motifRefus}`
+        : 'Aucun motif précisé.',
     },
     annulee: {
-      icon: Ban,
+      Icon: Ban,
       tone: 'neutral',
       title: 'Demande annulée.',
     },
     terminee: {
-      icon: Archive,
+      Icon: Archive,
       tone: 'success',
       title: 'Convention terminée.',
-      body: convention?.dateFin ? `Fin le ${formatDate(convention.dateFin)}.` : undefined,
+      body: convention?.dateFin ? `Fin le ${formatDate(convention.dateFin)}.` : null,
     },
     expiree: {
-      icon: CalendarX,
+      Icon: CalendarX,
       tone: 'warning',
       title: 'Convention expirée avant traitement.',
-      body: convention?.dateFin ? `Échéance : ${formatDate(convention.dateFin)}.` : undefined,
+      body: convention?.dateFin
+        ? `Échéance : ${formatDate(convention.dateFin)}.`
+        : null,
     },
   };
 
-  const item = config[displayStatus];
-  const Icon = item.icon;
+  const message = messages[displayStatus];
+
+  if (!message) return null;
+
+  const { Icon, tone, title, body } = message;
 
   return (
-    <div className={`adh-demande-message is-${item.tone}`}>
+    <div className={`adh-demande-message is-${tone}`}>
       <Icon size={16} />
       <div>
-        <strong>{item.title}</strong>
-        {item.body && <span>{item.body}</span>}
+        <strong>{title}</strong>
+        {body && <span>{body}</span>}
       </div>
     </div>
   );
-}
-
-function ValidatedMessage({ demande, convention }: { demande: ConventionDemande; convention?: Convention }) {
-  const total = demande.nbTranchesSnapshot ?? convention?.nbTranches;
-  const offerAmount = demande.montantOffreSnapshot ?? convention?.montantOffre;
-  const paid = demande.tranchesPayees ?? 0;
-  const hasSchedule = !!total && !!offerAmount && total > 0;
-  const monthly = hasSchedule ? offerAmount / total : 0;
-  const remainingCount = hasSchedule ? Math.max(0, total - paid) : 0;
-  const remainingAmount = remainingCount * monthly;
-  const progress = hasSchedule ? Math.min(100, Math.round((paid / total) * 100)) : 0;
-
-  return (
-    <div className="adh-demande-message is-success">
-      <CheckCircle2 size={16} />
-      <div>
-        <strong>Demande validée.</strong>
-        <span>
-          Convention active
-          {demande.dateDecision ? ` depuis le ${formatDate(demande.dateDecision)}.` : '.'}
-        </span>
-
-        {hasSchedule && (
-          <div className="adh-demande-schedule">
-            <div className="adh-demande-schedule-head">
-              <strong>{paid} / {total} tranches payées</strong>
-              <span>{remainingCount > 0 ? `Reste ${formatCurrency(remainingAmount)}` : 'Soldée'}</span>
-            </div>
-            <progress
-              className="adh-demande-progress"
-              value={progress}
-              max={100}
-              aria-label="Progression des tranches"
-            />
-            <small>Mensualité : {formatCurrency(monthly)} prélevée sur la paie</small>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-interface DemandeDetailsProps {
-  demande: ConventionDemande;
-  displayStatus: DisplayStatus;
-  convention?: Convention;
-  onClose: () => void;
-  onOpenConvention: () => void;
-  onCancel: () => void;
-}
-
-function DemandeDetails({
-  demande,
-  displayStatus,
-  convention,
-  onClose,
-  onOpenConvention,
-  onCancel,
-}: DemandeDetailsProps) {
-  const type = convention?.type || demande.conventionSnapshot?.type;
-  const startDate = convention?.dateDebut || demande.conventionSnapshot?.dateDebut;
-  const endDate = convention?.dateFin || demande.conventionSnapshot?.dateFin;
-  const avantage = getConventionAvantageSummary({
-    typeAvantage: demande.typeAvantage ?? convention?.typeAvantage,
-    remise: convention?.remise ?? demande.conventionSnapshot?.remise,
-    avantage: convention?.avantage ?? demande.conventionSnapshot?.avantage,
-    montantAvantage: demande.montantAvantage ?? convention?.montantAvantage,
-    pourcentageAdherent: demande.pourcentageAdherent ?? convention?.pourcentageAdherent,
-    nombreMoisRetenue: demande.nombreMoisRetenue ?? convention?.nombreMoisRetenue,
-    montantTotal: demande.montantTotal,
-    montantAdherent: demande.montantAdherent,
-    montantAmicale: demande.montantAmicale,
-    retenueNombreMois: demande.retenueNombreMois,
-    retenueMontantMensuel: demande.retenueMontantMensuel,
-  });
-
-  return (
-    <div className="adh-demande-detail">
-      <div className="adh-demande-detail-grid">
-        <DetailItem label="Fournisseur" value={getSupplierName(demande, convention)} />
-        {type && <DetailItem label="Type" value={CONV_TYPE_LABEL[type]} />}
-        <DetailItem label="Date de demande" value={formatDate(demande.dateDemande)} />
-        {demande.dateDecision && <DetailItem label="Date de décision" value={formatDate(demande.dateDecision)} />}
-        <DetailItem label="Avantage" value={avantage.title} highlight />
-        {avantage.rows
-          .filter((row) => row.label !== "Type d'avantage")
-          .map((row) => <DetailItem key={row.label} label={row.label} value={row.value} />)}
-        {startDate && endDate && <DetailItem label="Validité" value={`${formatDate(startDate)} - ${formatDate(endDate)}`} />}
-        <div className="adh-demande-detail-item">
-          <span>Statut</span>
-          <strong>
-            <StatusBadge
-              status={displayStatus}
-              tone={DISPLAY_STATUS_VARIANT[displayStatus]}
-              label={DISPLAY_STATUS_LABEL[displayStatus]}
-            />
-          </strong>
-        </div>
-      </div>
-
-      <DemandeStatusMessage demande={demande} displayStatus={displayStatus} convention={convention} />
-
-      {demande.commentaire && (
-        <section className="adh-demande-section">
-          <h4>Votre commentaire</h4>
-          <p>{demande.commentaire}</p>
-        </section>
-      )}
-
-      {demande.documentNom && (
-        <section className="adh-demande-section">
-          <h4>Document fourni</h4>
-          <p>
-            <FileText size={14} />
-            {demande.documentNom}
-          </p>
-        </section>
-      )}
-
-      <div className="adh-modal-actions">
-        {displayStatus === 'en_attente' && (
-          <Button variant="danger" size="sm" onClick={onCancel}>
-            <Ban size={14} className="adh-follow-btn-icon" />
-            Annuler
-          </Button>
-        )}
-        {displayStatus === 'refusee' && convention && (
-          <Button variant="secondary" size="sm" onClick={onOpenConvention}>
-            <RotateCcw size={14} className="adh-follow-btn-icon" />
-            Refaire une demande
-          </Button>
-        )}
-        <Button variant="secondary" size="sm" onClick={onOpenConvention}>
-          Voir la convention
-        </Button>
-        <Button size="sm" onClick={onClose}>Fermer</Button>
-      </div>
-    </div>
-  );
-}
-
-function DetailItem({ label, value, highlight = false }: { label: string; value: ReactNode; highlight?: boolean }) {
-  return (
-    <div className={`adh-demande-detail-item ${highlight ? 'is-highlight' : ''}`}>
-      <span>{label}</span>
-      <strong>{value}</strong>
-    </div>
-  );
-}
-
-function getSupplierName(demande: ConventionDemande, convention?: Convention) {
-  return convention?.fournisseurNom || demande.conventionSnapshot?.fournisseurNom || 'Fournisseur';
-}
-
-function getInitials(value: string) {
-  return value
-    .split(/\s+/)
-    .map((part) => part[0])
-    .filter(Boolean)
-    .slice(0, 2)
-    .join('')
-    .toUpperCase();
-}
-
-function formatDate(iso: string) {
-  return new Intl.DateTimeFormat('fr-FR', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-  }).format(new Date(iso));
-}
-
-function formatCurrency(value: number) {
-  return new Intl.NumberFormat('fr-FR', {
-    style: 'currency',
-    currency: 'TND',
-  }).format(value);
 }

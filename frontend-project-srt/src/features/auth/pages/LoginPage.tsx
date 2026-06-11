@@ -1,7 +1,7 @@
-import { useState, type FormEvent } from 'react';
+import {useState, type FormEvent } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { Mail } from 'lucide-react';
-import { useAuth } from '../hooks/useAuth';
+import { useAuth } from '../hooks/useAuth'; 
 import { ApiError } from '../../../shared/api/apiClient';
 import { AuthLayout } from '../components/AuthLayout';
 import { FormInput } from '../../../shared/ui/FormInput';
@@ -64,7 +64,7 @@ export function LoginPage() {
   }
 
   return (
-    <AuthLayout>
+    <AuthLayout heroImage="login2">
       <div className="auth-page">
         <h1 className="auth-title text-gradient-link">Connexion</h1>
 

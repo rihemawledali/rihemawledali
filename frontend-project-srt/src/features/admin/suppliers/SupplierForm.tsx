@@ -4,14 +4,6 @@ import { supplierSchema, type SupplierFormValues } from '../../../shared/validat
 import { FormInput } from '../../../shared/ui/FormInput';
 import { FormSelect } from '../../../shared/ui/FormSelect';
 import { Button } from '../../../shared/ui/Button';
-import type { Fournisseur } from '../../../shared/types/domain';
-
-interface Props {
-  initial?: Fournisseur;
-  onSubmit: (v: SupplierFormValues) => Promise<unknown> | void;
-  onCancel: () => void;
-  submitting?: boolean;
-}
 
 const CATEGORIES = [
   { value: 'sante', label: 'Santé' },
@@ -22,7 +14,7 @@ const CATEGORIES = [
   { value: 'education', label: 'Éducation' },
 ];
 
-export function SupplierForm({ initial, onSubmit, onCancel, submitting }: Props) {
+export function SupplierForm({ initial, onSubmit, onCancel, submitting }: any) {
   const { register, handleSubmit, formState: { errors } } = useForm<SupplierFormValues>({
     resolver: zodResolver(supplierSchema),
     defaultValues: initial ?? { nom: '', adresse: '', telephone: '', email: '', categorie: 'commerce', status: 'actif' },
@@ -45,7 +37,7 @@ export function SupplierForm({ initial, onSubmit, onCancel, submitting }: Props)
         options={[{ value: 'actif', label: 'Actif' }, { value: 'inactif', label: 'Inactif' }]}
         error={errors.status?.message}
       />
-      <div className="form-grid-full" style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-3)' }}>
+      <div className="form-grid-full admin-form-actions">
         <Button type="button" variant="secondary" onClick={onCancel} disabled={submitting}>Annuler</Button>
         <Button type="submit" isLoading={submitting}>{initial ? 'Mettre à jour' : 'Créer'}</Button>
       </div>

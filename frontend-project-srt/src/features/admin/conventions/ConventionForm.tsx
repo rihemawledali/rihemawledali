@@ -6,15 +6,8 @@ import { FormInput } from '../../../shared/ui/FormInput';
 import { FormSelect } from '../../../shared/ui/FormSelect';
 import { FormTextarea } from '../../../shared/ui/FormTextarea';
 import { Button } from '../../../shared/ui/Button';
-import { suppliersApi } from '../suppliers/suppliersApi';
-import type { Convention, TypeAvantage } from '../../../shared/types/domain';
-
-interface Props {
-  initial?: Convention;
-  onSubmit: (v: ConventionFormValues) => Promise<unknown> | void;
-  onCancel: () => void;
-  submitting?: boolean;
-}
+import { suppliersApi } from '../../../shared/api/suppliersApi';
+import type { TypeAvantage } from '../../../shared/types/domain';
 
 const TYPES = [
   { value: 'sante', label: 'Sante' },
@@ -32,7 +25,7 @@ const TYPE_AVANTAGE_OPTIONS: { value: TypeAvantage; label: string }[] = [
   { value: 'ABONNEMENT', label: 'Abonnement' },
 ];
 
-export function ConventionForm({ initial, onSubmit, onCancel, submitting }: Props) {
+export function ConventionForm({ initial, onSubmit, onCancel, submitting }: any) {
   const suppliers = useQuery({
     queryKey: ['suppliers', 'all-options'],
     queryFn: () => suppliersApi.list({ page: 1, size: 200 }),
@@ -110,7 +103,7 @@ export function ConventionForm({ initial, onSubmit, onCancel, submitting }: Prop
       <FormInput label="Date debut" type="date" {...register('dateDebut')} error={errors.dateDebut?.message} />
       <FormInput label="Date fin" type="date" {...register('dateFin')} error={errors.dateFin?.message} />
 
-      <div className="form-grid-full" style={{ borderTop: '1px solid var(--color-border)', paddingTop: 'var(--space-4)' }}>
+      <div className="form-grid-full admin-form-section">
         <FormSelect
           label="Type d'avantage"
           {...register('typeAvantage')}
@@ -158,7 +151,7 @@ export function ConventionForm({ initial, onSubmit, onCancel, submitting }: Prop
         {...register('quantiteDisponible', { valueAsNumber: true })}
         error={errors.quantiteDisponible?.message}
       />
-      <label style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', color: 'var(--color-text-secondary)' }}>
+      <label className="admin-checkbox-row">
         <input type="checkbox" {...register('autoriseAyantsDroit')} />
         Autoriser les ayants droit
       </label>
@@ -166,7 +159,7 @@ export function ConventionForm({ initial, onSubmit, onCancel, submitting }: Prop
       <div className="form-grid-full">
         <FormTextarea label="Description (optionnel)" rows={3} {...register('description')} error={errors.description?.message} />
       </div>
-      <div className="form-grid-full" style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-3)' }}>
+      <div className="form-grid-full admin-form-actions">
         <Button type="button" variant="secondary" onClick={onCancel} disabled={submitting}>Annuler</Button>
         <Button type="submit" isLoading={submitting}>{initial ? 'Mettre a jour' : 'Creer'}</Button>
       </div>

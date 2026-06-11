@@ -1,0 +1,321 @@
+.adh-account-page {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.adh-account-kicker {
+  display: block;
+  margin-bottom: 5px;
+  color: var(--adh-text-3);
+  font-size: 0.72rem;
+  font-weight: 760;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.adh-account-btn-icon {
+  margin-right: 7px;
+  flex-shrink: 0;
+}
+
+.adh-account-section-card,
+.adh-loan-active-card {
+  border: 1px solid var(--adh-border);
+  border-radius: 14px;
+  background: var(--adh-surface);
+  box-shadow: var(--adh-shadow-xs);
+}
+
+.adh-account-section-card {
+  overflow: hidden;
+}
+
+.adh-account-section-head,
+.adh-loan-active-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.adh-account-section-head {
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--adh-border);
+}
+
+.adh-account-section-head h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  color: var(--adh-text-1);
+  font-size: 0.98rem;
+  font-weight: 770;
+}
+
+.adh-account-section-head p {
+  margin: 5px 0 0;
+  color: var(--adh-text-3);
+  font-size: 0.8rem;
+}
+
+.adh-account-metric-skeleton {
+  height: 86px;
+  border-radius: 12px;
+}
+
+.adh-account-table-skeleton {
+  height: 310px;
+  border-radius: 14px;
+}
+
+.adh-loan-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.adh-loan-metric {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  min-height: 84px;
+  padding: 15px;
+  border: 1px solid var(--adh-border);
+  border-radius: 12px;
+  background: var(--adh-surface);
+  box-shadow: var(--adh-shadow-xs);
+}
+
+.adh-loan-metric-icon {
+  width: 42px;
+  height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border-radius: 11px;
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.adh-loan-metric.is-success .adh-loan-metric-icon {
+  background: #f0fdf4;
+  color: #15803d;
+}
+
+.adh-loan-metric.is-warning .adh-loan-metric-icon {
+  background: #fffbeb;
+  color: #b45309;
+}
+
+.adh-loan-metric strong {
+  display: block;
+  color: var(--adh-text-1);
+  font-size: 1.22rem;
+  font-weight: 800;
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
+}
+
+.adh-loan-metric span:last-child {
+  display: block;
+  margin-top: 5px;
+  color: var(--adh-text-2);
+  font-size: 0.78rem;
+  font-weight: 650;
+}
+
+.adh-loan-active-card {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 18px;
+  background:
+    linear-gradient(135deg, rgba(239, 246, 255, 0.72), rgba(255, 255, 255, 0.96) 42%, rgba(240, 253, 244, 0.62)),
+    var(--adh-surface);
+}
+
+.adh-loan-active-head > div {
+  min-width: 0;
+}
+
+.adh-loan-active-head h2 {
+  margin: 0;
+  color: var(--adh-text-1);
+  font-size: 1.26rem;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.adh-loan-active-head p {
+  margin: 5px 0 0;
+  color: var(--adh-text-2);
+  font-size: 0.86rem;
+}
+
+.adh-loan-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.adh-loan-detail {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-width: 0;
+  padding: 13px;
+  border: 1px solid var(--adh-border);
+  border-radius: 12px;
+  background: var(--adh-surface-2);
+}
+
+.adh-loan-detail > span {
+  width: 34px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border-radius: 9px;
+  background: #ffffff;
+  color: var(--adh-accent);
+}
+
+.adh-loan-detail div {
+  min-width: 0;
+}
+
+.adh-loan-detail small {
+  display: block;
+  color: var(--adh-text-3);
+  font-size: 0.7rem;
+  font-weight: 730;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.adh-loan-detail strong {
+  display: block;
+  margin-top: 4px;
+  color: var(--adh-text-1);
+  font-size: 0.86rem;
+  font-weight: 740;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.adh-loan-schedule-modal {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.adh-loan-schedule-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.adh-loan-schedule-table {
+  overflow-x: auto;
+  border: 1px solid var(--adh-border);
+  border-radius: 12px;
+}
+
+.adh-schedule {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.adh-schedule th,
+.adh-schedule td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--adh-border);
+  white-space: nowrap;
+}
+
+.adh-schedule th {
+  color: var(--adh-text-3);
+  font-size: 0.72rem;
+  font-weight: 730;
+  letter-spacing: 0;
+  text-align: left;
+  text-transform: uppercase;
+}
+
+.adh-schedule td.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.adh-schedule tr.is-paid td {
+  color: var(--adh-text-3);
+}
+
+.adh-schedule tr.is-paid td.num {
+  color: var(--adh-text-2);
+}
+
+.adh-schedule-status {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 0 8px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.adh-schedule-status.paid {
+  background: #f0fdf4;
+  color: #15803d;
+}
+
+.adh-schedule-status.pending {
+  background: #fffbeb;
+  color: #b45309;
+}
+
+.adh-schedule-status.generated {
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.adh-schedule-status.cancelled {
+  background: #f8fafc;
+  color: #64748b;
+}
+
+.adh-loan-schedule-table .adh-schedule th:nth-child(n + 3),
+.adh-loan-schedule-table .adh-schedule td:nth-child(n + 3):not(:last-child) {
+  text-align: right;
+}
+
+@media (max-width: 1180px) {
+  .adh-loan-detail-grid,
+  .adh-loan-schedule-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .adh-account-page {
+    gap: 14px;
+  }
+
+  .adh-loan-active-head,
+  .adh-account-section-head {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .adh-loan-detail-grid,
+  .adh-loan-metrics,
+  .adh-loan-schedule-metrics {
+    grid-template-columns: 1fr;
+  }
+}

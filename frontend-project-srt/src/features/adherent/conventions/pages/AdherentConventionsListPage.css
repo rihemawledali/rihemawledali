@@ -1,172 +1,23 @@
 .adh-conventions-page {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 16px;
 }
 
-.adh-conventions-hero {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: end;
-  gap: 20px;
-  padding: 22px;
-  border: 1px solid var(--adh-border);
-  border-radius: 14px;
-  background:
-    linear-gradient(135deg, rgba(239, 246, 255, 0.92), rgba(255, 255, 255, 0.96) 46%, rgba(240, 253, 244, 0.7)),
-    var(--adh-surface);
-  box-shadow: var(--adh-shadow-xs);
-}
-
-.adh-conventions-hero-main {
-  min-width: 0;
-}
-
-.adh-conventions-eyebrow {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  margin-bottom: 10px;
-  color: #2563eb;
-  font-size: 0.75rem;
-  font-weight: 700;
-  letter-spacing: 0;
-  text-transform: uppercase;
-}
-
-.adh-conventions-hero h2 {
-  margin: 0;
-  color: var(--adh-text-1);
-  font-size: 1.45rem;
-  font-weight: 750;
-  line-height: 1.2;
-  letter-spacing: 0;
-}
-
-.adh-conventions-hero p {
-  max-width: 640px;
-  margin: 8px 0 0;
-  color: var(--adh-text-2);
-  font-size: 0.92rem;
-  line-height: 1.55;
-}
-
-.adh-conventions-hero-actions {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.adh-conventions-nav-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  min-height: 40px;
-  padding: 0 14px;
-  border: 1px solid rgba(37, 99, 235, 0.18);
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.86);
-  color: var(--adh-text-1);
-  font: inherit;
-  font-size: 0.82rem;
-  font-weight: 650;
-  cursor: pointer;
-  box-shadow: var(--adh-shadow-xs);
-  transition: border-color 150ms ease, background 150ms ease, transform 150ms ease;
-}
-
-.adh-conventions-nav-btn:hover {
-  border-color: rgba(37, 99, 235, 0.36);
-  background: #ffffff;
-  transform: translateY(-1px);
-}
-
-.adh-conventions-nav-btn svg {
-  color: #2563eb;
-  flex-shrink: 0;
-}
-
-.adh-conventions-summary {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
-}
-
-.adh-conventions-summary-card {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-width: 0;
-  min-height: 78px;
-  padding: 14px;
-  border: 1px solid var(--adh-border);
-  border-radius: 12px;
-  background: var(--adh-surface);
-  box-shadow: var(--adh-shadow-xs);
-}
-
-.adh-conventions-summary-icon {
-  width: 40px;
-  height: 40px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  border-radius: 10px;
-  color: var(--adh-text-1);
-  background: var(--adh-surface-2);
-}
-
-.adh-conventions-summary-card.is-success .adh-conventions-summary-icon {
-  color: #15803d;
-  background: #f0fdf4;
-}
-
-.adh-conventions-summary-card.is-warning .adh-conventions-summary-icon {
-  color: #b45309;
-  background: #fffbeb;
-}
-
-.adh-conventions-summary-card.is-info .adh-conventions-summary-icon {
-  color: #1d4ed8;
-  background: #eff6ff;
-}
-
-.adh-conventions-summary-card.is-danger .adh-conventions-summary-icon {
-  color: #b91c1c;
-  background: #fef2f2;
-}
-
-.adh-conventions-summary-card strong {
-  display: block;
-  color: var(--adh-text-1);
-  font-size: 1.25rem;
-  line-height: 1;
-  font-weight: 750;
-  font-variant-numeric: tabular-nums;
-}
-
-.adh-conventions-summary-card span:last-child {
-  display: block;
-  margin-top: 5px;
-  color: var(--adh-text-2);
-  font-size: 0.78rem;
-  font-weight: 600;
+.adh-conventions-page .page-header {
+  margin-bottom: 2px;
 }
 
 .adh-conventions-filters {
   display: grid;
-  grid-template-columns: minmax(260px, 1fr) auto auto;
+  grid-template-columns: minmax(300px, 1fr) auto auto;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   padding: 12px;
   border: 1px solid var(--adh-border);
   border-radius: 12px;
-  background: var(--adh-surface);
-  box-shadow: var(--adh-shadow-xs);
+  background: #ffffff;
+  box-shadow: none;
 }
 
 .adh-conventions-search {
@@ -174,11 +25,11 @@
   align-items: center;
   gap: 8px;
   min-width: 0;
-  height: 40px;
-  padding: 0 12px;
+  height: 38px;
+  padding: 0 13px;
   border: 1px solid var(--adh-border);
-  border-radius: 10px;
-  background: var(--adh-surface-2);
+  border-radius: 9px;
+  background: #f8fafc;
   color: var(--adh-text-3);
   transition: border-color 150ms ease, background 150ms ease, box-shadow 150ms ease;
 }
@@ -227,16 +78,16 @@
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 8px;
+  gap: 7px;
   flex-wrap: wrap;
 }
 
 .adh-conventions-select {
-  min-width: 150px;
-  height: 40px;
+  min-width: 144px;
+  height: 38px;
   padding: 0 34px 0 12px;
   border: 1px solid var(--adh-border);
-  border-radius: 10px;
+  border-radius: 9px;
   appearance: none;
   background-color: #ffffff;
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%238a92a6' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='m6 9 6 6 6-6'/></svg>");
@@ -274,7 +125,7 @@
   align-items: end;
   justify-content: space-between;
   gap: 14px;
-  padding: 2px 2px 0;
+  padding: 0 2px;
 }
 
 .adh-conventions-results-kicker {
@@ -303,13 +154,13 @@
 
 .adh-conventions-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(310px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(286px, 1fr));
+  gap: 14px;
 }
 
 .adh-conventions-skeleton {
-  height: 360px;
-  border-radius: 14px;
+  height: 320px;
+  border-radius: 10px;
 }
 
 .adh-conventions-empty {
@@ -322,22 +173,21 @@
   min-width: 0;
   overflow: hidden;
   border: 1px solid var(--adh-border);
-  border-radius: 14px;
+  border-radius: 10px;
   background: var(--adh-surface);
-  box-shadow: var(--adh-shadow-xs);
-  transition: border-color 150ms ease, box-shadow 150ms ease, transform 150ms ease;
+  box-shadow: none;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
 }
 
 .adh-convention-card:hover {
   border-color: var(--adh-border-strong);
-  box-shadow: var(--adh-shadow-sm);
-  transform: translateY(-1px);
+  box-shadow: 0 10px 26px -24px rgba(15, 23, 42, 0.45);
 }
 
 .adh-convention-cover {
   position: relative;
-  min-height: 160px;
-  aspect-ratio: 16 / 8.7;
+  min-height: 126px;
+  aspect-ratio: 16 / 7.6;
   overflow: hidden;
   border-bottom: 1px solid var(--adh-border);
   background: #f8fafc;
@@ -355,11 +205,7 @@
   z-index: 1;
   object-fit: cover;
   display: block;
-  transition: transform 240ms ease, opacity 150ms ease;
-}
-
-.adh-convention-card:hover .adh-convention-cover img {
-  transform: scale(1.025);
+  transition: opacity 150ms ease;
 }
 
 .adh-convention-cover img.is-hidden {
@@ -376,32 +222,32 @@
 
 .adh-convention-cover.tone-success .adh-convention-cover-fallback {
   color: #15803d;
-  background: linear-gradient(135deg, #f0fdf4, #ffffff);
+  background: #f7fdf9;
 }
 
 .adh-convention-cover.tone-primary .adh-convention-cover-fallback {
   color: #1d4ed8;
-  background: linear-gradient(135deg, #eff6ff, #ffffff);
+  background: #f7faff;
 }
 
 .adh-convention-cover.tone-warning .adh-convention-cover-fallback {
   color: #b45309;
-  background: linear-gradient(135deg, #fffbeb, #ffffff);
+  background: #fffaf0;
 }
 
 .adh-convention-cover.tone-error .adh-convention-cover-fallback {
   color: #b91c1c;
-  background: linear-gradient(135deg, #fef2f2, #ffffff);
+  background: #fff7f7;
 }
 
 .adh-convention-cover.tone-info .adh-convention-cover-fallback {
   color: #0e7490;
-  background: linear-gradient(135deg, #ecfeff, #ffffff);
+  background: #f4fdff;
 }
 
 .adh-convention-cover.tone-violet .adh-convention-cover-fallback {
   color: #6d28d9;
-  background: linear-gradient(135deg, #f5f3ff, #ffffff);
+  background: #faf8ff;
 }
 
 .adh-convention-cover-top {
@@ -422,17 +268,17 @@
   gap: 6px;
   min-width: 0;
   max-width: 58%;
-  min-height: 28px;
-  padding: 0 10px;
+  min-height: 26px;
+  padding: 0 9px;
   border: 1px solid rgba(15, 23, 42, 0.08);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.94);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.92);
   color: var(--adh-text-1);
-  font-size: 0.72rem;
-  font-weight: 750;
+  font-size: 0.7rem;
+  font-weight: 700;
   letter-spacing: 0;
   text-transform: uppercase;
-  box-shadow: 0 8px 20px -16px rgba(15, 23, 42, 0.5);
+  box-shadow: none;
 }
 
 .adh-convention-type svg {
@@ -448,30 +294,35 @@
 .adh-convention-discount {
   position: absolute;
   z-index: 2;
-  right: 12px;
-  bottom: 12px;
+  left: 12px;
+  right: auto;
+  bottom: 10px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 70px;
-  min-height: 38px;
-  padding: 0 12px;
-  border-radius: 10px;
-  background: #16a34a;
-  color: #ffffff;
-  font-size: 1.08rem;
-  font-weight: 800;
+  min-width: 0;
+  max-width: calc(100% - 24px);
+  min-height: 30px;
+  padding: 0 10px;
+  border: 1px solid rgba(22, 101, 52, 0.18);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.94);
+  color: #166534;
+  font-size: 0.74rem;
+  font-weight: 760;
+  line-height: 1.2;
+  text-align: center;
   font-variant-numeric: tabular-nums;
-  box-shadow: 0 10px 24px -12px rgba(22, 163, 74, 0.62);
+  box-shadow: none;
 }
 
 .adh-convention-body {
   display: flex;
   flex: 1;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
   min-width: 0;
-  padding: 16px;
+  padding: 14px;
 }
 
 .adh-convention-heading {
@@ -481,18 +332,18 @@
 .adh-convention-heading h3 {
   margin: 0;
   color: var(--adh-text-1);
-  font-size: 1rem;
+  font-size: 0.96rem;
   line-height: 1.25;
-  font-weight: 750;
+  font-weight: 720;
   overflow-wrap: anywhere;
 }
 
 .adh-convention-heading p {
   margin: 5px 0 0;
   color: #15803d;
-  font-size: 0.82rem;
+  font-size: 0.8rem;
   line-height: 1.45;
-  font-weight: 700;
+  font-weight: 650;
 }
 
 .adh-convention-description,
@@ -529,9 +380,9 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  min-height: 34px;
+  min-height: 32px;
   margin-top: auto;
-  padding-top: 11px;
+  padding-top: 10px;
   border-top: 1px solid var(--adh-border);
   color: var(--adh-text-3);
   font-size: 0.78rem;
@@ -559,10 +410,10 @@
   align-items: center;
   gap: 8px;
   align-self: flex-start;
-  min-height: 30px;
-  padding: 0 10px;
+  min-height: 28px;
+  padding: 0 9px;
   border: 1px solid #fde68a;
-  border-radius: 9px;
+  border-radius: 8px;
   background: #fffbeb;
   color: #92400e;
   font-size: 0.76rem;
@@ -576,7 +427,7 @@
 .adh-convention-actions {
   display: grid;
   grid-template-columns: minmax(110px, 0.8fr) minmax(130px, 1fr);
-  gap: 8px;
+  gap: 7px;
 }
 
 .adh-convention-actions .btn {
@@ -593,19 +444,14 @@
 }
 
 @media (max-width: 1180px) {
-  .adh-conventions-hero,
   .adh-conventions-filters {
     grid-template-columns: 1fr;
   }
 
-  .adh-conventions-hero-actions,
   .adh-conventions-selects {
     justify-content: flex-start;
   }
 
-  .adh-conventions-summary {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
 }
 
 @media (max-width: 760px) {
@@ -613,26 +459,12 @@
     gap: 14px;
   }
 
-  .adh-conventions-hero {
-    padding: 18px;
-  }
-
-  .adh-conventions-hero h2 {
-    font-size: 1.22rem;
-  }
-
-  .adh-conventions-hero-actions,
   .adh-conventions-selects {
     width: 100%;
   }
 
-  .adh-conventions-nav-btn,
   .adh-conventions-select {
     width: 100%;
-  }
-
-  .adh-conventions-summary {
-    grid-template-columns: 1fr;
   }
 
   .adh-conventions-filters {

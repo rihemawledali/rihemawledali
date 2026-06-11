@@ -4,7 +4,7 @@
 
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Wallet, ArrowDownToLine, ArrowUpFromLine, Building2, Plus, Pencil, Trash2, PiggyBank } from 'lucide-react';
+import { Wallet, ArrowDownToLine, ArrowUpFromLine, Building2, Plus, Trash2, PiggyBank } from 'lucide-react';
 import { PageHeader } from '../../../shared/layout/PageHeader';
 import { StatCard } from '../../../shared/charts/StatCard';
 import { ChartCard } from '../../../shared/charts/ChartCard';
@@ -33,7 +33,6 @@ export function TreasurerTresoreriePage() {
   const cashflow = useQuery({ queryKey: ['treasurer', 'cashflow'], queryFn: treasurerApi.getCashflow });
 
   const [creating, setCreating] = useState(false);
-  const [editing, setEditing] = useState<CompteBancaire | null>(null);
   const [deleting, setDeleting] = useState<CompteBancaire | null>(null);
   const [depositing, setDepositing] = useState<CompteBancaire | null>(null);
 
@@ -57,17 +56,6 @@ export function TreasurerTresoreriePage() {
       toast.push({ title: 'Compte bancaire créé', variant: 'success' });
     },
     onError: toastError('Création impossible.'),
-  });
-
-  const updateMut = useMutation({
-    mutationFn: ({ id, v }: { id: string; v: CompteBancaireFormValues }) =>
-      treasurerTresorerieApi.updateCompte(id, v),
-    onSuccess: () => {
-      setEditing(null);
-      invalidate();
-      toast.push({ title: 'Compte mis à jour', variant: 'success' });
-    },
-    onError: toastError('Mise à jour impossible.'),
   });
 
   const deleteMut = useMutation({
@@ -101,7 +89,7 @@ export function TreasurerTresoreriePage() {
     {
       key: 'iban',
       header: 'IBAN',
-      cell: (c) => <span style={{ fontFamily: 'var(--font-family-mono, monospace)' }}>{c.iban}</span>,
+      cell: (c) => <span className="cell-mono">{c.iban}</span>,
     },
     {
       key: 'devise',
@@ -113,7 +101,7 @@ export function TreasurerTresoreriePage() {
       key: 'solde',
       header: 'Solde',
       cell: (c) => (
-        <strong style={{ color: c.solde >= 0 ? 'var(--color-success-700)' : 'var(--color-error-700)' }}>
+        <strong className={`amount ${c.solde >= 0 ? 'amount--positive' : 'amount--negative'}`}>
           {formatCurrency(c.solde)}
         </strong>
       ),
@@ -182,21 +170,21 @@ export function TreasurerTresoreriePage() {
             />
             <Tooltip
               formatter={(v) => formatCurrency(Number(v ?? 0))}
-              contentStyle={{ borderRadius: 8, border: '1px solid var(--color-border)' }}
+              wrapperClassName="treasurer-chart-tooltip"
             />
-            <Legend wrapperStyle={{ fontSize: 12 }} />
+            <Legend />
             <Bar dataKey="entrees" name="Entrées" fill="#10b981" radius={[4, 4, 0, 0]} />
             <Bar dataKey="sorties" name="Sorties" fill="#ef4444" radius={[4, 4, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
       </ChartCard>
 
-      <section style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+      <section className="treasurer-bank-section">
         <header>
-          <h3 style={{ margin: 0, fontSize: 'var(--font-size-md)', fontWeight: 'var(--font-weight-semibold)', color: 'var(--color-text-primary)' }}>
+          <h3>
             Comptes bancaires
           </h3>
-          <p style={{ margin: '2px 0 0', fontSize: 'var(--font-size-xs)', color: 'var(--color-text-tertiary)' }}>
+          <p>
             {snap.data?.derniereOperation
               ? `Dernière opération : ${formatDate(snap.data.derniereOperation)}`
               : 'Aucune opération récente'}
@@ -210,22 +198,19 @@ export function TreasurerTresoreriePage() {
           emptyTitle="Aucun compte enregistré"
           emptyDescription="Créez un compte bancaire pour alimenter la trésorerie."
           rowActions={(c) => (
-            <div style={{ display: 'inline-flex', gap: 'var(--space-2)', justifyContent: 'flex-end' }}>
+            <div className="treasurer-row-actions">
               <Button variant="primary" size="sm" onClick={() => setDepositing(c)} aria-label="Déposer" title="Déposer de l'argent">
-                <PiggyBank size={14} />
-              </Button>
-              <Button variant="secondary" size="sm" onClick={() => setEditing(c)} aria-label="Modifier">
-                <Pencil size={14} />
+                <PiggyBank size={20} />
               </Button>
               <Button variant="danger" size="sm" onClick={() => setDeleting(c)} aria-label="Supprimer">
-                <Trash2 size={14} />
+                <Trash2 size={20} />
               </Button>
             </div>
           )}
           actionsWidth="150px"
         />
       </section>
-
+ 
       {/* Create */}
       <Modal open={creating} onClose={() => setCreating(false)} title="Nouveau compte bancaire">
         <CompteBancaireForm
@@ -234,19 +219,7 @@ export function TreasurerTresoreriePage() {
           submitting={createMut.isPending}
         />
       </Modal>
-
-      {/* Edit */}
-      <Modal open={!!editing} onClose={() => setEditing(null)} title="Modifier le compte bancaire">
-        {editing && (
-          <CompteBancaireForm
-            initial={editing}
-            onSubmit={(v) => updateMut.mutateAsync({ id: editing.id, v })}
-            onCancel={() => setEditing(null)}
-            submitting={updateMut.isPending}
-          />
-        )}
-      </Modal>
-
+ 
       {/* Deposit */}
       <Modal open={!!depositing} onClose={() => setDepositing(null)} title="Déposer de l'argent">
         {depositing && (

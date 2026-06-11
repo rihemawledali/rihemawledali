@@ -48,11 +48,6 @@ public class TreasurerPaiementController {
         return paiementService.valider(id, authUtils.currentDisplayName());
     }
 
-    @PutMapping("/{id}/annuler")
-    public PaiementDto annuler(@PathVariable Long id) {
-        return paiementService.annuler(id);
-    }
-
     @DeleteMapping("/{id}")
     public Map<String, String> delete(@PathVariable Long id) {
         paiementService.delete(id);

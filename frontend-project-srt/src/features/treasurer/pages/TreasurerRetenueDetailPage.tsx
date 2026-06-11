@@ -2,16 +2,17 @@
    Treasurer — Retenue mensuelle detail
    ============================================ */
 
-import { useMemo, useState, type ChangeEvent, type ReactNode } from 'react';
+import { useState, type ChangeEvent } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-  ArrowLeft, Hash, User, Calendar, ListChecks, BadgeCheck,
-  CheckCircle2, ArrowRight, AlertTriangle, Building2, Banknote, HandCoins,
+  ArrowLeft, Hash, User, Calendar, ListChecks,
+  AlertTriangle, Building2, Banknote, HandCoins,
   Download, Undo2, Ticket, Receipt,
 } from 'lucide-react';
 import { PageHeader } from '../../../shared/layout/PageHeader';
 import { Button } from '../../../shared/ui/Button';
+import { SectionTitle } from '../../../shared/ui/SectionTitle';
 import { StatusBadge } from '../../../shared/data/StatusBadge';
 import { formatCurrency, formatDate, formatNumber } from '../../../shared/lib/formatters';
 import {
@@ -22,8 +23,6 @@ import {
   type RetenueLigneType,
 } from '../retenues/api';
 import './TreasurerRetenueDetailPage.css';
-
-const MASTER_ORDER: RetenueMensuelleStatut[] = ['GENEREE', 'EXPORTEE'];
 
 const MASTER_LABEL: Record<RetenueMensuelleStatut, string> = {
   GENEREE: 'À exporter',
@@ -65,7 +64,7 @@ const TYPE_LABEL: Record<RetenueLigneType, string> = {
   TICKET_RESTAURANT: 'Ticket restaurant',
 };
 
-const TYPE_ICON: Record<RetenueLigneType, ReactNode> = {
+const TYPE_ICON: Record<RetenueLigneType, any> = {
   COTISATION: <HandCoins size={15} />,
   PRET: <Banknote size={15} />,
   CONVENTION: <Building2 size={15} />,
@@ -138,8 +137,7 @@ export function TreasurerRetenueDetailPage() {
     onError: (e) => setError(e instanceof Error ? e.message : 'Échec de la mise à jour de la ligne'),
   });
 
-  const idx = useMemo(() => (retenue ? MASTER_ORDER.indexOf(retenue.statut) : -1), [retenue]);
-  const lineStats = useMemo(() => createLineStats(retenue?.lignes ?? []), [retenue]);
+  const lineStats = createLineStats(retenue?.lignes ?? []);
   const isExported = retenue?.statut === 'EXPORTEE';
   const periodLabel = retenue ? formatMonth(retenue.mois, retenue.annee) : '';
   const saving = exportMutation.isPending || rollbackMutation.isPending || setLigneStatutMutation.isPending;
@@ -230,9 +228,13 @@ export function TreasurerRetenueDetailPage() {
               label={MASTER_LABEL[retenue.statut]}
             />
           </div>
-          <p>
-            Contrôle détaillé des retenues à prélever sur la paie de {periodLabel}, avec statut par source et ventilation claire des lignes.
-          </p>
+          <div className="trd-hero-meta" aria-label="Informations de la retenue">
+            <span><Hash size={14} /> <strong>Référence</strong> {retenue.id}</span>
+            <span><User size={14} /> <strong>Matricule</strong> {retenue.adherentMatricule || 'Sans matricule'}</span>
+            <span><Calendar size={14} /> <strong>Période</strong> {periodLabel}</span>
+            <span><Calendar size={14} /> <strong>Génération</strong> {safeDate(retenue.dateGeneration)}</span>
+            <span><Download size={14} /> <strong>Export</strong> {safeDate(retenue.dateExport)}</span>
+          </div>
         </div>
         <div className="trd-total-panel">
           <span>Total retenu</span>
@@ -241,28 +243,7 @@ export function TreasurerRetenueDetailPage() {
         </div>
       </section>
 
-      <section className="trd-detail-grid" aria-label="Informations principales">
-        <DetailTile icon={<Hash size={15} />} label="Référence" value={retenue.id} mono />
-        <DetailTile
-          icon={<User size={15} />}
-          label="Adhérent"
-          value={retenue.adherentNom}
-          meta={retenue.adherentMatricule || 'Sans matricule'}
-        />
-        <DetailTile icon={<Calendar size={15} />} label="Période" value={periodLabel} />
-        <DetailTile icon={<Calendar size={15} />} label="Génération" value={safeDate(retenue.dateGeneration)} />
-        <DetailTile icon={<Download size={15} />} label="Export" value={safeDate(retenue.dateExport)} />
-      </section>
-
       <div className="trd-main-grid">
-        <section className="trd-card trd-card--workflow">
-          <SectionHeader
-            title="Workflow"
-            subtitle="Statut global de la retenue avant transmission au fichier paie."
-          />
-          <WorkflowStepper currentIndex={idx} />
-        </section>
-
         <section className="trd-breakdown-grid" aria-label="Ventilation par source">
           <BreakdownCard icon={<HandCoins size={17} />} label="Cotisation" count={lineStats.byType.COTISATION.count} total={lineStats.byType.COTISATION.total} tone="info" />
           <BreakdownCard icon={<Banknote size={17} />} label="Prêt" count={lineStats.byType.PRET.count} total={lineStats.byType.PRET.total} tone="warning" />
@@ -315,7 +296,7 @@ export function TreasurerRetenueDetailPage() {
   );
 }
 
-function BackButton({ onBack, label }: { onBack: () => void; label: string }) {
+function BackButton({ onBack, label }: any) {
   return (
     <div className="trd-back-row">
       <Button variant="ghost" size="sm" onClick={onBack}>
@@ -326,31 +307,7 @@ function BackButton({ onBack, label }: { onBack: () => void; label: string }) {
   );
 }
 
-function WorkflowStepper({ currentIndex }: { currentIndex: number }) {
-  return (
-    <div className="trd-workflow" aria-label="Workflow de la retenue">
-      {MASTER_ORDER.map((statut, index) => {
-        const done = index < currentIndex;
-        const current = index === currentIndex;
-        return (
-          <div key={statut} className="trd-workflow-step">
-            <span className={current ? 'is-current' : done ? 'is-done' : undefined}>
-              {done ? <CheckCircle2 size={15} /> : <BadgeCheck size={15} />}
-              {MASTER_LABEL[statut]}
-            </span>
-            {index < MASTER_ORDER.length - 1 && <ArrowRight size={15} />}
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-function LigneRow({ ligne, onChange, saving }: {
-  ligne: RetenueLigne;
-  onChange: (next: RetenueLigneStatut) => Promise<unknown>;
-  saving: boolean;
-}) {
+function LigneRow({ ligne, onChange, saving }: any) {
   const [pending, setPending] = useState(false);
 
   const handle = async (event: ChangeEvent<HTMLSelectElement>) => {
@@ -400,13 +357,7 @@ function LigneRow({ ligne, onChange, saving }: {
   );
 }
 
-function BreakdownCard({ icon, label, count, total, tone }: {
-  icon: ReactNode;
-  label: string;
-  count: number;
-  total: number;
-  tone: 'info' | 'warning' | 'primary' | 'success';
-}) {
+function BreakdownCard({ icon, label, count, total, tone }: any) {
   return (
     <article className={`trd-breakdown-card trd-breakdown-card--${tone}`}>
       <span>{icon}</span>
@@ -419,7 +370,7 @@ function BreakdownCard({ icon, label, count, total, tone }: {
   );
 }
 
-function LineStatusStrip({ stats }: { stats: LineStats }) {
+function LineStatusStrip({ stats }: any) {
   return (
     <div className="trd-status-strip" aria-label="Statuts des lignes">
       {LINE_STATUS_ORDER.map((statut) => (
@@ -432,34 +383,8 @@ function LineStatusStrip({ stats }: { stats: LineStats }) {
   );
 }
 
-function SectionHeader({ title, subtitle }: { title: string; subtitle?: string }) {
-  return (
-    <header className="trd-section-header">
-      <div>
-        <h3>{title}</h3>
-        {subtitle && <p>{subtitle}</p>}
-      </div>
-    </header>
-  );
-}
-
-function DetailTile({ icon, label, value, meta, mono }: {
-  icon: ReactNode;
-  label: string;
-  value: ReactNode;
-  meta?: ReactNode;
-  mono?: boolean;
-}) {
-  return (
-    <div className="trd-detail-tile">
-      <span>{icon}</span>
-      <div>
-        <p>{label}</p>
-        <strong className={mono ? 'is-mono' : undefined}>{value}</strong>
-        {meta && <small>{meta}</small>}
-      </div>
-    </div>
-  );
+function SectionHeader(props: any) {
+  return <SectionTitle {...props} className="trd-section-header" />;
 }
 
 interface LineStats {

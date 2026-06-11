@@ -7,6 +7,7 @@ import {
   Stethoscope, UtensilsCrossed, Bus, GraduationCap, Film, Store,
 } from 'lucide-react';
 import type {
+  Convention,
   ConventionType,
   ConventionAdherentStatus,
   ConventionDemandeStatut,
@@ -41,6 +42,19 @@ export const CONV_TYPE_TONE: Record<
   commerce: 'primary',
   education: 'success',
 };
+
+export const CONV_TYPE_IMAGE: Record<ConventionType, string> = {
+  sante: 'https://images.unsplash.com/photo-1706806595136-5afefb45da1a?auto=format&fit=crop&w=1200&q=80',
+  restauration: 'https://images.unsplash.com/photo-1737140790906-14518fa29d1c?auto=format&fit=crop&w=1200&q=80',
+  transport: 'https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?auto=format&fit=crop&w=1200&q=80',
+  loisir: 'https://images.unsplash.com/photo-1549361360-04d48152048e?auto=format&fit=crop&w=1200&q=80',
+  commerce: 'https://images.unsplash.com/photo-1766871138969-510e404f1293?auto=format&fit=crop&w=1200&q=80',
+  education: 'https://images.unsplash.com/photo-1669348849154-25e23e2ccf05?auto=format&fit=crop&w=1200&q=80',
+};
+
+export function getConventionImageUrl(convention: Pick<Convention, 'imageUrl' | 'type'>): string {
+  return convention.imageUrl?.trim() || CONV_TYPE_IMAGE[convention.type];
+}
 
 // ----- Adherent-facing convention status -----
 

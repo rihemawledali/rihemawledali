@@ -1,0 +1,50 @@
+.simple-metric-card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 96px;
+  padding: var(--space-4);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-xs);
+}
+
+.simple-metric-card-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+  color: var(--color-primary-700);
+  background: var(--color-primary-50);
+  border-radius: var(--radius-md);
+}
+
+.simple-metric-card p {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  text-transform: uppercase;
+}
+
+.simple-metric-card strong {
+  display: block;
+  margin-top: 4px;
+  color: var(--color-text-primary);
+  font-size: var(--font-size-lg);
+}
+
+.simple-metric-card--success {
+  border-color: var(--color-success-100);
+}
+
+.simple-metric-card--warning {
+  border-color: var(--color-warning-100);
+}
+
+.simple-metric-card--error {
+  border-color: var(--color-error-100);
+}

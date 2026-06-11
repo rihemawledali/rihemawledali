@@ -1,6 +1,5 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { LucideIcon } from 'lucide-react';
 import { Pencil, Plus, ShieldCheck, Trash2, UserCheck, Users, UserX } from 'lucide-react';
 import { PageHeader } from '../../../shared/layout/PageHeader';
 import { Button } from '../../../shared/ui/Button';
@@ -45,6 +44,14 @@ const ROLE_LABEL: Record<string, string> = {
   adherent: 'Adhérent',
 };
 
+const PAGE_SIZE = 10;
+const ROLE_OPTIONS = Object.entries(ROLE_LABEL).map(([value, label]) => ({ value, label }));
+const STATUS_OPTIONS = [
+  { value: 'actif', label: 'Actif' },
+  { value: 'inactif', label: 'Inactif' },
+  { value: 'suspendu', label: 'Suspendu' },
+];
+
 export function UsersPage() {
   const queryClient = useQueryClient();
   const toast = useToast();
@@ -60,7 +67,7 @@ export function UsersPage() {
 
   const query = useQuery({
     queryKey: ['users', { page, search, role, status, sortBy, sortDir }],
-    queryFn: () => usersApi.list({ page, size: 10, search, sortBy, sortDir, filters: { role, status } }),
+    queryFn: () => usersApi.list({ page, size: PAGE_SIZE, search, sortBy, sortDir, filters: { role, status } }),
   });
 
   const create = useMutation({
@@ -104,7 +111,7 @@ export function UsersPage() {
     }
   };
 
-  const columns: Column<Utilisateur>[] = useMemo(() => [
+  const columns: Column<Utilisateur>[] = [
     {
       key: 'nom',
       header: 'Utilisateur',
@@ -121,13 +128,31 @@ export function UsersPage() {
     { key: 'role', header: 'Rôle', sortable: true, cell: (user) => <StatusBadge status={user.role} tone="info" label={ROLE_LABEL[user.role]} /> },
     { key: 'status', header: 'Statut', sortable: true, cell: (user) => <StatusBadge status={user.status} /> },
     { key: 'createdAt', header: 'Créé le', sortable: true, cell: (user) => <span className="cell-muted">{formatDate(user.createdAt)}</span> },
-  ], []);
+  ];
 
   const rows = query.data?.items ?? [];
   const total = query.data?.total ?? 0;
-  const activeCount = rows.filter((user) => user.status === 'actif').length;
-  const suspendedCount = rows.filter((user) => user.status === 'suspendu').length;
-  const adminCount = rows.filter((user) => user.role === 'admin').length;
+  const metrics = [
+    { icon: Users, label: 'Résultats', value: total, tone: 'info' },
+    { icon: UserCheck, label: 'Actifs sur la page', value: rows.filter((user) => user.status === 'actif').length, tone: 'success' },
+    { icon: ShieldCheck, label: 'Administrateurs', value: rows.filter((user) => user.role === 'admin').length, tone: 'neutral' },
+    { icon: UserX, label: 'Suspendus', value: rows.filter((user) => user.status === 'suspendu').length, tone: 'warning' },
+  ];
+
+  function changeSearch(value: string) {
+    setSearch(value);
+    setPage(1);
+  }
+
+  function changeRole(value: string) {
+    setRole(value);
+    setPage(1);
+  }
+
+  function changeStatus(value: string) {
+    setStatus(value);
+    setPage(1);
+  }
 
   return (
     <div className="admin-surface">
@@ -152,37 +177,16 @@ export function UsersPage() {
       </section>
 
       <section className="admin-metrics" aria-label="Synthèse utilisateurs">
-        <AdminMetric icon={Users} label="Résultats" value={total} tone="info" />
-        <AdminMetric icon={UserCheck} label="Actifs sur la page" value={activeCount} tone="success" />
-        <AdminMetric icon={ShieldCheck} label="Administrateurs" value={adminCount} tone="neutral" />
-        <AdminMetric icon={UserX} label="Suspendus" value={suspendedCount} tone="warning" />
+        {metrics.map((metric) => <AdminMetric key={metric.label} {...metric} />)}
       </section>
 
       <section className="admin-workspace">
         <div className="admin-toolbar-panel">
           <div className="crud-toolbar">
             <FilterBar>
-              <SearchInput value={search} onChange={(value) => { setSearch(value); setPage(1); }} placeholder="Rechercher nom, email, matricule..." />
-              <SelectFilter
-                label="Rôle"
-                value={role}
-                onChange={(value) => { setRole(value); setPage(1); }}
-                options={[
-                  { value: 'admin', label: 'Administrateur' },
-                  { value: 'treasurer', label: 'Trésorier' },
-                  { value: 'adherent', label: 'Adhérent' },
-                ]}
-              />
-              <SelectFilter
-                label="Statut"
-                value={status}
-                onChange={(value) => { setStatus(value); setPage(1); }}
-                options={[
-                  { value: 'actif', label: 'Actif' },
-                  { value: 'inactif', label: 'Inactif' },
-                  { value: 'suspendu', label: 'Suspendu' },
-                ]}
-              />
+              <SearchInput value={search} onChange={changeSearch} placeholder="Rechercher nom, email, matricule..." />
+              <SelectFilter label="Rôle" value={role} onChange={changeRole} options={ROLE_OPTIONS} />
+              <SelectFilter label="Statut" value={status} onChange={changeStatus} options={STATUS_OPTIONS} />
             </FilterBar>
           </div>
         </div>
@@ -220,7 +224,7 @@ export function UsersPage() {
 
           {query.data && query.data.total > 0 && (
             <div className="admin-pagination">
-              <Pagination page={page} size={10} total={query.data.total} onPageChange={setPage} />
+              <Pagination page={page} size={PAGE_SIZE} total={query.data.total} onPageChange={setPage} />
             </div>
           )}
         </div>
@@ -270,17 +274,7 @@ export function UsersPage() {
   );
 }
 
-function AdminMetric({
-  icon: Icon,
-  label,
-  value,
-  tone,
-}: {
-  icon: LucideIcon;
-  label: string;
-  value: number;
-  tone: 'success' | 'warning' | 'info' | 'neutral';
-}) {
+function AdminMetric({ icon: Icon, label, value, tone }: any) {
   return (
     <article className={`admin-metric is-${tone}`}>
       <span className="admin-metric-icon">

@@ -58,6 +58,7 @@ public class ConventionAdherentService {
 
         return conventionRepository.findAllByOrderByDateDebutDescIdDesc()
                 .stream()
+                .filter(c -> c.getFournisseur() != null)
                 .map(c -> ConventionAdherentDto.from(c, adherentStatus(c, mine, today)))
                 .toList();
     }

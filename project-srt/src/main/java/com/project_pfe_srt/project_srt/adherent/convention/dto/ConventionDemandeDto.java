@@ -2,6 +2,7 @@ package com.project_pfe_srt.project_srt.adherent.convention.dto;
 
 import com.project_pfe_srt.project_srt.adherent.convention.entity.ConventionDemande;
 import com.project_pfe_srt.project_srt.shared.convention.entity.Convention;
+import com.project_pfe_srt.project_srt.shared.fournisseur.entity.Fournisseur;
 
 import lombok.*;
 
@@ -62,8 +63,9 @@ public class ConventionDemandeDto {
         ConventionSnapshot snap = null;
         if (c != null) {
             Convention conv = c;
+            Fournisseur fournisseur = conv.getFournisseur();
             snap = ConventionSnapshot.builder()
-                    .fournisseurNom(conv.getFournisseur() == null ? null : conv.getFournisseur().getNom())
+                    .fournisseurNom(fournisseur == null ? null : fournisseur.getNom())
                     .type(conv.getType())
                     .remise(conv.getRemise())
                     .dateDebut(conv.getDateDebut().toString())
